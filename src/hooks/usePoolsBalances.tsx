@@ -20,28 +20,24 @@ export interface RawPoolBalance {
 }
 
 export const usePoolsBalances = () => {
-  const info = useQuery({
+  const { data, refetch } = useQuery({
     queryKey: ['pools-balances'],
     queryFn: fetchPoolBalance,
     staleTime: 15000,
   });
-  const res = useMemo(() => {
-    if (info.data) {
-      return ({
-        ...info,
-        data: info.data.data.map(
-          p => ({
-            faucetId: bech32ToAccountId(p.faucet_id),
-            faucetIdBech32: p.faucet_id,
-            totalLiabilities: BigInt(p.total_liabilities ?? 0),
-            reserve: BigInt(p.reserve ?? 0),
-            reserveWithSlippage: BigInt(p.reserve_with_slippage ?? 0),
-          } as PoolBalance),
-        ),
-      });
-    } else return info;
-  }, [info]);
-  return res;
+  const value = useMemo(() => ({
+    data: data?.data.map(
+      p => ({
+        faucetId: bech32ToAccountId(p.faucet_id),
+        faucetIdBech32: p.faucet_id,
+        totalLiabilities: BigInt(p.total_liabilities ?? 0),
+        reserve: BigInt(p.reserve ?? 0),
+        reserveWithSlippage: BigInt(p.reserve_with_slippage ?? 0),
+      } as PoolBalance),
+    ),
+    refetch,
+  }), [data, refetch]);
+  return value;
 };
 
 export interface PoolsInfo {

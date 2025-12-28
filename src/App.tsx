@@ -49,9 +49,9 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <WalletProvider wallets={wallets} autoConnect>
         <WalletModalProvider>
-          <OracleProvider>
-            <ZoroProvider>
-              <ThemeProvider storageKey='vite-ui-theme'>
+          <ZoroProvider>
+            <ThemeProvider storageKey='vite-ui-theme'>
+              <OracleProvider>
                 <ModalProvider>
                   <AppRouter />
                   <ToastContainer
@@ -68,9 +68,9 @@ function App() {
                     transition={Bounce}
                   />
                 </ModalProvider>
-              </ThemeProvider>
-            </ZoroProvider>
-          </OracleProvider>
+              </OracleProvider>
+            </ThemeProvider>
+          </ZoroProvider>
         </WalletModalProvider>
       </WalletProvider>
     </QueryClientProvider>

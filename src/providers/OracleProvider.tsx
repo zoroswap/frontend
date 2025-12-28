@@ -1,7 +1,16 @@
-import { ORACLE } from '@/lib/config';
 import { useWebSocket } from '@/hooks/useWebSocket';
-import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ORACLE } from '@/lib/config';
+import {
+  type ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { OracleContext } from './OracleContext';
+import { ZoroContext } from './ZoroContext';
 
 const MAX_AGE = 3000;
 
@@ -27,6 +36,13 @@ export const OracleProvider = ({ children }: { children: ReactNode }) => {
   >({});
   const [binary, setBinary] = useState<`0x${string}`[] | undefined>(undefined);
   const isFetching = useRef(false);
+  const websocketPrices = useRef<
+    Record<string, { age: number; priceFeed: PriceData } | undefined>
+  >({});
+  const { liquidity_pools } = useContext(ZoroContext);
+  const pricesToRefresh = useMemo(() => {
+    return liquidity_pools.map(p => p.faucetIdBech32);
+  }, [liquidity_pools]);
 
   const pricesRef = useRef(prices);
   useEffect(() => {
@@ -42,8 +58,9 @@ export const OracleProvider = ({ children }: { children: ReactNode }) => {
     onMessage: (message) => {
       if (message.type === 'OraclePriceUpdate') {
         const now = Date.now();
-        setPrices(prev => ({
-          ...prev,
+        websocketPrices.current = {
+          ...websocketPrices.current,
+
           [message.oracle_id]: {
             age: now,
             priceFeed: {
@@ -51,10 +68,19 @@ export const OracleProvider = ({ children }: { children: ReactNode }) => {
               publish_time: message.timestamp,
             },
           },
-        }));
+        };
       }
     },
   });
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setPrices(websocketPrices.current);
+    }, 60000);
+    return () => {
+      clearInterval(interval);
+    };
+  }, []);
 
   const refreshPrices = useCallback(
     async (ids: string | string[], force?: boolean) => {
@@ -97,11 +123,20 @@ export const OracleProvider = ({ children }: { children: ReactNode }) => {
     [],
   );
 
+  useEffect(() => {
+    refreshPrices(pricesToRefresh);
+  }, [refreshPrices, pricesToRefresh]);
+
   const getBinary = useCallback(() => Promise.resolve(binary ?? []), [binary]);
 
+  const getWebsocketPrice = useCallback(
+    (oracleId: string) => websocketPrices.current[oracleId],
+    [],
+  );
+
   const contextValue = useMemo(
-    () => ({ prices, refreshPrices, getBinary }),
-    [prices, refreshPrices, getBinary],
+    () => ({ prices, refreshPrices, getBinary, getWebsocketPrice }),
+    [prices, refreshPrices, getBinary, getWebsocketPrice],
   );
 
   return (

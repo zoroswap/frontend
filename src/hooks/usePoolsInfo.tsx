@@ -21,30 +21,29 @@ export interface PoolInfo {
 }
 
 export const usePoolsInfo = () => {
-  const info = useQuery({
+  const { data, refetch, isLoading, isFetched } = useQuery({
     queryKey: ['pool-info'],
     queryFn: fetchPoolInfo,
     staleTime: 3600000,
   });
-  const res = useMemo(() => {
-    if (info.data) {
-      return ({
-        ...info,
-        data: {
-          poolAccountId: info.data.pool_account_id,
-          liquidityPools: info.data.liquidity_pools.map(
-            p => ({
-              ...p,
-              oracleId: p.oracle_id,
-              faucetId: bech32ToAccountId(p.faucet_id),
-              faucetIdBech32: p.faucet_id,
-            } as PoolInfo),
-          ),
-        } as PoolsInfo,
-      });
-    } else return info;
-  }, [info]);
-  return res;
+  const value = useMemo(() => ({
+    isLoading,
+    isFetched,
+    data: {
+      poolAccountId: data?.pool_account_id,
+      liquidityPools: data?.liquidity_pools.map(
+        p => ({
+          ...p,
+          oracleId: p.oracle_id,
+          faucetId: bech32ToAccountId(p.faucet_id),
+          faucetIdBech32: p.faucet_id,
+        } as PoolInfo),
+      ),
+    },
+    refetch: refetch,
+  }), [data?.liquidity_pools, data?.pool_account_id, refetch, isLoading, isFetched]);
+
+  return value;
 };
 
 export interface PoolsInfo {

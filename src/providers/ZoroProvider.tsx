@@ -2,15 +2,7 @@ import { type PoolInfo, usePoolsInfo } from '@/hooks/usePoolsInfo';
 import { bech32ToAccountId, instantiateClient } from '@/lib/utils';
 import { AccountId, Address, WebClient } from '@demox-labs/miden-sdk';
 import { useWallet } from '@demox-labs/miden-wallet-adapter';
-import {
-  type ReactNode,
-  useCallback,
-  useEffect,
-  useMemo,
-  useReducer,
-  useRef,
-  useState,
-} from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ZoroContext } from './ZoroContext';
 
 enum ClientState {
@@ -54,7 +46,7 @@ export function ZoroProvider({
     }
     if (clientState.current === ClientState.ACTIVE) {
       while (clientState.current === ClientState.ACTIVE) {
-        await new Promise(p => setTimeout(p, 500));
+        await new Promise(p => setTimeout(p, 50));
       }
       clientState.current = ClientState.ACTIVE;
       client?.syncState().then();
@@ -72,7 +64,7 @@ export function ZoroProvider({
     }
     if (clientState.current === ClientState.ACTIVE) {
       while (clientState.current === ClientState.ACTIVE) {
-        await new Promise(p => setTimeout(p, 500));
+        await new Promise(p => setTimeout(p, 50));
       }
       clientState.current = ClientState.ACTIVE;
       const acc = client?.getAccount(accountId);

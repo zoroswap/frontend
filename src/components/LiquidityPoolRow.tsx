@@ -1,30 +1,29 @@
-import { useLPBalance } from '@/hooks/useLPBalance';
 import type { PoolBalance } from '@/hooks/usePoolsBalances';
 import type { PoolInfo } from '@/hooks/usePoolsInfo';
-import { ZoroContext } from '@/providers/ZoroContext';
+import type { TokenConfig } from '@/providers/ZoroProvider';
 import { formalBigIntFormat, prettyBigintFormat } from '@/utils/format';
 import { useWallet } from '@demox-labs/miden-wallet-adapter';
-import { useContext } from 'react';
 import AssetIcon from './AssetIcon';
 import Price from './Price';
 import { Button } from './ui/button';
 
 const LiquidityPoolRow = ({
   pool,
+  tokenConfig,
   poolBalances,
   managePool,
   className,
+  lpBalance,
 }: {
   pool: PoolInfo;
   poolBalances: PoolBalance;
+  tokenConfig?: TokenConfig;
+  lpBalance: bigint;
   managePool: (pool: PoolInfo) => void;
   className?: string;
 }) => {
   const { connected: isConnected } = useWallet();
-  const { tokens } = useContext(ZoroContext);
-  const token = tokens[pool.faucetIdBech32];
   const decimals = pool.decimals;
-  const { balance } = useLPBalance({ token });
 
   const saturation =
     ((poolBalances.reserve * BigInt(1e8)) / poolBalances.totalLiabilities)
@@ -38,7 +37,7 @@ const LiquidityPoolRow = ({
           <div>
             <h4 className='text-sm font-bold'>{pool.name}</h4>
             <p className='text-xs opacity-50'>
-              $<Price oracleId={pool.oracleId} />
+              ${tokenConfig && <Price tokenConfig={tokenConfig} />}
             </p>
           </div>
         </div>
@@ -65,9 +64,9 @@ const LiquidityPoolRow = ({
       </td>*/
       }
       <td
-        className={`${!balance || balance < BigInt(10000) ? 'opacity-70' : ''}`}
+        className={`${!lpBalance || lpBalance < BigInt(10000) ? 'opacity-70' : ''}`}
       >
-        {prettyBigintFormat({ value: balance, expo: decimals })}{'  '}
+        {prettyBigintFormat({ value: lpBalance, expo: decimals })}{'  '}
         <small>z{pool.symbol}</small>
       </td>
       <td className='max-w-[100px] sticky box-border text-right'>

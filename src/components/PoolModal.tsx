@@ -1,5 +1,4 @@
 import { useDeposit } from '@/hooks/useDeposit';
-import { useLPBalance } from '@/hooks/useLPBalance';
 import { useWithdraw } from '@/hooks/useWithdraw';
 import { ZoroContext } from '@/providers/ZoroContext';
 import type { TokenConfig } from '@/providers/ZoroProvider';
@@ -21,6 +20,7 @@ interface PoolModalProps {
   setTxResult: (txResults: TxResult) => void;
   setLpDetails: (lpDetails: LpDetails) => void;
   onSuccess: (noteId: string) => void;
+  lpBalance: bigint;
 }
 
 const validateValue = (val: bigint, max: bigint) => {
@@ -34,7 +34,8 @@ const validateValue = (val: bigint, max: bigint) => {
 export type LpActionType = 'Deposit' | 'Withdraw';
 
 const PoolModal = (
-  { pool, refetchPoolInfo, setTxResult, setLpDetails, onSuccess }: PoolModalProps,
+  { pool, refetchPoolInfo, setTxResult, setLpDetails, onSuccess, lpBalance }:
+    PoolModalProps,
 ) => {
   const modalContext = useContext(ModalContext);
   const { tokens } = useContext(ZoroContext);
@@ -50,15 +51,12 @@ const PoolModal = (
   const { balance: balanceToken, refetch: refetchBalanceToken } = useBalance({
     token,
   });
-  const { balance: balanceContractToken, refetch: refetchBalanceWallet } = useLPBalance({
-    token,
-  });
   const balance = useMemo(
     () =>
       mode === 'Withdraw'
-        ? balanceContractToken ?? BigInt(0)
+        ? lpBalance ?? BigInt(0)
         : balanceToken ?? BigInt(0),
-    [balanceToken, balanceContractToken, mode],
+    [balanceToken, lpBalance, mode],
   );
   const decimals = pool.decimals;
 
@@ -66,11 +64,9 @@ const PoolModal = (
     setInputValue('');
     setRawValue(BigInt(0));
     refetchBalanceToken().catch(console.error);
-    refetchBalanceWallet();
     refetchPoolInfo?.();
   }, [
     refetchBalanceToken,
-    refetchBalanceWallet,
     refetchPoolInfo,
   ]);
 
@@ -168,6 +164,10 @@ const PoolModal = (
     }
   }, [decimals, balance]);
 
+  const handleClose = useCallback(() => {
+    modalContext.closeModal();
+  }, [modalContext]);
+
   return (
     <div className='flex flex-col gap-6'>
       <div className='w-full flex items-center text-xl'>
@@ -194,11 +194,14 @@ const PoolModal = (
           Withdraw
         </div>
         <div className='flex-grow' />
-        <X
-          onClick={() => {
-            modalContext.closeModal();
-          }}
-        />
+        <Button
+          variant='ghost'
+          size='icon'
+          onClick={handleClose}
+          className='h-6 w-6 rounded-full hover:bg-muted'
+        >
+          <X className='h-3 w-3' />
+        </Button>
       </div>{' '}
       <div className='flex flex-col gap-4 my-4'>
         <p className='text-xs opacity-50'>
@@ -253,7 +256,7 @@ const PoolModal = (
           <span className='opacity-50 font-bold'>My position</span>
           <span>
             {formatTokenAmount({
-              value: balanceContractToken,
+              value: lpBalance,
               expo: pool.decimals,
             })} z{pool.symbol}
           </span>

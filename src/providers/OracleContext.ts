@@ -10,12 +10,14 @@ interface OracleContextProps {
   refreshPrices: (ids: string[], force?: boolean) => void;
   prices: Record<string, { age: number; priceFeed: PriceData } | undefined>;
   getBinary: (ids?: string[]) => Promise<string[]>;
+  getWebsocketPrice: (id: string) => { age: number; priceFeed: PriceData } | undefined;
 }
 
 export const OracleContext = createContext({
   refreshPrices: emptyFn,
   prices: {},
   getBinary: () => Promise.resolve([]),
+  getWebsocketPrice: () => undefined,
 } as OracleContextProps);
 
 export const useOraclePrices = (ids: string[]) => {
