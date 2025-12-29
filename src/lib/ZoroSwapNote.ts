@@ -49,6 +49,8 @@ export async function compileSwapTransaction({
   userAccountId,
   client,
 }: SwapParams) {
+  console.log(buyToken, sellToken);
+
   await client.syncState();
   const builder = client.createScriptBuilder();
   const script = builder.compileNoteScript(ZOROSWAP_SCRIPT);

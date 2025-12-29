@@ -122,7 +122,7 @@ const PoolModal = (
     if (token == null) return;
     await deposit({
       amount: rawValue,
-      minAmountOut: rawValue,
+      minAmountOut: BigInt(0), // rawValue,
       token,
     });
   }, [rawValue, deposit, token]);
