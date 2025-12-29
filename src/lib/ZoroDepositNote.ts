@@ -26,7 +26,7 @@ import DEPOSIT_SCRIPT from './DEPOSIT.masm?raw';
 import two_asset_pool from './two_asset_pool.masm?raw';
 import { accountIdToBech32, generateRandomSerialNumber } from './utils';
 
-export interface SwapParams {
+export interface DepositParams {
   poolAccountId: AccountId;
   token: TokenConfig;
   amount: bigint;
@@ -34,6 +34,7 @@ export interface SwapParams {
   userAccountId: AccountId;
   client: WebClient;
   syncState: () => Promise<void>;
+  noteType: NoteType;
 }
 
 export interface SwapResult {
@@ -49,7 +50,8 @@ export async function compileDepositTransaction({
   userAccountId,
   client,
   syncState,
-}: SwapParams) {
+  noteType,
+}: DepositParams) {
   await syncState();
   const builder = client.createScriptBuilder();
   const pool_script = builder.buildLibrary('zoro::two_asset_pool', two_asset_pool);
@@ -57,12 +59,13 @@ export async function compileDepositTransaction({
   const script = builder.compileNoteScript(
     DEPOSIT_SCRIPT,
   );
-  const noteType = NoteType.Private;
   const offeredAsset = new FungibleAsset(token.faucetId, amount);
 
   // Note should only contain the offered asset
   const noteAssets = new NoteAssets([offeredAsset]);
-  const noteTag = NoteTag.forLocalUseCase(0, 0);
+  const noteTag = noteType === NoteType.Private
+    ? NoteTag.forLocalUseCase(0, 0)
+    : NoteTag.fromAccountId(poolAccountId);
 
   const metadata = new NoteMetadata(
     userAccountId,

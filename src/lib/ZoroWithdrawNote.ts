@@ -34,6 +34,7 @@ export interface WithdrawParams {
   userAccountId: AccountId;
   client: WebClient;
   syncState: () => Promise<void>;
+  noteType: NoteType;
 }
 
 export interface SwapResult {
@@ -49,6 +50,7 @@ export async function compileWithdrawTransaction({
   userAccountId,
   client,
   syncState,
+  noteType,
 }: WithdrawParams) {
   await syncState();
   const builder = client.createScriptBuilder();
@@ -57,12 +59,13 @@ export async function compileWithdrawTransaction({
   const script = builder.compileNoteScript(
     WITHDRAW_SCRIPT,
   );
-  const noteType = NoteType.Private;
   const requestedAsset = new FungibleAsset(token.faucetId, amount).intoWord().toFelts();
 
   // Note should only contain the offered asset
   const noteAssets = new NoteAssets([]);
-  const noteTag = NoteTag.forLocalUseCase(0, 0);
+  const noteTag = noteType === NoteType.Private
+    ? NoteTag.forLocalUseCase(0, 0)
+    : NoteTag.fromAccountId(poolAccountId);
 
   const metadata = new NoteMetadata(
     userAccountId,

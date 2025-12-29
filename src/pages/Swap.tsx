@@ -406,10 +406,10 @@ function Swap() {
             {selectedAssetBuy && selectedAssetSell
               ? (
                 <span>
-                  1 {selectedAssetBuy.symbol} ={' '}
-                  <ExchangeRatio assetA={selectedAssetBuy} assetB={selectedAssetSell} />
+                  1 {selectedAssetSell.symbol} ={' '}
+                  <ExchangeRatio assetA={selectedAssetSell} assetB={selectedAssetBuy} />
                   {' '}
-                  {selectedAssetSell.symbol}
+                  {selectedAssetBuy.symbol}
                 </span>
               )
               : null}

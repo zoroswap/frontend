@@ -27,7 +27,6 @@ import ZOROSWAP_SCRIPT from './ZOROSWAP.masm?raw';
 
 import two_asset_pool from './two_asset_pool.masm?raw';
 
-
 export interface SwapParams {
   poolAccountId: AccountId;
   sellToken: TokenConfig;

@@ -203,12 +203,7 @@ export function OrderStatus({
               )}
               {!orderStatus && (
                 <p className='text-xs text-center mt-1 text-muted-foreground'>
-                  Proving locally <AnimatedDots />
-                  <br />
-                  <span className='color-muted opacity-70 pt-3 inline-block'>
-                    If the proving doesn't start, try clicking the wallet addon to nudge
-                    it.
-                  </span>
+                  Waiting for order confirmation <AnimatedDots />
                 </p>
               )}
             </div>
@@ -281,18 +276,15 @@ export function OrderStatus({
                     <ExternalLink className='h-4 w-4' />
                   </a>
                 </div>
-                <Button
-                  onClick={handleClose}
-                  disabled={orderStatus !== 'executed'}
-                  className='mt-5 w-full h-full'
-                  variant='secondary'
-                >
-                  {orderStatus === 'executed' ? 'Close' : (
-                    <>
-                      Waiting<AnimatedDots />
-                    </>
-                  )}
-                </Button>
+                {orderStatus === 'executed' && (
+                  <Button
+                    onClick={handleClose}
+                    className='mt-5 w-full h-full'
+                    variant='secondary'
+                  >
+                    Close
+                  </Button>
+                )}
               </div>
             </div>
           </div>

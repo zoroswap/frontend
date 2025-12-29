@@ -2,6 +2,7 @@ import { useDeposit } from '@/hooks/useDeposit';
 import { useWithdraw } from '@/hooks/useWithdraw';
 import { ZoroContext } from '@/providers/ZoroContext';
 import type { TokenConfig } from '@/providers/ZoroProvider';
+import { NoteType } from '@demox-labs/miden-sdk';
 import { Loader, X } from 'lucide-react';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { parseUnits } from 'viem';
@@ -124,6 +125,7 @@ const PoolModal = (
       amount: rawValue,
       minAmountOut: BigInt(0), // rawValue,
       token,
+      noteType: NoteType.Public,
     });
   }, [rawValue, deposit, token]);
 
@@ -133,6 +135,7 @@ const PoolModal = (
       amount: rawValue,
       minAmountOut: rawValue,
       token,
+      noteType: NoteType.Public,
     });
   }, [rawValue, withdraw, token]);
 
