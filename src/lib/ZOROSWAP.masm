@@ -1,8 +1,10 @@
 use.miden::active_note
-use.miden::contracts::wallets::basic->wallet
 use.miden::output_note
 use.std::crypto::hashes::rpo
 use.std::sys
+
+use.zoro::two_asset_pool
+
 
 # ERRORS
 # =================================================================================================
@@ -81,7 +83,7 @@ const.ZOROSWAP_CREATOR_ID_PREFIX = CREATOR_ID_WORD + 3  # 0x001B
 
 # EMPTY  5WORDS 0X001C- 0x00
 
-# argument memory 4 WORDS
+# argument memory 4 WORDS 
 # 0x0040 - 0x004F
 # ====================================================
 
@@ -109,7 +111,7 @@ const.POOL1_STATE_WORD = ARGS_WORD_2  # 0x0048
 
 # [amount_out, empty, empty, empty]
 const.AMOUNT_OUT = AMOUNT_OUT_WORD
-# 3 empty felts
+# 3 empty felts 
 
 # [pool0_liabilities, pool0_reserve, pool0_reserve_with_slippage, empty]
 const.POOL0_LIABILITIES = POOL0_STATE_WORD  # 0x0044
@@ -138,7 +140,7 @@ const.IN_ASSET_WORD = 0x0060
 const.AMOUNT_IN = IN_ASSET_WORD
 const.IN_TOKEN_EMPTY_FELT = IN_ASSET_WORD + 1
 const.IN_TOKEN_ID_PREFIX = IN_ASSET_WORD + 3
-const.IN_TOKEN_ID_SUFIX = IN_ASSET_WORD + 2
+const.IN_TOKEN_ID_SUFFIX = IN_ASSET_WORD + 2
 
 
 # "constant" MEMORY
@@ -155,7 +157,7 @@ const.P2ID_SCRIPT_ROOT_WORD = 0x0080
 #!
 proc.add_first_asset_to_account
     mem_loadw_be.IN_ASSET_WORD
-    call.wallet::receive_asset
+    #call.wallet::receive_asset
 end
 
 proc.store_asset_in_to_memory
@@ -175,7 +177,10 @@ proc.store_inputs_to_memory
 end
 # @note TODO: pool stats will likely need to go through the advice stack
 proc.store_args_to_memory
-    mem_storew_be.AMOUNT_OUT_WORD dropw
+    mem_store.POOL0_LIABILITIES
+    mem_store.POOL0_RESERVE
+    mem_store.POOL0_RESERVE_WITH_SLIPPAGE
+    mem_store.AMOUNT_OUT
 end
 
 
@@ -185,8 +190,6 @@ end
 #! Outputs: [P2ID_RECIPIENT]
 #!
 proc.build_p2id_recipient_hash
-
-    debug.stack.8
 
     padw hmerge
     # => [SERIAL_NUM_HASH, SCRIPT_HASH]
@@ -205,7 +208,6 @@ proc.build_p2id_recipient_hash
     # => [INPUTS_HASH, SERIAL_SCRIPT_HASH]
     hmerge
     # => [P2ID_RECIPIENT]
-    debug.stack
 end
 
 # input: [SERIAL_NUM,...]
@@ -247,45 +249,71 @@ proc.create_p2id_reverse_note
     # => [note_idx, pad(15), ASSET_TO_BE_SENT]
     swapw.2 dropw swapw.3
     # => [ASSET, note_idx, pad(11)]
-    call.wallet::move_asset_to_note
-    # => [ASSET, note_idx, pad(11)]
-    dropw drop
+    padw mem_loadw_be.260 # load new out pool state
+
+    swapw.2 swapw
+    
+    call.two_asset_pool::move_asset_to_note
+    # => [ASSET, note_idx, pad(3), NEW_OUT_POOL_STATE, pad(4)]
+    dropw dropw drop
     # => []
 end
 
 proc.store_p2id_script_hash
     push.15783632360113277539.7403765918285273520.15691985194755641846.10399643920503194563
+
     mem_storew_be.P2ID_SCRIPT_ROOT_WORD dropw
 end
 
 proc.execute_ZOROSWAP
-    #mem_loadw_be.IN_ASSET_WORD
-    #exec.create_p2id_reverse_note
     mem_load.AMOUNT_OUT
     mem_load.MIN_AMOUNT_OUT
     lt
-
     # min amount out is not met
     if.true
         mem_loadw_be.IN_ASSET_WORD
     else
+        mem_load.POOL0_RESERVE_WITH_SLIPPAGE mem_load.POOL0_RESERVE mem_load.POOL0_LIABILITIES
+        push.0.0.0.0
+        mem_loadw_be.IN_ASSET_WORD
+        #call.two_asset_pool::swap_in_pool0
+        #call.wallet::receive_asset
+        call.two_asset_pool::receive_asset
+
         mem_load.AMOUNT_OUT push.0 mem_load.OUT_TOKEN_ID_SUFFIX mem_load.OUT_TOKEN_ID_PREFIX
     end
 
     exec.create_p2id_reverse_note
+
+    #mem_load.POOL0_RESERVE_WITH_SLIPPAGE mem_load.POOL0_RESERVE mem_load.POOL0_LIABILITIES 
+    #call.two_asset_pool::set_pool0_state
 end
 
 begin
+    push.6000.0.0.0
+    adv.push_mapval
+    
+    swap.3 drop push.256   # => 999 = mem address
+    padw padw padw
+
+
+    adv_pipe
+    dropw swapw dropw swapw dropw
+
     exec.store_args_to_memory
-
     exec.store_inputs_to_memory
-
     exec.store_asset_in_to_memory
-    exec.add_first_asset_to_account
-
+    #exec.add_first_asset_to_account
     exec.store_p2id_script_hash
-
     exec.execute_ZOROSWAP
+
+    #mem_load.IN_TOKEN_ID_SUFFIX
+    #mem_load.IN_TOKEN_ID_PREFIX
+    
+ 
+    #push.100000003000000
+    #dup dup
+    #call.two_asset_pool::set_pool0_state
 
     exec.sys::truncate_stack
 end
