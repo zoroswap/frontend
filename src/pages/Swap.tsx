@@ -159,8 +159,8 @@ function Swap() {
     const priceA = getWebsocketPrice(selectedAssetBuy.oracleId);
     const priceB = getWebsocketPrice(selectedAssetSell.oracleId);
 
-    const ratio = Number(priceA?.priceFeed.value ?? 0)
-      / Number(priceB?.priceFeed.value ?? 1);
+    const ratio = Number(priceB?.priceFeed.value ?? 0)
+      / Number(priceA?.priceFeed.value ?? 1);
 
     const rawBuy = BigInt(Math.floor((ratio ?? 1) * 1e12)) * rawSell
       / BigInt(10 ** (selectedAssetBuy.decimals - selectedAssetSell.decimals + 12));
