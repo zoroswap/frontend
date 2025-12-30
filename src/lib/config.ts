@@ -70,18 +70,6 @@ export const API: ApiConfig = {
 // UI Configuration
 export const DEFAULT_SLIPPAGE = getNumericEnvVar('VITE_DEFAULT_SLIPPAGE', 0.5);
 
-// Token icon mapping - only includes the two supported tokens
-export const TOKEN_ICONS: Record<string, { icon: string; iconClass?: string }> = {
-  BTC: {
-    icon: '/tokens/BTC.svg',
-    iconClass: '',
-  },
-  ETH: {
-    icon: '/tokens/ETH.svg',
-    iconClass: '',
-  },
-} as const;
-
 export const NETWORK_ID = import.meta.env.VITE_NETWORK_ID === 'mainnet'
   ? NetworkId.Mainnet
   : NetworkId.Testnet;

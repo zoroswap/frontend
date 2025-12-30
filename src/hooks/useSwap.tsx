@@ -11,7 +11,7 @@ export const useSwap = () => {
   const { requestTransaction } = useWallet();
   const [txId, setTxId] = useState<undefined | string>();
   const [noteId, setNoteId] = useState<undefined | string>();
-  const { client, accountId, poolAccountId } = useContext(ZoroContext);
+  const { client, syncState, accountId, poolAccountId } = useContext(ZoroContext);
 
   const swap = useCallback(async ({
     amount,
@@ -43,7 +43,7 @@ export const useSwap = () => {
         type: TransactionType.Custom,
         payload: tx,
       });
-      await client.syncState();
+      await syncState();
       setNoteId(noteId);
       setTxId(txId);
     } catch (err) {
@@ -59,7 +59,7 @@ export const useSwap = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [client, accountId, poolAccountId, requestTransaction]);
+  }, [client, accountId, poolAccountId, requestTransaction, syncState]);
 
   const value = useMemo(() => ({ swap, isLoading, error, txId, noteId }), [
     swap,

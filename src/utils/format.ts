@@ -8,7 +8,11 @@ export const formatAmount = (n: number) => {
 };
 
 export const formatTokenAmount = (
-  { value, expo = 0, digits = 8 }: { value?: bigint; expo: number; digits?: number },
+  { value, expo = 0, digits = 8 }: {
+    value?: bigint | null;
+    expo: number;
+    digits?: number;
+  },
 ) => {
   if (value == null) return undefined;
   return roundDown(formatUnits(BigInt(value), expo), digits);

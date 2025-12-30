@@ -1,15 +1,15 @@
-import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Info, Settings, X } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 
-interface SwapSettingsProps {
+interface SlippageProps {
   readonly slippage: number;
   readonly onSlippageChange: (slippage: number) => void;
 }
 
-export function SwapSettings({ slippage, onSlippageChange }: SwapSettingsProps) {
+const Slippage = ({ slippage, onSlippageChange }: SlippageProps) => {
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [inputValue, setInputValue] = useState<string>(slippage.toString());
 
@@ -128,4 +128,6 @@ export function SwapSettings({ slippage, onSlippageChange }: SwapSettingsProps) 
       )}
     </div>
   );
-}
+};
+
+export default Slippage;

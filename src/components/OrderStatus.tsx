@@ -4,10 +4,17 @@ import type { OrderStatus } from '@/services/websocket';
 import { formalBigIntFormat } from '@/utils/format';
 import { CheckCircle, Clock, ExternalLink, Loader2, X, XCircle } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
+import type { LpActionType } from './PoolModal';
 
-const AnimatedDots = () => <span className="animated-dots"><span>.</span><span>.</span><span>.</span></span>;
+const AnimatedDots = () => (
+  <span className='animated-dots'>
+    <span>.</span>
+    <span>.</span>
+    <span>.</span>
+  </span>
+);
 
-interface SwapResult {
+export interface TxResult {
   readonly txId?: string;
   readonly noteId?: string;
 }
@@ -19,11 +26,19 @@ interface SwapDetails {
   readonly buyAmount?: bigint;
 }
 
-interface SwapSuccessProps {
+export interface LpDetails {
+  readonly token: TokenConfig;
+  readonly amount: bigint;
+  readonly actionType: LpActionType;
+}
+
+interface OrderStatusProps {
   readonly onClose: () => void;
-  readonly swapResult: SwapResult | null;
-  readonly swapDetails: SwapDetails | null;
+  readonly swapResult?: TxResult;
+  readonly swapDetails?: SwapDetails;
+  readonly lpDetails?: LpDetails;
   readonly orderStatus?: OrderStatus;
+  readonly title: string;
 }
 
 const getOrderStatusDisplay = (status?: OrderStatus) => {
@@ -74,12 +89,14 @@ const getOrderStatusDisplay = (status?: OrderStatus) => {
   }
 };
 
-export function SwapSuccess({
+export function OrderStatus({
   onClose,
   swapResult,
   swapDetails,
+  lpDetails,
   orderStatus,
-}: SwapSuccessProps) {
+  title,
+}: OrderStatusProps) {
   const [copiedText, setCopiedText] = useState<boolean>(false);
   const [isVisible, setIsVisible] = useState<boolean>(false);
   const [isClosing, setIsClosing] = useState<boolean>(false);
@@ -137,7 +154,7 @@ export function SwapSuccess({
         >
           <div className='bg-background border border-border rounded-2xl shadow-xl p-4'>
             <div className='flex justify-between items-center mb-3'>
-              <span className='font-semibold text-sm'>Swap Order</span>
+              <span className='font-semibold text-sm'>{title}</span>
               <Button
                 variant='ghost'
                 size='icon'
@@ -148,15 +165,22 @@ export function SwapSuccess({
               </Button>
             </div>
             {/* Order Status */}
-            <div className={`mb-4 p-3 rounded-lg border-2 ${statusDisplay.bgColor} ${
-              orderStatus === 'executed' ? 'border-green-500' :
-              orderStatus === 'failed' ? 'border-red-500' :
-              orderStatus === 'matching' ? 'border-blue-500' :
-              'border-transparent'
-            }`}>
+            <div
+              className={`mb-4 p-3 rounded-lg border-2 ${statusDisplay.bgColor} ${
+                orderStatus === 'executed'
+                  ? 'border-green-500'
+                  : orderStatus === 'failed'
+                  ? 'border-red-500'
+                  : orderStatus === 'matching'
+                  ? 'border-blue-500'
+                  : 'border-transparent'
+              }`}
+            >
               <div className='flex items-center justify-center gap-2'>
                 <statusDisplay.icon
-                  className={`h-5 w-5 ${statusDisplay.color} ${statusDisplay.animate ? 'animate-spin' : ''}`}
+                  className={`h-5 w-5 ${statusDisplay.color} ${
+                    statusDisplay.animate ? 'animate-spin' : ''
+                  }`}
                 />
                 <span className={`font-semibold ${statusDisplay.color}`}>
                   Order {statusDisplay.text}
@@ -164,26 +188,41 @@ export function SwapSuccess({
               </div>
               {orderStatus === 'executed' && (
                 <p className='text-xs text-center mt-1 text-green-600 dark:text-green-400'>
-                  Your swap has been completed successfully!
+                  Your order has been completed successfully!
                 </p>
               )}
               {orderStatus === 'matching' && (
                 <p className='text-xs text-center mt-1 text-blue-600 dark:text-blue-400'>
-                  Finding the best price for your swap<AnimatedDots />
+                  Finding the best price for your order <AnimatedDots />
                 </p>
               )}
               {orderStatus === 'pending' && (
                 <p className='text-xs text-center mt-1 text-yellow-600 dark:text-yellow-400'>
-                  Your order is waiting to be processed<AnimatedDots />
+                  Your order is waiting to be processed <AnimatedDots />
                 </p>
               )}
               {!orderStatus && (
                 <p className='text-xs text-center mt-1 text-muted-foreground'>
-                  Waiting for order confirmation<AnimatedDots />
+                  Waiting for order confirmation <AnimatedDots />
                 </p>
               )}
             </div>
 
+            {lpDetails && (
+              <div className='mb-4'>
+                <div className='flex gap-2 text-sm p-2 bg-muted/50 rounded-md'>
+                  <span className='text-muted-foreground text-xs'>
+                    {lpDetails.actionType}
+                  </span>
+                  <div>
+                    {formalBigIntFormat({
+                      val: lpDetails.amount ?? BigInt(0),
+                      expo: lpDetails.token?.decimals || 6,
+                    })} {lpDetails.token?.symbol}
+                  </div>
+                </div>
+              </div>
+            )}
             {swapDetails && (
               <div className='mb-4'>
                 <div className='flex gap-2 text-sm p-2 bg-muted/50 rounded-md'>
@@ -203,8 +242,8 @@ export function SwapSuccess({
                 </div>
               </div>
             )}
-            {orderStatus === 'executed' && (
-              <div className='text-xs text-left mb-4'>
+            {orderStatus === 'executed' && !lpDetails && (
+              <div className='text-xs text-left mb-4 opacity-90'>
                 Claim your tokens in the wallet.
               </div>
             )}
@@ -237,14 +276,15 @@ export function SwapSuccess({
                     <ExternalLink className='h-4 w-4' />
                   </a>
                 </div>
-                <Button
-                  onClick={handleClose}
-                  disabled={orderStatus !== 'executed'}
-                  className='mt-5 w-full h-full'
-                  variant='secondary'
-                >
-                  {orderStatus === 'executed' ? 'OK' : <>Waiting<AnimatedDots /></>}
-                </Button>
+                {orderStatus === 'executed' && (
+                  <Button
+                    onClick={handleClose}
+                    className='mt-5 w-full h-full'
+                    variant='secondary'
+                  >
+                    Close
+                  </Button>
+                )}
               </div>
             </div>
           </div>

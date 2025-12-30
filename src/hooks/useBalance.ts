@@ -1,6 +1,6 @@
 import { ZoroContext } from '@/providers/ZoroContext';
 import { type TokenConfig } from '@/providers/ZoroProvider';
-import { prettyBigintFormat } from '@/utils/format';
+import { formalBigIntFormat, prettyBigintFormat } from '@/utils/format';
 import { type AccountId, WebClient } from '@demox-labs/miden-sdk';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
@@ -22,17 +22,18 @@ const getBalanceFromClient = async (
 export const useBalance = (
   { token }: BalanceParams,
 ) => {
-  const { client, accountId } = useContext(ZoroContext);
+  const { client, accountId, syncState } = useContext(ZoroContext);
   const [balance, setBalance] = useState<bigint | null>(null);
   const faucetId = token?.faucetId;
   const refetch = useCallback(async () => {
     if (!accountId || !faucetId || !client) return;
-    await client.syncState();
+    await syncState();
     const newBalance = await getBalanceFromClient(client, faucetId, accountId);
     setBalance(BigInt(newBalance ?? 0));
-  }, [accountId, client, faucetId]);
+  }, [accountId, client, faucetId, syncState]);
 
   useEffect(() => {
+    // eslint-disable-next-line
     refetch();
     const clear = setInterval(refetch, 10000);
     return () => clearInterval(clear);
@@ -43,6 +44,10 @@ export const useBalance = (
     refetch,
     formatted: prettyBigintFormat({
       value: balance || undefined,
+      expo: token?.decimals || 0,
+    }),
+    formattedLong: formalBigIntFormat({
+      val: balance || undefined,
       expo: token?.decimals || 0,
     }),
   }), [

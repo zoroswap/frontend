@@ -1,5 +1,12 @@
+import {
+  getWebSocket,
+  type MessageHandler,
+  type OrderStatus,
+  type OrderUpdateDetails,
+  type ServerMessage,
+  type SubscriptionChannel,
+} from '@/services/websocket';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { getWebSocket, type MessageHandler, type ServerMessage, type SubscriptionChannel } from '@/services/websocket';
 
 export interface UseWebSocketOptions {
   channels?: SubscriptionChannel[];
@@ -85,24 +92,30 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
     };
   }, [ws, channels]);
 
-  return {
+  const value = useMemo(() => ({
     isConnected,
     subscribe: (channels: SubscriptionChannel[]) => ws.subscribe(channels),
     unsubscribe: (channels: SubscriptionChannel[]) => ws.unsubscribe(channels),
     connect: () => ws.connect(),
     disconnect: () => ws.disconnect(),
-  };
+  }), [isConnected, ws]);
+
+  return value;
 }
 
 /**
  * Hook for tracking order status updates
  */
 export function useOrderUpdates(orderIds?: string[]) {
-  const [orderStatus, setOrderStatus] = useState<Record<string, {
-    status: import('@/services/websocket').OrderStatus;
-    timestamp: number;
-    details: import('@/services/websocket').OrderUpdateDetails;
-  }>>({});
+  const [orderStatus, setOrderStatus] = useState<
+    Record<string, {
+      status: OrderStatus;
+      timestamp: number;
+      details: OrderUpdateDetails;
+    }>
+  >({});
+
+  const callbacks = useRef<Record<string, (newStatus: OrderStatus) => void>>({});
 
   const channels: SubscriptionChannel[] = useMemo(() => {
     // If orderIds is undefined or empty, subscribe to all order updates
@@ -117,6 +130,10 @@ export function useOrderUpdates(orderIds?: string[]) {
     channels,
     onMessage: (message) => {
       if (message.type === 'OrderUpdate') {
+        callbacks.current[message.note_id]?.(message.status);
+        if (message.status === 'executed' && callbacks.current[message.note_id]) {
+          delete callbacks.current[message.note_id];
+        }
         // Key by note_id so frontend can look up status by the note hash it knows
         setOrderStatus(prev => ({
           ...prev,
@@ -138,10 +155,20 @@ export function useOrderUpdates(orderIds?: string[]) {
     unsubscribe([{ channel: 'order_updates', order_id: orderId }]);
   }, [unsubscribe]);
 
+  const registerCallback = useCallback(
+    (noteId: string, callback: (newStatus: OrderStatus) => void) => {
+      if (callbacks.current[noteId] == null) {
+        callbacks.current[noteId] = callback;
+      }
+    },
+    [],
+  );
+
   return {
     orderStatus,
     subscribeToOrder,
     unsubscribeFromOrder,
     isConnected,
+    registerCallback,
   };
 }

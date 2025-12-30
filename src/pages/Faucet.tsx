@@ -1,3 +1,4 @@
+import AssetIcon from '@/components/AssetIcon';
 import { Footer } from '@/components/Footer';
 import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
@@ -43,8 +44,9 @@ function Faucet() {
   useEffect(() => {
     for (const token of Object.values(tokens)) {
       // init token states
-      if (!mintStatuses[token.symbol]) {
-        updateMintStatus(token.symbol, {
+      if (!mintStatuses[token.faucetIdBech32]) {
+        // eslint-disable-next-line
+        updateMintStatus(token.faucetIdBech32, {
           isLoading: false,
           lastAttempt: 0,
           lastResult: null,
@@ -54,16 +56,16 @@ function Faucet() {
     }
   }, [tokens, mintStatuses, setMintStatuses, updateMintStatus]);
 
-  const requestTokens = useCallback(async (tokenSymbol: string): Promise<void> => {
+  const requestTokens = useCallback(async (tokenFaucetId: string): Promise<void> => {
     if (!connected || !accountId) {
       return;
     }
-    const token = tokens[tokenSymbol];
+    const token = tokens[tokenFaucetId];
     if (!token || !token.faucetId) {
       return;
     }
     const faucetId = token.faucetId;
-    updateMintStatus(tokenSymbol, {
+    updateMintStatus(tokenFaucetId, {
       isLoading: true,
       lastAttempt: Date.now(),
       showMessage: false,
@@ -74,18 +76,18 @@ function Faucet() {
         accountIdToBech32(accountId),
         accountIdToBech32(faucetId),
       );
-      updateMintStatus(tokenSymbol, {
+      updateMintStatus(tokenFaucetId, {
         isLoading: false,
         lastResult: result,
         showMessage: false,
       });
       setTimeout(() => {
-        updateMintStatus(tokenSymbol, {
+        updateMintStatus(tokenFaucetId, {
           showMessage: true,
         });
       }, 100);
       setTimeout(() => {
-        updateMintStatus(tokenSymbol, {
+        updateMintStatus(tokenFaucetId, {
           showMessage: false,
         });
       }, 5100);
@@ -94,18 +96,18 @@ function Faucet() {
         success: false,
         message: error instanceof Error ? error.message : 'Unknown error',
       };
-      updateMintStatus(tokenSymbol, {
+      updateMintStatus(tokenFaucetId, {
         isLoading: false,
         lastResult: errorResult,
         showMessage: false,
       });
       setTimeout(() => {
-        updateMintStatus(tokenSymbol, {
+        updateMintStatus(tokenFaucetId, {
           showMessage: true,
         });
       }, 100);
       setTimeout(() => {
-        updateMintStatus(tokenSymbol, {
+        updateMintStatus(tokenFaucetId, {
           showMessage: false,
         });
       }, 5100);
@@ -160,7 +162,7 @@ function Faucet() {
         <div className='w-full max-w-[495px]'>
           <div>
             {Object.values(tokens).map((token, index) => {
-              const status = mintStatuses[token.symbol];
+              const status = mintStatuses[token.faucetIdBech32];
 
               if (!token || !status) return null;
               const lineBetween = index > 0
@@ -175,11 +177,7 @@ function Faucet() {
                     className='rounded-xl transition-all duration-200 hover:border-orange-200/10 mb-4'
                   >
                     <CardContent className='p-4 sm:p-6 flex gap-1 flex-col items-center'>
-                      <img
-                        src={token.icon}
-                        alt={token.name}
-                        className={`w-6 h-6 ${token.iconClass || ''}`}
-                      />
+                      <AssetIcon symbol={token.symbol} />
                       <h3 className='text-md sm:text-lg font-semibold'>
                         Test {token.name}
                       </h3>
@@ -195,7 +193,7 @@ function Faucet() {
                   </Card>
                   {connected && (
                     <Button
-                      onClick={() => requestTokens(token.symbol)}
+                      onClick={() => requestTokens(token.faucetIdBech32)}
                       disabled={isButtonDisabled(status)}
                       className='w-full h-8 sm:h-12 bg-primary hover:bg-orange-700 text-white font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
                     >

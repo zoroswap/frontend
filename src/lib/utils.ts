@@ -2,7 +2,9 @@ import {
   type AccountId,
   AccountInterface,
   Address,
+  Felt,
   type WebClient,
+  Word,
 } from '@demox-labs/miden-sdk';
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -50,4 +52,13 @@ export const accountIdToBech32 = (
 export const bech32ToAccountId = (bech32str?: string) => {
   if (bech32str == null) return undefined;
   return Address.fromBech32(bech32str).accountId();
+};
+
+export const generateRandomSerialNumber = () => {
+  return Word.newFromFelts([
+    new Felt(BigInt(Math.floor(Math.random() * 0x1_0000_0000))),
+    new Felt(BigInt(Math.floor(Math.random() * 0x1_0000_0000))),
+    new Felt(BigInt(Math.floor(Math.random() * 0x1_0000_0000))),
+    new Felt(BigInt(Math.floor(Math.random() * 0x1_0000_0000))),
+  ]);
 };

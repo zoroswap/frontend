@@ -2,7 +2,7 @@
  * Faucet service for minting test tokens from Zoro backend
  * Handles rate limiting and queue management on the server side
  */
-import {API} from "@/lib/config.ts";
+import { API } from '@/lib/config';
 
 export interface FaucetMintRequest {
   readonly address: string;
@@ -28,7 +28,7 @@ export interface FaucetMintResult {
  */
 export async function mintFromFaucet(
   address: string,
-  faucetId: string
+  faucetId: string,
 ): Promise<FaucetMintResult> {
   const request: FaucetMintRequest = {
     address: address,
@@ -50,7 +50,7 @@ export async function mintFromFaucet(
     }
 
     const result: FaucetMintResponse = await response.json();
-    
+
     if (!result.success) {
       return {
         success: false,
@@ -60,15 +60,14 @@ export async function mintFromFaucet(
 
     return {
       success: true,
-      message: result.message || "Requested. Claim the tokens in your wallet!",
+      message: result.message || 'Requested. Claim the tokens in your wallet!',
       transactionId: result.transaction_id,
     };
-
   } catch (error) {
     if (error instanceof Error) {
       return {
         success: false,
-        message: "Not so fast! Wait 5 secs and try again.",
+        message: 'Not so fast! Wait 5 secs and try again.',
       };
     }
 

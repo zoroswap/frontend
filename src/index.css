@@ -114,19 +114,73 @@ h6 {
   font-family: "Cal Sans", system-ui, sans-serif;
 }
 
+.icon-any {
+  background-size: cover;
+  background-image: url("/tokens/ANY.svg");
+}
+
+.icon-BTC {
+  background-image: url("/tokens/BTC.svg")
+}
+
+.icon-USDC {
+  background-image: url("/tokens/USDC.svg")
+}
+
+.icon-ETH {
+  background-image: url("/tokens/ETH.svg");
+}
+
+table td,
+table th {
+  padding: 16px 12px;
+  /* min-width: 120px; */
+}
+
+table th {
+  padding-bottom: 0;
+}
+
+table th {
+  color: hsl(var(--muted-foreground));
+}
+
+table .sticky {
+  right: 0;
+  background-color: hsl(var(--card));
+}
+
 /* Animated loading dots */
 button .animated-dots {
   margin-left: -0.4em;
 }
+
 .animated-dots span {
   opacity: 0;
   animation: dot-fade 1.4s infinite;
 }
-.animated-dots span:nth-child(1) { animation-delay: 0s; }
-.animated-dots span:nth-child(2) { animation-delay: 0.2s; }
-.animated-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+.animated-dots span:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.animated-dots span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.animated-dots span:nth-child(3) {
+  animation-delay: 0.4s;
+}
 
 @keyframes dot-fade {
-  0%, 20% { opacity: 0; }
-  40%, 100% { opacity: 1; }
+
+  0%,
+  20% {
+    opacity: 0;
+  }
+
+  40%,
+  100% {
+    opacity: 1;
+  }
 }
