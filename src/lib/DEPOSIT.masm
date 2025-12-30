@@ -198,7 +198,7 @@ proc.create_p2id_reverse_note
 
     swapw.2 swapw
     
-    call.two_asset_pool::move_asset_to_note
+    call.two_asset_pool::bounce_asset
     # => [ASSET, note_idx, pad(3), NEW_OUT_POOL_STATE, pad(4)]
     dropw dropw drop
     # => []
