@@ -36,8 +36,6 @@ const Price = (
     return <>{price}</>;
   }, [price]);
 
-  // useTraceUpdate({ tokenConfig, amount, html, amountAsNum, price, getWebsocketPrice });
-
   return html;
 };
 

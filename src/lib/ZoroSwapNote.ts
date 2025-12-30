@@ -51,8 +51,6 @@ export async function compileSwapTransaction({
   userAccountId,
   client,
 }: SwapParams) {
-  console.log(buyToken, sellToken);
-
   await client.syncState();
   const builder = client.createScriptBuilder();
   const pool_script = builder.buildLibrary('zoro::two_asset_pool', two_asset_pool);

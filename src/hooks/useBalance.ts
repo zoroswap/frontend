@@ -1,6 +1,6 @@
 import { ZoroContext } from '@/providers/ZoroContext';
 import { type TokenConfig } from '@/providers/ZoroProvider';
-import { prettyBigintFormat } from '@/utils/format';
+import { formalBigIntFormat, prettyBigintFormat } from '@/utils/format';
 import { type AccountId, WebClient } from '@demox-labs/miden-sdk';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
@@ -44,6 +44,10 @@ export const useBalance = (
     refetch,
     formatted: prettyBigintFormat({
       value: balance || undefined,
+      expo: token?.decimals || 0,
+    }),
+    formattedLong: formalBigIntFormat({
+      val: balance || undefined,
       expo: token?.decimals || 0,
     }),
   }), [

@@ -15,9 +15,11 @@ import { useBalance } from '@/hooks/useBalance';
 import { useSwap } from '@/hooks/useSwap';
 import { useOrderUpdates } from '@/hooks/useWebSocket';
 import { DEFAULT_SLIPPAGE } from '@/lib/config';
+import { bech32ToAccountId } from '@/lib/utils';
 import { OracleContext, useOraclePrices } from '@/providers/OracleContext';
 import { ZoroContext } from '@/providers/ZoroContext';
 import { type TokenConfig } from '@/providers/ZoroProvider.tsx';
+import type { AccountId } from '@demox-labs/miden-sdk';
 import { useWallet, WalletMultiButton } from '@demox-labs/miden-wallet-adapter';
 import { Loader2 } from 'lucide-react';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
@@ -45,15 +47,26 @@ function Swap() {
     noteId,
   } = useSwap();
   // Subscribe to all order updates from the start
-  const { orderStatus } = useOrderUpdates();
+  const { orderStatus, registerCallback } = useOrderUpdates();
   const { connecting, connected } = useWallet();
-  const [selectedAssetBuy, setSelectedAssetBuy] = useState<undefined | TokenConfig>();
-  const [selectedAssetSell, setSelectedAssetSell] = useState<undefined | TokenConfig>();
+  const [selectedAssetBuy, setSelectedAssetBuy] = useState<undefined | TokenConfig>(
+    () => getLocalStoredToken('buy'),
+  );
+  const [selectedAssetSell, setSelectedAssetSell] = useState<undefined | TokenConfig>(
+    () => getLocalStoredToken('sell'),
+  );
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
-  const { balance: balanceSell, formatted: balanceSellFmt } = useBalance({
+  const {
+    balance: balanceSell,
+    formattedLong: balanceSellFmt,
+    refetch: refetchBalanceSell,
+  } = useBalance({
     token: selectedAssetSell,
   });
-  const { balance: balancebuy, formatted: balanceBuyFmt } = useBalance({
+  const {
+    balance: balancebuy,
+    formattedLong: balanceBuyFmt,
+  } = useBalance({
     token: selectedAssetBuy,
   });
 
@@ -77,21 +90,26 @@ function Swap() {
     }
   }, [tokens, selectedAssetBuy, selectedAssetSell]);
 
-  // const setAsset = useCallback((side: 'buy' | 'sell', symbol: string) => {
-  //   const asset = Object.values(tokens).find(a => a.symbol === symbol);
-  //   if (asset == null) return;
-  //   if (side === 'buy') {
-  //     if (selectedAssetSell?.symbol === asset.symbol) {
-  //       setSelectedAssetSell(selectedAssetBuy);
-  //     }
-  //     setSelectedAssetBuy(asset);
-  //   } else {
-  //     if (selectedAssetBuy?.symbol === asset.symbol) {
-  //       setSelectedAssetBuy(selectedAssetSell);
-  //     }
-  //     setSelectedAssetSell(asset);
-  //   }
-  // }, [selectedAssetBuy, selectedAssetSell, tokens]);
+  const setAsset = useCallback((side: 'buy' | 'sell', faucetIdBech32: string) => {
+    const asset = Object.values(tokens).find(a => a.faucetIdBech32 === faucetIdBech32);
+    if (asset == null) return;
+    if (side === 'buy') {
+      if (selectedAssetSell?.symbol === asset.symbol) {
+        setSelectedAssetSell(selectedAssetBuy);
+        setLocalStoredToken('sell', selectedAssetBuy);
+      }
+      setSelectedAssetBuy(asset);
+      setLocalStoredToken('buy', asset);
+    } else {
+      if (selectedAssetBuy?.symbol === asset.symbol) {
+        setSelectedAssetBuy(selectedAssetSell);
+        setLocalStoredToken('buy', selectedAssetSell);
+      }
+
+      setSelectedAssetSell(asset);
+      setLocalStoredToken('sell', asset);
+    }
+  }, [selectedAssetBuy, selectedAssetSell, tokens]);
 
   const onInputChange = useCallback((val: string) => {
     val = val.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
@@ -147,6 +165,16 @@ function Swap() {
     selectedAssetBuy,
     selectedAssetSell,
   ]);
+
+  useEffect(() => {
+    if (noteId) {
+      registerCallback(noteId, status => {
+        if (status === 'pending') {
+          refetchBalanceSell();
+        }
+      });
+    }
+  }, [noteId, registerCallback, refetchBalanceSell]);
 
   const onSwap = useCallback(() => {
     if (!selectedAssetBuy || !selectedAssetSell) {
@@ -247,18 +275,29 @@ function Swap() {
                             : ''
                         }`}
                       />
-                      <Button
-                        variant='outline'
-                        size='sm'
-                        className='h-auto border-1 rounded-xl px-3 py-2 text-xs sm:text-sm bg-background cursor-default hover:bg-background'
-                      >
-                        {selectedAssetSell && (
-                          <>
-                            <AssetIcon symbol={selectedAssetSell.symbol} />
-                            {selectedAssetSell.symbol}
-                          </>
-                        )}
-                      </Button>
+                      <div className='relative'>
+                        <div className='absolute top-1 left-1'>
+                          <AssetIcon symbol={selectedAssetSell?.symbol ?? ''} />
+                        </div>
+                        <select
+                          value={selectedAssetSell?.faucetIdBech32}
+                          onChange={(e) => setAsset('sell', e.target.value)}
+                          className='h-auto border-1 rounded-xl pl-10 py-2 text-xs sm:text-sm bg-background cursor-default hover:bg-background'
+                        >
+                          {Object.values(tokens).map(t => (
+                            <option
+                              key={t.faucetIdBech32}
+                              value={t.faucetIdBech32}
+                              disabled={t.faucetIdBech32
+                                === selectedAssetSell?.faucetIdBech32}
+                              selected={t.faucetIdBech32
+                                === selectedAssetSell?.faucetIdBech32}
+                            >
+                              {t.symbol}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
                     {sellInputError && (
                       <div className='flex items-center justify-between text-xs h-5'>
@@ -317,19 +356,29 @@ function Swap() {
                         assetBuy={selectedAssetBuy}
                         assetSell={selectedAssetSell}
                       />
-
-                      <Button
-                        variant='outline'
-                        size='sm'
-                        className='h-auto border-1 rounded-xl px-3 py-2 text-xs sm:text-sm bg-background cursor-default hover:bg-background'
-                      >
-                        {selectedAssetBuy && (
-                          <>
-                            <AssetIcon symbol={selectedAssetBuy.symbol} />
-                            {selectedAssetBuy.symbol}
-                          </>
-                        )}
-                      </Button>
+                      <div className='relative'>
+                        <div className='absolute top-1 left-1'>
+                          <AssetIcon symbol={selectedAssetBuy?.symbol ?? ''} />
+                        </div>
+                        <select
+                          value={selectedAssetBuy?.faucetIdBech32}
+                          onChange={(e) => setAsset('buy', e.target.value)}
+                          className='h-auto border-1 rounded-xl pl-10 py-2 text-xs sm:text-sm bg-background cursor-default hover:bg-background'
+                        >
+                          {Object.values(tokens).map(t => (
+                            <option
+                              key={t.faucetIdBech32}
+                              value={t.faucetIdBech32}
+                              disabled={t.faucetIdBech32
+                                === selectedAssetSell?.faucetIdBech32}
+                              selected={t.faucetIdBech32
+                                === selectedAssetSell?.faucetIdBech32}
+                            >
+                              {t.symbol}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
                     <div className='flex items-center justify-end text-xs h-5'>
                       {balancebuy !== null && balancebuy !== undefined && (
@@ -440,3 +489,17 @@ function Swap() {
 }
 
 export default Swap;
+
+const getLocalStoredToken = (side: 'buy' | 'sell') => {
+  const item = localStorage.getItem('swap-' + side);
+  if (item) {
+    const parsed = JSON.parse(item) as TokenConfig;
+    parsed.faucetId = bech32ToAccountId(parsed.faucetIdBech32) as AccountId;
+    return parsed;
+  } else return undefined;
+};
+const setLocalStoredToken = (side: 'buy' | 'sell', token?: TokenConfig) => {
+  if (token) {
+    localStorage.setItem('swap-' + side, JSON.stringify(token));
+  }
+};

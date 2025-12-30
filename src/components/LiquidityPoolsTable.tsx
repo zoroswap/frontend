@@ -9,7 +9,6 @@ import LiquidityPoolRow from './LiquidityPoolRow';
 import { type LpDetails, OrderStatus, type TxResult } from './OrderStatus';
 import PoolModal from './PoolModal';
 import { poweredByMiden } from './PoweredByMiden';
-import { useTraceUpdate } from './Price';
 import { Card } from './ui/card';
 
 const LiquidityPoolsTable = () => {
@@ -20,7 +19,7 @@ const LiquidityPoolsTable = () => {
   const [txResult, setTxResult] = useState<undefined | TxResult>();
   const [lpDetails, setLpDetails] = useState<undefined | LpDetails>(undefined);
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
-  const { orderStatus } = useOrderUpdates();
+  const { orderStatus, registerCallback } = useOrderUpdates();
   const { tokens } = useContext(ZoroContext);
 
   const tokenConfigs = useMemo(
@@ -38,11 +37,21 @@ const LiquidityPoolsTable = () => {
   });
 
   useEffect(() => {
-    if (txResult?.noteId && orderStatus[txResult.noteId]?.status === 'executed') {
-      refetchLpBalances();
-      refetchPoolBalances();
+    if (txResult?.noteId) {
+      registerCallback(txResult.noteId, status => {
+        if (status === 'executed') {
+          refetchLpBalances();
+          refetchPoolBalances();
+        }
+      });
     }
-  }, [orderStatus, txResult?.noteId, refetchPoolBalances, refetchLpBalances]);
+  }, [
+    orderStatus,
+    txResult?.noteId,
+    refetchPoolBalances,
+    refetchLpBalances,
+    registerCallback,
+  ]);
 
   const openPoolManagementModal = useCallback(
     (pool: PoolInfo) => {

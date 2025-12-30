@@ -115,6 +115,8 @@ export function useOrderUpdates(orderIds?: string[]) {
     }>
   >({});
 
+  const callbacks = useRef<Record<string, (newStatus: OrderStatus) => void>>({});
+
   const channels: SubscriptionChannel[] = useMemo(() => {
     // If orderIds is undefined or empty, subscribe to all order updates
     if (!orderIds || orderIds.length === 0) {
@@ -128,6 +130,10 @@ export function useOrderUpdates(orderIds?: string[]) {
     channels,
     onMessage: (message) => {
       if (message.type === 'OrderUpdate') {
+        callbacks.current[message.note_id]?.(message.status);
+        if (message.status === 'executed' && callbacks.current[message.note_id]) {
+          delete callbacks.current[message.note_id];
+        }
         // Key by note_id so frontend can look up status by the note hash it knows
         setOrderStatus(prev => ({
           ...prev,
@@ -149,10 +155,20 @@ export function useOrderUpdates(orderIds?: string[]) {
     unsubscribe([{ channel: 'order_updates', order_id: orderId }]);
   }, [unsubscribe]);
 
+  const registerCallback = useCallback(
+    (noteId: string, callback: (newStatus: OrderStatus) => void) => {
+      if (callbacks.current[noteId] == null) {
+        callbacks.current[noteId] = callback;
+      }
+    },
+    [],
+  );
+
   return {
     orderStatus,
     subscribeToOrder,
     unsubscribeFromOrder,
     isConnected,
+    registerCallback,
   };
 }

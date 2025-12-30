@@ -123,6 +123,10 @@ h6 {
   background-image: url("/tokens/BTC.svg")
 }
 
+.icon-USDC {
+  background-image: url("/tokens/USDC.svg")
+}
+
 .icon-ETH {
   background-image: url("/tokens/ETH.svg");
 }
