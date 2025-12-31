@@ -25,7 +25,7 @@ import type { TokenConfig } from '@/providers/ZoroProvider';
 import { accountIdToBech32, generateRandomSerialNumber } from './utils';
 import ZOROSWAP_SCRIPT from './ZOROSWAP.masm?raw';
 
-import two_asset_pool from './two_asset_pool.masm?raw';
+import zoropool from './zoropool.masm?raw';
 
 export interface SwapParams {
   poolAccountId: AccountId;
@@ -53,7 +53,7 @@ export async function compileSwapTransaction({
 }: SwapParams) {
   await client.syncState();
   const builder = client.createScriptBuilder();
-  const pool_script = builder.buildLibrary('zoro::two_asset_pool', two_asset_pool);
+  const pool_script = builder.buildLibrary('zoro::zoropool', zoropool);
   builder.linkDynamicLibrary(pool_script);
   const script = builder.compileNoteScript(ZOROSWAP_SCRIPT);
   const noteType = NoteType.Public;

@@ -74,7 +74,7 @@ export.set_pool_state
     movdnw.2
     # =>[ASSET, liabilities, reserve, reserve_with_slippage, 0,ASSET]
 
-    # @dev: esure reserve never > reserve_with_slippage
+    # @dev: ensure reserve never > reserve_with_slippage
     dup.5  
     # =>[reserve, ASSET, liabilities, reserve, reserve_with_slippage, 0, ASSET]
     dup.7
@@ -98,8 +98,6 @@ export.set_pool_state
     # => [asset_balance, reserve_with_slippage, pool_state_loc, liabilities, reserve, reserve_with_slippage, 0, ASSET]
     lte assert.err=ERR_RESERVE_WITH_SLIPPAGE_EXCEEDS_ASSET_BALANCE
     # => [liabilities, reserve, reserve_with_slippage, 0, ASSET]
-    #push.0
-   
     # => [ POOL_STATE, ASSET]
     swapw 
     # => [ ASSET, POOL_STATE]
@@ -129,40 +127,13 @@ end
 
 
 export.set_pool1_state
-    
-    #push.POOL1_STATE_ADDR 
-    #push.ASSET1_ID_ADDR 
     push.1.0.0.0
     push.ASSETS_MAPPING_SLOT
     exec.active_account::get_map_item
 
-
-    
     exec.set_pool_state
     
 end
-
-
-#proc.debug_storage
-#    push.POOL1_CURVE_ADDR exec.active_account::get_item
-#    push.POOL0_CURVE_ADDR exec.active_account::get_item
-#    push.POOL1_FEES_ADDR exec.active_account::get_item
-#    push.POOL0_FEES_ADDR exec.active_account::get_item
-#    push.POOL1_STATE_ADDR exec.active_account::get_item
-#    push.POOL0_STATE_ADDR exec.active_account::get_item
-#    push.ASSET1_ID_ADDR exec.active_account::get_item
-#    push.ASSET0_ID_ADDR exec.active_account::get_item
-#    debug.stack
-#    dropw
-#    dropw
-#    dropw
-#    dropw
-#    dropw
-#    dropw
-#    dropw
-#    dropw
-#end
-
 
 
 #! Returns POOL STATE
@@ -337,7 +308,7 @@ end
 
 #! add new deposit: receive asset, update deposit mapping
 #!
-#! Inputs: [ASSET, POOL_STATE,user_id_suffix, user_id_prefix]
+#! Inputs: [ASSET, POOL_STATE,user_id_suffix, user_id_prefix, lp_amount_out]
 #! Outputs: [share_amount]
 #!
 export.deposit
@@ -345,22 +316,16 @@ export.deposit
 
     exec.receive_asset
     padw mem_loadw_be.DEPOSIT_ASSET_LOC
-    # => [ASSET, beneficiary_suffix, beneficiary_prefix]
+    # => [ASSET, beneficiary_suffix, beneficiary_prefix, lp_amount_out]
     exec.get_user_deposit_key
-    # => [KEY]
+    # => [KEY, lp_amount_out]
     mem_storew_be.DEPOSIT_KEY_LOC
-    padw
-    
-    mem_loadw_be.DEPOSIT_ASSET_LOC
-    exec.extract_asset_amount
-    # => [amount]
-    exec.compute_deposit_shares
-    # => [share_amount]
+    movup.4
+    # => [lp_amount_out, KEY]
     dup mem_store.LP_SHARES_AMOUNT_ADDR
     push.0.0.0
-    # => [SHARE_AMOUNT]
-    padw
-    mem_loadw_be.DEPOSIT_KEY_LOC
+    # => [SHARE_AMOUNT, KEY]
+    swapw
     # => [KEY, SHARE_AMOUNT]
     push.USER_DEPOSITS_MAPPING_SLOT 
     # => [slot, KEY, SHARE_AMOUNT]
@@ -369,20 +334,21 @@ export.deposit
     # update total supply
     mem_load.LP_SHARES_AMOUNT_ADDR push.0.0.0
     padw mem_loadw_be.DEPOSIT_KEY_LOC
-    exec.get_lp_shares_total_supply_key
     # => [KEY, SHARE_AMOUNT]
+    exec.get_lp_shares_total_supply_key
+    # => [TOTAL_SUPPLY_KEY, SHARE_AMOUNT]
     push.USER_DEPOSITS_MAPPING_SLOT
     # => [slot, KEY, SHARE_AMOUNT]
     exec.add_to_map_item
     # => []
 end
 
-#! Inputs:  [user_id_prefix, user_id_suffix, lp_withdraw_amount, 0, ASSET, noteid, 0,0,0, liabilities, reserve, reserve_with_slippage]
+#! Inputs:  [user_id_prefix, user_id_suffix, lp_withdraw_amount, 0, ASSET_OUT, noteid, 0,0,0, liabilities, reserve, reserve_with_slippage]
 export.withdraw
     dupw
-    # => [user_id_prefix, user_id_suffix, lp_withdraw_amount, 0, user_id_prefix, user_id_suffix, lp_withdraw_amount, 0, ASSET, noteid, 0,0,0, liabilities, reserve, reserve_with_slippage, 0]
+    # => [user_id_prefix, user_id_suffix, lp_withdraw_amount, 0, user_id_prefix, user_id_suffix, lp_withdraw_amount, 0, ASSET_OUT, noteid, 0,0,0, liabilities, reserve, reserve_with_slippage, 0]
     dupw.2
-    # => [ASSET, user_id_prefix, user_id_suffix, lp_withdraw_amount, 0, user_id_prefix, user_id_suffix, lp_withdraw_amount, 0, ASSET, noteid, 0,0,0, liabilities, reserve, reserve_with_slippage, 0]
+    # => [ASSET_OUT, user_id_prefix, user_id_suffix, lp_withdraw_amount, 0, user_id_prefix, user_id_suffix, lp_withdraw_amount, 0, ASSET_OUT, noteid, 0,0,0, liabilities, reserve, reserve_with_slippage, 0]
     exec.get_user_deposit_key
     # => [KEY, lp_withdraw_amount, 0, user_id_prefix, user_id_suffix, lp_withdraw_amount, 0, ASSET, noteid, 0,0,0, liabilities, reserve, reserve_with_slippage, 0 ]
     mem_storew_be.WITHDRAW_KEY_LOC
@@ -418,11 +384,7 @@ export.withdraw
     push.USER_DEPOSITS_MAPPING_SLOT
     # => [slot, KEY, SHARE_AMOUNT]
     exec.sub_from_map_item
-
-    # => [lp_withdraw_amount, ASSET, noteid, 0,0,0, liabilities, reserve, reserve_with_slippage, 0]
-    mem_load.LP_SHARES_AMOUNT_ADDR exec.compute_withdraw_amount
-    #=> [UPDATED_ASSET, noteid, 0,0,0, liabilities, reserve, reserve_with_slippage, 0]
-
+    # => [ ASSET_OUT, noteid, 0,0,0, liabilities, reserve, reserve_with_slippage, 0]
     exec.move_asset_to_note
     dropw dropw dropw
 end

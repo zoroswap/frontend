@@ -23,7 +23,7 @@ window.Buffer = Buffer;
 
 import type { TokenConfig } from '@/providers/ZoroProvider';
 import DEPOSIT_SCRIPT from './DEPOSIT.masm?raw';
-import two_asset_pool from './two_asset_pool.masm?raw';
+import zoropool from './zoropool.masm?raw';
 import { accountIdToBech32, generateRandomSerialNumber } from './utils';
 
 export interface DepositParams {
@@ -54,7 +54,7 @@ export async function compileDepositTransaction({
 }: DepositParams) {
   await syncState();
   const builder = client.createScriptBuilder();
-  const pool_script = builder.buildLibrary('zoro::two_asset_pool', two_asset_pool);
+  const pool_script = builder.buildLibrary('zoro::zoropool', zoropool);
   builder.linkDynamicLibrary(pool_script);
   const script = builder.compileNoteScript(
     DEPOSIT_SCRIPT,
