@@ -22,7 +22,7 @@ import { Buffer } from 'buffer';
 window.Buffer = Buffer;
 
 import type { TokenConfig } from '@/providers/ZoroProvider';
-import two_asset_pool from './two_asset_pool.masm?raw';
+import zoropool from './zoropool.masm?raw';
 import { accountIdToBech32, generateRandomSerialNumber } from './utils';
 import WITHDRAW_SCRIPT from './WITHDRAW.masm?raw';
 
@@ -54,7 +54,7 @@ export async function compileWithdrawTransaction({
 }: WithdrawParams) {
   await syncState();
   const builder = client.createScriptBuilder();
-  const pool_script = builder.buildLibrary('zoro::two_asset_pool', two_asset_pool);
+  const pool_script = builder.buildLibrary('zoro::zoropool', zoropool);
   builder.linkDynamicLibrary(pool_script);
   const script = builder.compileNoteScript(
     WITHDRAW_SCRIPT,

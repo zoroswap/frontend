@@ -3,7 +3,7 @@ use.miden::output_note
 use.std::crypto::hashes::rpo
 use.std::sys
 
-use.zoro::two_asset_pool
+use.zoro::zoropool
 
 
 # ERRORS
@@ -195,7 +195,7 @@ proc.create_p2id_reverse_note
     push.0 mem_load.LP_WITHDRAW_AMOUNT mem_load.CREATOR_ID_SUFFIX mem_load.CREATOR_ID_PREFIX
     # => [user_id_prefix, user_id_suffix, lp_withdraw_amount, 0, ASSET, noteid, 0,0,0, liabilities, reserve, reserve_with_slippage]
     debug.stack.32
-    call.two_asset_pool::withdraw
+    call.zoropool::withdraw
 
     # => []
 end
