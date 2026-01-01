@@ -7,7 +7,7 @@ export function Footer() {
           href='https://x.com/zoroswap'
           target='_blank'
           className='text-slate-300 hover:text-white transition-colors'
-          rel='noopener noreferrer nofollow'
+          rel='noopener noreferrer'
           title='X Account of ZoroSwap'
         >
           <svg
@@ -26,7 +26,7 @@ export function Footer() {
         <a
           href='https://t.me/+KyKHHuIxxPdmOTky'
           target='_blank'
-          rel='noopener noreferrer nofollow'
+          rel='noopener noreferrer'
           className='text-slate-300 hover:text-white transition-colors'
           title='Telegram Group for ZoroSwap'
         >
@@ -46,7 +46,7 @@ export function Footer() {
         <a
           href='https://github.com/zoroswap'
           target='_blank'
-          rel='noopener noreferrer nofollow'
+          rel='noopener noreferrer'
           className='text-slate-300 hover:text-white transition-colors'
           title='ZoroSwap on GitHub'
         >
@@ -68,7 +68,7 @@ export function Footer() {
             className='text-primary hover:text-foreground transition-colors'
             title='Media Kit for ZoroSwap'
             target='_blank'
-            rel='noopener noreferrer nofollow'
+            rel='noopener noreferrer'
           >
             Media Kit
           </a>
@@ -77,7 +77,7 @@ export function Footer() {
             className='text-primary hover:text-foreground transition-colors'
             title='Media Kit for ZoroSwap'
             target='_blank'
-            rel='noopener noreferrer nofollow'
+            rel='noopener noreferrer'
           >
             About us
           </a>
