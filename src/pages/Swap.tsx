@@ -290,8 +290,6 @@ function Swap() {
                               value={t.faucetIdBech32}
                               disabled={t.faucetIdBech32
                                 === selectedAssetSell?.faucetIdBech32}
-                              selected={t.faucetIdBech32
-                                === selectedAssetSell?.faucetIdBech32}
                             >
                               {t.symbol}
                             </option>
@@ -370,8 +368,6 @@ function Swap() {
                               key={t.faucetIdBech32}
                               value={t.faucetIdBech32}
                               disabled={t.faucetIdBech32
-                                === selectedAssetSell?.faucetIdBech32}
-                              selected={t.faucetIdBech32
                                 === selectedAssetSell?.faucetIdBech32}
                             >
                               {t.symbol}
