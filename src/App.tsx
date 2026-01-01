@@ -7,9 +7,7 @@ import {
 import { useMemo } from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import NotFound from './pages/404';
-import About from './pages/About';
 import FaucetPage from './pages/Faucet';
-import MediaKit from './pages/MediaKit';
 import SwapPage from './pages/Swap';
 import { ThemeProvider } from './providers/ThemeProvider';
 import '@demox-labs/miden-wallet-adapter-reactui/styles.css';
@@ -27,8 +25,6 @@ function AppRouter() {
       <Routes>
         <Route path='/' element={<SwapPage />} />
         <Route path='/faucet' element={<FaucetPage />} />
-        <Route path='/about' element={<About />} />
-        <Route path='/media-kit' element={<MediaKit />} />
         <Route path='/pools' element={<LiquidityPools />} />
         <Route path='*' element={<NotFound />} />
       </Routes>

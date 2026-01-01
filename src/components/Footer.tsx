@@ -1,5 +1,3 @@
-import { Link } from 'react-router-dom';
-
 export function Footer() {
   return (
     <footer className='flex items-center justify-center bg-footer p-4'>
@@ -8,8 +6,8 @@ export function Footer() {
         <a
           href='https://x.com/zoroswap'
           target='_blank'
-          rel='noopener noreferrer'
           className='text-slate-300 hover:text-white transition-colors'
+          rel='noopener noreferrer nofollow'
           title='X Account of ZoroSwap'
         >
           <svg
@@ -28,7 +26,7 @@ export function Footer() {
         <a
           href='https://t.me/+KyKHHuIxxPdmOTky'
           target='_blank'
-          rel='noopener noreferrer'
+          rel='noopener noreferrer nofollow'
           className='text-slate-300 hover:text-white transition-colors'
           title='Telegram Group for ZoroSwap'
         >
@@ -48,7 +46,7 @@ export function Footer() {
         <a
           href='https://github.com/zoroswap'
           target='_blank'
-          rel='noopener noreferrer'
+          rel='noopener noreferrer nofollow'
           className='text-slate-300 hover:text-white transition-colors'
           title='ZoroSwap on GitHub'
         >
@@ -65,20 +63,24 @@ export function Footer() {
           </svg>
         </a>
         <div className='flex sm:gap-6 gap-4'>
-          <Link
-            to='/media-kit'
+          <a
+            href='https://zoroswap.com/media-kit'
             className='text-primary hover:text-foreground transition-colors'
             title='Media Kit for ZoroSwap'
+            target='_blank'
+            rel='noopener noreferrer nofollow'
           >
             Media Kit
-          </Link>
-          <Link
-            to='/about'
+          </a>
+          <a
+            href='https://zoroswap.com/'
             className='text-primary hover:text-foreground transition-colors'
-            title='Learn more about ZoroSwap'
+            title='Media Kit for ZoroSwap'
+            target='_blank'
+            rel='noopener noreferrer nofollow'
           >
             About us
-          </Link>
+          </a>
         </div>
         <div className='opacity-25 absolute right-4 text-xs sm:block hidden'>
           testnet v.12

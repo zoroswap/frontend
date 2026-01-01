@@ -38,6 +38,7 @@ export const useSwap = () => {
         minAmountOut: minAmountOut,
         userAccountId: accountId,
         client,
+        syncState,
       });
       const txId = await requestTransaction({
         type: TransactionType.Custom,
