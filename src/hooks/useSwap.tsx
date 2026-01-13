@@ -1,3 +1,4 @@
+import { startMinting } from '@/hooks/useClaimNotes';
 import { useUnifiedWallet } from '@/hooks/useUnifiedWallet';
 import { compileSwapTransaction } from '@/lib/ZoroSwapNote';
 import { ZoroContext } from '@/providers/ZoroContext';
@@ -53,6 +54,8 @@ export const useSwap = () => {
       });
       setNoteId(newNoteId);
       setTxId(newTxId);
+      // Trigger wallet badge spinner until the swap result note can be claimed
+      startMinting();
     } catch (err) {
       console.error(err);
       toast.error(

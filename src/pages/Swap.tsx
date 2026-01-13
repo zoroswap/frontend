@@ -67,7 +67,6 @@ function Swap() {
   const {
     balance: balancebuy,
     formattedLong: balanceBuyFmt,
-    refetch: refetchBalanceBuy,
   } = useBalance({
     token: selectedAssetBuy,
   });
