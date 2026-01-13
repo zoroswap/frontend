@@ -28,7 +28,7 @@ export function UnifiedWalletProvider({ children }: UnifiedWalletProviderProps) 
   const { isConnected: paraConnected } = useAccount();
   const { logoutAsync } = useLogout();
 
-  // Para-Miden integration via official hook (simplified per README)
+  // Para-Miden integration via official hook
   const {
     client: paraMidenClient,
     accountId: paraMidenAccountId,
