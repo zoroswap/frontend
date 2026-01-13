@@ -1,30 +1,73 @@
 import { type PoolInfo, usePoolsInfo } from '@/hooks/usePoolsInfo';
+import { useUnifiedWallet } from '@/hooks/useUnifiedWallet';
 import { bech32ToAccountId, instantiateClient } from '@/lib/utils';
 import { AccountId, Address, WebClient } from '@demox-labs/miden-sdk';
-import { useWallet } from '@demox-labs/miden-wallet-adapter';
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ZoroContext } from './ZoroContext';
 
+// Simple mutex for client operations to prevent concurrent WASM access
+class ClientMutex {
+  private locked = false;
+  private queue: (() => void)[] = [];
+
+  async acquire(): Promise<void> {
+    if (!this.locked) {
+      this.locked = true;
+      return;
+    }
+    return new Promise((resolve) => {
+      this.queue.push(resolve);
+    });
+  }
+
+  release(): void {
+    const next = this.queue.shift();
+    if (next) {
+      next();
+    } else {
+      this.locked = false;
+    }
+  }
+}
+
+const clientMutex = new ClientMutex();
+
+// Shared sync throttling: avoid redundant network syncs
+let lastSyncTime = 0;
+const SYNC_THROTTLE_MS = 1500;
+
 enum ClientState {
-  NOT_INITIALIZED,
-  IDLE,
-  ACTIVE,
+  NOT_INITIALIZED = 'NOT_INITIALIZED',
+  IDLE = 'IDLE',
+  ACTIVE = 'ACTIVE',
 }
 
 export function ZoroProvider({
   children,
 }: { children: ReactNode }) {
   const { data: poolsInfo, isFetched: isPoolsInfoFetched } = usePoolsInfo();
-  const { address } = useWallet();
+  const { address, accountId: unifiedAccountId, paraClient, walletType } = useUnifiedWallet();
+  // Use accountId from UnifiedWallet if available (Para), otherwise derive from address (Miden)
   const accountId = useMemo(
-    () => address ? Address.fromBech32(address).accountId() : undefined,
-    [address],
+    () => unifiedAccountId ?? (address ? Address.fromBech32(address).accountId() : undefined),
+    [address, unifiedAccountId],
   );
-  const [client, setClient] = useState<WebClient | undefined>(undefined);
+  const [midenClient, setMidenClient] = useState<WebClient | undefined>(undefined);
   const clientState = useRef<ClientState>(ClientState.NOT_INITIALIZED);
 
+  // For Para users, use paraClient; for Miden users, create our own client
+  const client = walletType === 'para' ? paraClient : midenClient;
+
+  // For Para users, mark client state as IDLE when paraClient is ready
   useEffect(() => {
-    if (client || !accountId || !poolsInfo) {
+    if (walletType === 'para' && paraClient) {
+      clientState.current = ClientState.IDLE;
+    }
+  }, [walletType, paraClient]);
+
+  // Only create a client for Miden wallet users
+  useEffect(() => {
+    if (walletType === 'para' || midenClient || !accountId || !poolsInfo) {
       return;
     }
     (async () => {
@@ -35,49 +78,57 @@ export function ZoroProvider({
             : []),
         ],
       });
-      setClient(c);
+      setMidenClient(c);
       clientState.current = ClientState.IDLE;
     })();
-  }, [poolsInfo, accountId, client, setClient]);
+  }, [poolsInfo, accountId, midenClient, walletType]);
 
-  const syncState = useCallback(async () => {
-    if (clientState.current === ClientState.NOT_INITIALIZED) {
-      return;
+  // Helper to run operations with the mutex lock
+  const withClientLock = useCallback(async <T,>(fn: () => Promise<T>): Promise<T> => {
+    await clientMutex.acquire();
+    try {
+      return await fn();
+    } finally {
+      clientMutex.release();
     }
-    if (clientState.current === ClientState.ACTIVE) {
-      while (clientState.current === ClientState.ACTIVE) {
-        await new Promise(p => setTimeout(p, 50));
-      }
-      clientState.current = ClientState.ACTIVE;
-      client?.syncState().then();
-      clientState.current = ClientState.IDLE;
-    } else if (clientState.current === ClientState.IDLE) {
-      clientState.current = ClientState.ACTIVE;
-      await client?.syncState();
-      clientState.current = ClientState.IDLE;
+  }, []);
+
+  // Throttled sync: only syncs if enough time has passed since last sync
+  const throttledSync = useCallback(async () => {
+    if (!client) return;
+    const now = Date.now();
+    if (now - lastSyncTime >= SYNC_THROTTLE_MS) {
+      await client.syncState();
+      lastSyncTime = now;
     }
   }, [client]);
+
+  const syncState = useCallback(async () => {
+    if (!client) {
+      return;
+    }
+    if (clientState.current === ClientState.NOT_INITIALIZED) {
+      // For Para users, client might be ready before state is set
+      if (walletType === 'para') {
+        clientState.current = ClientState.IDLE;
+      } else {
+        return;
+      }
+    }
+    await withClientLock(async () => {
+      await throttledSync();
+    });
+  }, [client, walletType, withClientLock, throttledSync]);
 
   const getAccount = useCallback(async (accountId: AccountId) => {
     if (clientState.current === ClientState.NOT_INITIALIZED) {
       return;
     }
-    if (clientState.current === ClientState.ACTIVE) {
-      while (clientState.current === ClientState.ACTIVE) {
-        await new Promise(p => setTimeout(p, 50));
-      }
-      clientState.current = ClientState.ACTIVE;
-      const acc = client?.getAccount(accountId);
-      clientState.current = ClientState.IDLE;
-      return acc;
-    } else if (clientState.current === ClientState.IDLE) {
-      clientState.current = ClientState.ACTIVE;
-      await client?.syncState();
-      const acc = await client?.getAccount(accountId);
-      clientState.current = ClientState.IDLE;
-      return acc;
-    }
-  }, [client]);
+    return withClientLock(async () => {
+      await throttledSync();
+      return await client?.getAccount(accountId);
+    });
+  }, [client, withClientLock, throttledSync]);
 
   const value = useMemo(() => {
     return {
@@ -91,8 +142,9 @@ export function ZoroProvider({
       syncState,
       getAccount,
       client,
+      withClientLock,
     };
-  }, [accountId, poolsInfo, isPoolsInfoFetched, syncState, getAccount, client]);
+  }, [accountId, poolsInfo, isPoolsInfoFetched, syncState, getAccount, client, withClientLock]);
 
   return (
     <ZoroContext.Provider value={{ ...value }}>
