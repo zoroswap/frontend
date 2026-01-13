@@ -1,17 +1,18 @@
+import { useUnifiedWallet } from '@/hooks/useUnifiedWallet';
 import { compileSwapTransaction } from '@/lib/ZoroSwapNote';
 import { ZoroContext } from '@/providers/ZoroContext';
 import { type TokenConfig } from '@/providers/ZoroProvider';
-import { TransactionType, useWallet } from '@demox-labs/miden-wallet-adapter';
+import { TransactionType } from '@demox-labs/miden-wallet-adapter';
 import { useCallback, useContext, useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
 
 export const useSwap = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>();
-  const { requestTransaction } = useWallet();
+  const { requestTransaction } = useUnifiedWallet();
   const [txId, setTxId] = useState<undefined | string>();
   const [noteId, setNoteId] = useState<undefined | string>();
-  const { client, syncState, accountId, poolAccountId } = useContext(ZoroContext);
+  const { client, accountId, poolAccountId, withClientLock } = useContext(ZoroContext);
 
   const swap = useCallback(async ({
     amount,
@@ -30,23 +31,28 @@ export const useSwap = () => {
     setError('');
     setIsLoading(true);
     try {
-      const { tx, noteId } = await compileSwapTransaction({
-        amount,
-        poolAccountId,
-        buyToken,
-        sellToken,
-        minAmountOut: minAmountOut,
-        userAccountId: accountId,
-        client,
-        syncState,
+      // Use withClientLock to protect the entire compilation and sync operations
+      const { noteId: newNoteId, txId: newTxId } = await withClientLock(async () => {
+        const { tx, noteId } = await compileSwapTransaction({
+          amount,
+          poolAccountId,
+          buyToken,
+          sellToken,
+          minAmountOut: minAmountOut,
+          userAccountId: accountId,
+          client,
+          syncState: async () => { /* syncState is done inside the lock already */ },
+        });
+        await client.syncState();
+        const txId = await requestTransaction({
+          type: TransactionType.Custom,
+          payload: tx,
+        });
+        await client.syncState();
+        return { tx, noteId, txId };
       });
-      const txId = await requestTransaction({
-        type: TransactionType.Custom,
-        payload: tx,
-      });
-      await syncState();
-      setNoteId(noteId);
-      setTxId(txId);
+      setNoteId(newNoteId);
+      setTxId(newTxId);
     } catch (err) {
       console.error(err);
       toast.error(
@@ -60,7 +66,7 @@ export const useSwap = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [client, accountId, poolAccountId, requestTransaction, syncState]);
+  }, [client, accountId, poolAccountId, requestTransaction, withClientLock]);
 
   const value = useMemo(() => ({ swap, isLoading, error, txId, noteId }), [
     swap,
