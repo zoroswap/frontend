@@ -3,14 +3,12 @@ import { X } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
 interface WalletSelectionModalProps {
-  readonly isOpen: boolean;
   readonly onClose: () => void;
   readonly onSelectMiden: () => void;
   readonly onSelectPara: () => void;
 }
 
 export function WalletSelectionModal({
-  isOpen,
   onClose,
   onSelectMiden,
   onSelectPara,
@@ -19,11 +17,10 @@ export function WalletSelectionModal({
   const [isClosing, setIsClosing] = useState(false);
 
   useEffect(() => {
-    if (isOpen) {
+    setTimeout(() => {
       setIsVisible(true);
-      setIsClosing(false);
-    }
-  }, [isOpen]);
+    }, 0);
+  }, []);
 
   const handleClose = useCallback(() => {
     setIsClosing(true);
@@ -50,8 +47,6 @@ export function WalletSelectionModal({
       onSelectPara();
     }, 280);
   }, [onClose, onSelectPara]);
-
-  if (!isOpen && !isVisible) return null;
 
   return (
     <>
