@@ -1,15 +1,14 @@
 import { NETWORK } from '@/lib/config';
-import type { AccountId } from '@demox-labs/miden-sdk';
+import {
+  AccountId,
+  AccountInterface,
+  NetworkId,
+  TransactionRequest as TxRequest,
+} from '@demox-labs/miden-sdk';
 import { TransactionType, useWallet } from '@demox-labs/miden-wallet-adapter';
 import { useAccount, useLogout } from '@getpara/react-sdk';
 import { useParaMiden } from 'miden-para-react';
-import {
-  type ReactNode,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   type TransactionRequest,
   UnifiedWalletContext,
@@ -43,6 +42,7 @@ export function UnifiedWalletProvider({ children }: UnifiedWalletProviderProps) 
   // Set wallet type based on connection
   useEffect(() => {
     if (midenConnected && walletType !== 'miden') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setWalletType('miden');
     } else if (paraConnected && !midenConnected && walletType !== 'para') {
       setWalletType('para');
@@ -67,10 +67,12 @@ export function UnifiedWalletProvider({ children }: UnifiedWalletProviderProps) 
         // For Para users, execute transactions via the Miden client
         if ('type' in tx && tx.type === TransactionType.Custom) {
           const customTx = tx.payload as { transactionRequest: string };
-          const { TransactionRequest: TxRequest, AccountId } = await import('@demox-labs/miden-sdk');
 
           // The transactionRequest is base64 encoded serialized bytes
-          const txRequestBytes = Uint8Array.from(atob(customTx.transactionRequest), c => c.charCodeAt(0));
+          const txRequestBytes = Uint8Array.from(
+            atob(customTx.transactionRequest),
+            c => c.charCodeAt(0),
+          );
           const txRequest = TxRequest.deserialize(txRequestBytes);
 
           // Get the account ID
@@ -108,13 +110,12 @@ export function UnifiedWalletProvider({ children }: UnifiedWalletProviderProps) 
   const [paraAccountIdObj, setParaAccountIdObj] = useState<AccountId | undefined>();
   useEffect(() => {
     if (paraMidenAccountId && walletType === 'para') {
-      import('@demox-labs/miden-sdk').then(({ AccountId }) => {
-        try {
-          setParaAccountIdObj(AccountId.fromHex(paraMidenAccountId));
-        } catch (e) {
-          console.error('Failed to parse Para Miden account ID:', e);
-        }
-      });
+      try {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setParaAccountIdObj(AccountId.fromHex(paraMidenAccountId));
+      } catch (e) {
+        console.error('Failed to parse Para Miden account ID:', e);
+      }
     } else {
       setParaAccountIdObj(undefined);
     }
@@ -124,16 +125,17 @@ export function UnifiedWalletProvider({ children }: UnifiedWalletProviderProps) 
   const [paraAddress, setParaAddress] = useState<string | null>(null);
   useEffect(() => {
     if (paraAccountIdObj && walletType === 'para') {
-      import('@demox-labs/miden-sdk').then(({ AccountInterface, NetworkId }) => {
-        try {
-          const networkId = NETWORK.rpcEndpoint.includes('testnet')
-            ? NetworkId.Testnet
-            : NetworkId.Mainnet;
-          setParaAddress(paraAccountIdObj.toBech32(networkId, AccountInterface.BasicWallet));
-        } catch (e) {
-          console.error('Failed to convert Para account to address:', e);
-        }
-      });
+      try {
+        const networkId = NETWORK.rpcEndpoint.includes('testnet')
+          ? NetworkId.Testnet
+          : NetworkId.Mainnet;
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setParaAddress(
+          paraAccountIdObj.toBech32(networkId, AccountInterface.BasicWallet),
+        );
+      } catch (e) {
+        console.error('Failed to convert Para account to address:', e);
+      }
     } else {
       setParaAddress(null);
     }
@@ -141,26 +143,23 @@ export function UnifiedWalletProvider({ children }: UnifiedWalletProviderProps) 
 
   // Compute unified state
   const value = useMemo(() => {
-    const connected =
-      walletType === 'miden'
-        ? midenConnected
-        : walletType === 'para'
-        ? paraConnected && !!paraMidenClient && !!paraMidenAccountId
-        : false;
+    const connected = walletType === 'miden'
+      ? midenConnected
+      : walletType === 'para'
+      ? paraConnected && !!paraMidenClient && !!paraMidenAccountId
+      : false;
 
-    const connecting =
-      walletType === 'miden'
-        ? midenWallet.connecting
-        : walletType === 'para'
-        ? paraConnected && !paraMidenClient
-        : false;
+    const connecting = walletType === 'miden'
+      ? midenWallet.connecting
+      : walletType === 'para'
+      ? paraConnected && !paraMidenClient
+      : false;
 
-    const address =
-      walletType === 'miden'
-        ? midenWallet.address ?? null
-        : walletType === 'para'
-        ? paraAddress
-        : null;
+    const address = walletType === 'miden'
+      ? midenWallet.address ?? null
+      : walletType === 'para'
+      ? paraAddress
+      : null;
 
     const accountId = walletType === 'para' ? paraAccountIdObj : undefined;
 

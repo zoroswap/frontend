@@ -13,7 +13,8 @@ interface UnifiedWalletButtonProps {
 
 export function UnifiedWalletButton({ className }: UnifiedWalletButtonProps) {
   const { connected, connecting, walletType, address, disconnect } = useUnifiedWallet();
-  const { claimNotes, claiming, isParaWallet, isMinting, pendingNotesCount } = useClaimNotes();
+  const { claimNotes, claiming, isParaWallet, isMinting, pendingNotesCount } =
+    useClaimNotes();
   const { openModal } = useModal();
   const [showSelectionModal, setShowSelectionModal] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -77,11 +78,9 @@ export function UnifiedWalletButton({ className }: UnifiedWalletButtonProps) {
             <Wallet className='h-4 w-4' />
             {isParaWallet && (isMinting || pendingNotesCount > 0) && (
               <span className='absolute -top-1.5 -right-1.5 min-w-[14px] h-[14px] flex items-center justify-center text-[10px] font-bold bg-primary text-primary-foreground rounded-full px-0.5'>
-                {isMinting ? (
-                  <Loader2 className='h-2.5 w-2.5 animate-spin' />
-                ) : (
-                  pendingNotesCount
-                )}
+                {isMinting
+                  ? <Loader2 className='h-2.5 w-2.5 animate-spin' />
+                  : pendingNotesCount}
               </span>
             )}
           </div>
@@ -107,11 +106,9 @@ export function UnifiedWalletButton({ className }: UnifiedWalletButtonProps) {
                   disabled={claiming}
                   className='w-full px-4 py-3 text-left text-sm hover:bg-muted/50 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed'
                 >
-                  {claiming ? (
-                    <Loader2 className='h-4 w-4 animate-spin' />
-                  ) : (
-                    <Download className='h-4 w-4' />
-                  )}
+                  {claiming
+                    ? <Loader2 className='h-4 w-4 animate-spin' />
+                    : <Download className='h-4 w-4' />}
                   <span className='flex-1'>
                     {claiming ? 'Claiming...' : 'Claim Notes'}
                   </span>
@@ -165,12 +162,13 @@ export function UnifiedWalletButton({ className }: UnifiedWalletButtonProps) {
         <WalletMultiButton />
       </div>
 
-      <WalletSelectionModal
-        isOpen={showSelectionModal}
-        onClose={handleCloseSelectionModal}
-        onSelectMiden={handleSelectMiden}
-        onSelectPara={handleSelectPara}
-      />
+      {showSelectionModal && (
+        <WalletSelectionModal
+          onClose={handleCloseSelectionModal}
+          onSelectMiden={handleSelectMiden}
+          onSelectPara={handleSelectPara}
+        />
+      )}
     </>
   );
 }
