@@ -49,6 +49,7 @@ const getOrderStatusDisplay = (status?: OrderStatus) => {
         text: 'Pending',
         color: 'text-yellow-600 dark:text-yellow-400',
         bgColor: 'bg-yellow-100 dark:bg-yellow-900/30',
+        shouldPulse: true,
       };
     case 'matching':
       return {
@@ -57,6 +58,7 @@ const getOrderStatusDisplay = (status?: OrderStatus) => {
         color: 'text-blue-600 dark:text-blue-400',
         bgColor: 'bg-blue-100 dark:bg-blue-900/30',
         animate: true,
+        shouldPulse: true,
       };
     case 'executed':
       return {
@@ -85,6 +87,7 @@ const getOrderStatusDisplay = (status?: OrderStatus) => {
         text: 'Created',
         color: 'text-muted-foreground',
         bgColor: 'bg-muted/50',
+        shouldPulse: true,
       };
   }
 };
@@ -180,7 +183,7 @@ export function OrderStatus({
                 <statusDisplay.icon
                   className={`h-5 w-5 ${statusDisplay.color} ${
                     statusDisplay.animate ? 'animate-spin' : ''
-                  }`}
+                  } ${statusDisplay.shouldPulse ? 'animate-status-pulse' : ''}`}
                 />
                 <span className={`font-semibold ${statusDisplay.color}`}>
                   Order {statusDisplay.text}
