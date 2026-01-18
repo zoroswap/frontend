@@ -2,7 +2,7 @@ import { type PoolInfo, usePoolsInfo } from '@/hooks/usePoolsInfo';
 import { useUnifiedWallet } from '@/hooks/useUnifiedWallet';
 import { bech32ToAccountId, instantiateClient } from '@/lib/utils';
 import { AccountId, Address, WebClient } from '@demox-labs/miden-sdk';
-import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { ZoroContext } from './ZoroContext';
 
 // Simple mutex for client operations to prevent concurrent WASM access
@@ -36,12 +36,6 @@ const clientMutex = new ClientMutex();
 let lastSyncTime = 0;
 const SYNC_THROTTLE_MS = 1500;
 
-enum ClientState {
-  NOT_INITIALIZED = 'NOT_INITIALIZED',
-  IDLE = 'IDLE',
-  ACTIVE = 'ACTIVE',
-}
-
 export function ZoroProvider({
   children,
 }: { children: ReactNode }) {
@@ -53,17 +47,9 @@ export function ZoroProvider({
     [address, unifiedAccountId],
   );
   const [midenClient, setMidenClient] = useState<WebClient | undefined>(undefined);
-  const clientState = useRef<ClientState>(ClientState.NOT_INITIALIZED);
 
   // For Para users, use paraClient; for Miden users, create our own client
   const client = walletType === 'para' ? paraClient : midenClient;
-
-  // For Para users, mark client state as IDLE when paraClient is ready
-  useEffect(() => {
-    if (walletType === 'para' && paraClient) {
-      clientState.current = ClientState.IDLE;
-    }
-  }, [walletType, paraClient]);
 
   // Only create a client for Miden wallet users
   useEffect(() => {
@@ -79,7 +65,6 @@ export function ZoroProvider({
         ],
       });
       setMidenClient(c);
-      clientState.current = ClientState.IDLE;
     })();
   }, [poolsInfo, accountId, midenClient, walletType]);
 
@@ -107,26 +92,18 @@ export function ZoroProvider({
     if (!client) {
       return;
     }
-    if (clientState.current === ClientState.NOT_INITIALIZED) {
-      // For Para users, client might be ready before state is set
-      if (walletType === 'para') {
-        clientState.current = ClientState.IDLE;
-      } else {
-        return;
-      }
-    }
     await withClientLock(async () => {
       await throttledSync();
     });
-  }, [client, walletType, withClientLock, throttledSync]);
+  }, [client, withClientLock, throttledSync]);
 
   const getAccount = useCallback(async (accountId: AccountId) => {
-    if (clientState.current === ClientState.NOT_INITIALIZED) {
+    if (!client) {
       return;
     }
     return withClientLock(async () => {
       await throttledSync();
-      return await client?.getAccount(accountId);
+      return await client.getAccount(accountId);
     });
   }, [client, withClientLock, throttledSync]);
 
