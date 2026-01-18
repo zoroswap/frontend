@@ -3,20 +3,18 @@ import { useUnifiedWallet } from '@/hooks/useUnifiedWallet';
 import { bech32ToAccountId, instantiateClient } from '@/lib/utils';
 import { AccountId, Address, WebClient } from '@demox-labs/miden-sdk';
 import { Mutex } from 'async-mutex';
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ZoroContext } from './ZoroContext';
 
-// Mutex to prevent concurrent access to the Miden client
-const clientMutex = new Mutex();
-
-// Shared sync throttling: avoid redundant network syncs
-let lastSyncTime = 0;
 const SYNC_THROTTLE_MS = 1500;
 
 export function ZoroProvider({
   children,
 }: { children: ReactNode }) {
   const { data: poolsInfo, isFetched: isPoolsInfoFetched } = usePoolsInfo();
+  // Mutex to prevent concurrent access to the Miden client
+  const clientMutex = useRef(new Mutex());
+  const lastSyncTime = useRef(0);
   const { address, accountId: unifiedAccountId, paraClient, walletType } = useUnifiedWallet();
   // Use accountId from UnifiedWallet if available (Para), otherwise derive from address (Miden)
   const accountId = useMemo(
@@ -47,7 +45,7 @@ export function ZoroProvider({
 
   // Helper to run operations with the mutex lock
   const withClientLock = useCallback(
-    <T,>(fn: () => Promise<T>): Promise<T> => clientMutex.runExclusive(fn),
+    <T,>(fn: () => Promise<T>): Promise<T> => clientMutex.current.runExclusive(fn),
     [],
   );
 
@@ -55,9 +53,9 @@ export function ZoroProvider({
   const throttledSync = useCallback(async () => {
     if (!client) return;
     const now = Date.now();
-    if (now - lastSyncTime >= SYNC_THROTTLE_MS) {
+    if (now - lastSyncTime.current >= SYNC_THROTTLE_MS) {
       await client.syncState();
-      lastSyncTime = now;
+      lastSyncTime.current = now;
     }
   }, [client]);
 
