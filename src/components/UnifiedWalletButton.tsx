@@ -1,9 +1,9 @@
 import { useClaimNotes } from '@/hooks/useClaimNotes';
 import { useUnifiedWallet } from '@/hooks/useUnifiedWallet';
-import { WalletMultiButton } from '@demox-labs/miden-wallet-adapter';
+import { useWalletModal } from '@demox-labs/miden-wallet-adapter';
 import { useModal } from '@getpara/react-sdk';
 import { ChevronDown, Download, Loader2, LogOut, Wallet } from 'lucide-react';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { toast } from 'react-toastify';
 import { WalletSelectionModal } from './WalletSelectionModal';
 
@@ -16,10 +16,9 @@ export function UnifiedWalletButton({ className }: UnifiedWalletButtonProps) {
   const { claimNotes, claiming, isParaWallet, isMinting, pendingNotesCount } =
     useClaimNotes();
   const { openModal } = useModal();
+  const { setVisible: setMidenModalVisible } = useWalletModal();
   const [showSelectionModal, setShowSelectionModal] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const midenButtonRef = useRef<HTMLDivElement>(null);
 
   const handleOpenSelectionModal = useCallback(() => {
     setShowSelectionModal(true);
@@ -30,14 +29,8 @@ export function UnifiedWalletButton({ className }: UnifiedWalletButtonProps) {
   }, []);
 
   const handleSelectMiden = useCallback(() => {
-    // Find and click the button inside the hidden WalletMultiButton container
-    const button = midenButtonRef.current?.querySelector('button');
-    if (button) {
-      button.click();
-    } else {
-      console.error('Miden wallet button not found');
-    }
-  }, []);
+    setMidenModalVisible(true);
+  }, [setMidenModalVisible]);
 
   const handleSelectPara = useCallback(() => {
     openModal();
@@ -69,7 +62,7 @@ export function UnifiedWalletButton({ className }: UnifiedWalletButtonProps) {
   // Connected state: show address with dropdown
   if (connected && address) {
     return (
-      <div className='relative' ref={dropdownRef}>
+      <div className='relative'>
         <button
           onClick={() => setShowDropdown(!showDropdown)}
           className={`flex items-center gap-2 p-3 rounded-xl font-medium text-sm text-muted-foreground border-none hover:text-foreground hover:bg-gray-500/10 dark:bg-muted/30 dark:hover:bg-muted/70 ${className}`}
@@ -157,18 +150,12 @@ export function UnifiedWalletButton({ className }: UnifiedWalletButtonProps) {
         Connect Wallet
       </button>
 
-      {/* Hidden Miden wallet button for programmatic triggering */}
-      <div className='hidden' ref={midenButtonRef}>
-        <WalletMultiButton />
-      </div>
-
-      {showSelectionModal && (
-        <WalletSelectionModal
-          onClose={handleCloseSelectionModal}
-          onSelectMiden={handleSelectMiden}
-          onSelectPara={handleSelectPara}
-        />
-      )}
+      <WalletSelectionModal
+        isOpen={showSelectionModal}
+        onClose={handleCloseSelectionModal}
+        onSelectMiden={handleSelectMiden}
+        onSelectPara={handleSelectPara}
+      />
     </>
   );
 }
