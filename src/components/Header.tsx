@@ -1,6 +1,6 @@
-import { WalletMultiButton } from '@demox-labs/miden-wallet-adapter';
 import { Link } from 'react-router-dom';
 import { ModeToggle } from './ModeToggle';
+import { UnifiedWalletButton } from './UnifiedWalletButton';
 
 export function Header() {
   return (
@@ -35,7 +35,7 @@ export function Header() {
       <div className='flex items-center gap-4'>
         <ModeToggle />
         <div className='top-4'>
-          <WalletMultiButton className='!p-3 sm:!py-4 !rounded-xl !font-medium !text-sm sm:!text-md !text-muted-foreground !border-none hover:!text-foreground hover:!bg-gray-500/10 dark:!bg-muted/30 dark:hover:!bg-muted/70' />
+          <UnifiedWalletButton />
         </div>
       </div>
     </div>

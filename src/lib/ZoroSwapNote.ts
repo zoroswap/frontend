@@ -17,9 +17,6 @@ import {
   WebClient,
 } from '@demox-labs/miden-sdk';
 import { CustomTransaction } from '@demox-labs/miden-wallet-adapter';
-import { Buffer } from 'buffer';
-
-window.Buffer = Buffer;
 
 import type { TokenConfig } from '@/providers/ZoroProvider';
 import { accountIdToBech32, generateRandomSerialNumber } from './utils';

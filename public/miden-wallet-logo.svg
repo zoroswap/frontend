@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="20"
+   height="16"
+   viewBox="0 0 20 16"
+   fill="none"
+   version="1.1"
+   id="svg3"
+   sodipodi:docname="miden-wallet-logo.svg"
+   inkscape:version="1.3.2 (091e20e, 2023-11-25)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview3"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="16"
+     inkscape:cx="16"
+     inkscape:cy="15.96875"
+     inkscape:window-width="1392"
+     inkscape:window-height="1212"
+     inkscape:window-x="0"
+     inkscape:window-y="31"
+     inkscape:window-maximized="0"
+     inkscape:current-layer="svg3" />
+  <rect
+     width="32"
+     height="32"
+     rx="6"
+     fill="transparent"
+     id="rect1"
+     x="0"
+     y="0" />
+  <g
+     clip-path="url(#clip0_15486_5177)"
+     id="g3"
+     transform="translate(-6,-8)">
+    <path
+       d="m 23.5,19.0769 c -1.3806,0 -2.5,1.1022 -2.5,2.4616 C 21,22.8978 22.1194,24 23.5,24 24.8806,24 26,22.8978 26,21.5385 26,20.1791 24.8806,19.0769 23.5,19.0769 Z"
+       fill="#ff5500"
+       id="path1" />
+    <path
+       d="M 11,24 H 6 V 14.1538 C 6,10.761 8.80417,8 12.25,8 c 3.4458,0 6.25,2.761 6.25,6.1538 v 3.6924 h -5 v -3.6924 c 0,-0.6782 -0.5611,-1.2307 -1.25,-1.2307 -0.6889,0 -1.25,0.5525 -1.25,1.2307 z"
+       fill="#ff5500"
+       id="path2" />
+    <path
+       d="m 18.5,24 h -5 V 14.1538 C 13.5,10.761 16.3042,8 19.75,8 23.1958,8 26,10.761 26,14.1538 v 3.6924 h -5 v -3.6924 c 0,-0.6782 -0.5611,-1.2307 -1.25,-1.2307 -0.6889,0 -1.25,0.5525 -1.25,1.2307 z"
+       fill="#ff5500"
+       id="path3" />
+  </g>
+  <defs
+     id="defs3">
+    <clipPath
+       id="clip0_15486_5177">
+      <rect
+         width="20"
+         height="16"
+         fill="#ffffff"
+         transform="translate(6,8)"
+         id="rect3"
+         x="0"
+         y="0" />
+    </clipPath>
+  </defs>
+</svg>

@@ -12,7 +12,7 @@ const SwapInputBuy = (
   },
 ) => {
   const { getWebsocketPrice } = useContext(OracleContext);
-  const [stringBuy, setStringBuy] = useState<string | undefined>(undefined);
+  const [stringBuy, setStringBuy] = useState<string>('');
   const activeStringBuy = useRef<undefined | string>(undefined);
 
   useEffect(() => {

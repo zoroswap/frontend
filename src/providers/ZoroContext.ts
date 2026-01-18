@@ -12,6 +12,7 @@ type ZoroProviderState = {
   tokensLoading: boolean;
   syncState: () => Promise<void>;
   getAccount: (accountId: AccountId) => Promise<Account | undefined>;
+  withClientLock: <T>(fn: () => Promise<T>) => Promise<T>;
 };
 
 const initialState: ZoroProviderState = {
@@ -21,6 +22,7 @@ const initialState: ZoroProviderState = {
   tokensLoading: true,
   syncState: () => Promise.resolve(),
   getAccount: () => Promise.resolve(undefined),
+  withClientLock: (fn) => fn(),
 };
 
 export const ZoroContext = createContext<ZoroProviderState>(initialState);

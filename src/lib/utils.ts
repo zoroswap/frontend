@@ -3,7 +3,7 @@ import {
   AccountInterface,
   Address,
   Felt,
-  type WebClient,
+  WebClient,
   Word,
 } from '@demox-labs/miden-sdk';
 import { type ClassValue, clsx } from 'clsx';

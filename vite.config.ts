@@ -1,31 +1,49 @@
-import react from '@vitejs/plugin-react-swc';
+import react from '@vitejs/plugin-react';
 import path from 'path';
 import { defineConfig } from 'vite';
-import babel from 'vite-plugin-babel';
+import { nodePolyfills } from 'vite-plugin-node-polyfills';
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [
-    react(),
-    babel({
-      babelConfig: {
-        plugins: ['babel-plugin-react-compiler'],
-      },
-    }),
-  ],
+  plugins: [react(), nodePolyfills()],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
-      buffer: 'buffer/',
+    },
+    // Dedupe Para packages to prevent multiple Stencil runtimes
+    dedupe: [
+      '@getpara/web-sdk',
+      '@getpara/react-sdk',
+      '@getpara/react-sdk-lite',
+      '@getpara/react-components',
+      '@getpara/core-components',
+    ],
+  },
+  assetsInclude: ['**/*.wasm', '**/*.masm'],
+  optimizeDeps: {
+    // Keep Miden SDK unbundled and avoid prebundling Para's Stencil component bundles
+    // to prevent multiple runtimes in dev.
+    exclude: [
+      '@demox-labs/miden-sdk',
+      '@getpara/react-components',
+      '@getpara/core-components',
+      '@getpara/cosmos-wallet-connectors',
+      '@getpara/evm-wallet-connectors',
+      '@getpara/solana-wallet-connectors',
+      '@getpara/wagmi-v2-connector',
+      '@getpara/cosmjs-v0-integration',
+    ],
+    esbuildOptions: {
+      target: 'esnext',
     },
   },
-  optimizeDeps: {
-    exclude: ['@demox-labs/miden-sdk'],
-    include: ['buffer'],
+  build: {
+    target: 'esnext',
   },
-  assetsInclude: ['**/*.masm'], // Include .masm files as assets
-  server: { allowedHosts: ['zoroswap.com'] },
   worker: {
     format: 'es',
+  },
+  server: {
+    allowedHosts: ['zoroswap.com'],
   },
 });

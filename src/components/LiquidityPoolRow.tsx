@@ -1,8 +1,8 @@
 import type { PoolBalance } from '@/hooks/usePoolsBalances';
 import type { PoolInfo } from '@/hooks/usePoolsInfo';
+import { useUnifiedWallet } from '@/hooks/useUnifiedWallet';
 import type { TokenConfig } from '@/providers/ZoroProvider';
 import { formalBigIntFormat, prettyBigintFormat } from '@/utils/format';
-import { useWallet } from '@demox-labs/miden-wallet-adapter';
 import AssetIcon from './AssetIcon';
 import Price from './Price';
 import { Button } from './ui/button';
@@ -22,7 +22,7 @@ const LiquidityPoolRow = ({
   managePool: (pool: PoolInfo) => void;
   className?: string;
 }) => {
-  const { connected: isConnected } = useWallet();
+  const { connected: isConnected } = useUnifiedWallet();
   const decimals = pool.decimals;
 
   const saturation =

@@ -11,8 +11,10 @@ import SwapPairs from '@/components/SwapPairs';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { UnifiedWalletButton } from '@/components/UnifiedWalletButton';
 import { useBalance } from '@/hooks/useBalance';
 import { useSwap } from '@/hooks/useSwap';
+import { useUnifiedWallet } from '@/hooks/useUnifiedWallet';
 import { useOrderUpdates } from '@/hooks/useWebSocket';
 import { DEFAULT_SLIPPAGE } from '@/lib/config';
 import { bech32ToAccountId } from '@/lib/utils';
@@ -20,7 +22,6 @@ import { OracleContext, useOraclePrices } from '@/providers/OracleContext';
 import { ZoroContext } from '@/providers/ZoroContext';
 import { type TokenConfig } from '@/providers/ZoroProvider.tsx';
 import type { AccountId } from '@demox-labs/miden-sdk';
-import { useWallet, WalletMultiButton } from '@demox-labs/miden-wallet-adapter';
 import { Loader2 } from 'lucide-react';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
@@ -48,7 +49,7 @@ function Swap() {
   } = useSwap();
   // Subscribe to all order updates from the start
   const { orderStatus, registerCallback } = useOrderUpdates();
-  const { connecting, connected } = useWallet();
+  const { connecting, connected } = useUnifiedWallet();
   const [selectedAssetBuy, setSelectedAssetBuy] = useState<undefined | TokenConfig>(
     () => getLocalStoredToken('buy'),
   );
@@ -265,7 +266,7 @@ function Swap() {
                   <CardContent className='!sm:px-0 !px-0 p-3 sm:p-4 space-y-2 sm:space-y-3'>
                     <div className='flex items-center justify-between gap-2'>
                       <Input
-                        value={stringSell}
+                        value={stringSell ?? ''}
                         onChange={(e) => onInputChange(e.target.value)}
                         placeholder='0'
                         aria-errormessage={sellInputError}
@@ -440,9 +441,7 @@ function Swap() {
                   )}
 
                   <div className={connecting ? 'invisible' : 'visible'}>
-                    <WalletMultiButton className='!p-5 w-full h-full !font-sans !rounded-xl !font-semibold !text-sm sm:!text-lg !bg-primary !text-primary-foreground hover:!bg-primary/90 !border-none !text-center !flex !items-center !justify-center'>
-                      Connect Wallet
-                    </WalletMultiButton>
+                    <UnifiedWalletButton className='!p-5 w-full h-full !font-sans !rounded-xl !font-semibold !text-sm sm:!text-lg !bg-primary !text-primary-foreground hover:!bg-primary/90 !border-none !text-center !flex !items-center !justify-center' />
                   </div>
                 </div>
               )}
