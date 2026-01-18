@@ -2,35 +2,12 @@ import { type PoolInfo, usePoolsInfo } from '@/hooks/usePoolsInfo';
 import { useUnifiedWallet } from '@/hooks/useUnifiedWallet';
 import { bech32ToAccountId, instantiateClient } from '@/lib/utils';
 import { AccountId, Address, WebClient } from '@demox-labs/miden-sdk';
+import { Mutex } from 'async-mutex';
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { ZoroContext } from './ZoroContext';
 
-// Simple mutex for client operations to prevent concurrent WASM access
-class ClientMutex {
-  private locked = false;
-  private queue: (() => void)[] = [];
-
-  async acquire(): Promise<void> {
-    if (!this.locked) {
-      this.locked = true;
-      return;
-    }
-    return new Promise((resolve) => {
-      this.queue.push(resolve);
-    });
-  }
-
-  release(): void {
-    const next = this.queue.shift();
-    if (next) {
-      next();
-    } else {
-      this.locked = false;
-    }
-  }
-}
-
-const clientMutex = new ClientMutex();
+// Mutex to prevent concurrent access to the Miden client
+const clientMutex = new Mutex();
 
 // Shared sync throttling: avoid redundant network syncs
 let lastSyncTime = 0;
@@ -69,14 +46,10 @@ export function ZoroProvider({
   }, [poolsInfo, accountId, midenClient, walletType]);
 
   // Helper to run operations with the mutex lock
-  const withClientLock = useCallback(async <T,>(fn: () => Promise<T>): Promise<T> => {
-    await clientMutex.acquire();
-    try {
-      return await fn();
-    } finally {
-      clientMutex.release();
-    }
-  }, []);
+  const withClientLock = useCallback(
+    <T,>(fn: () => Promise<T>): Promise<T> => clientMutex.runExclusive(fn),
+    [],
+  );
 
   // Throttled sync: only syncs if enough time has passed since last sync
   const throttledSync = useCallback(async () => {
