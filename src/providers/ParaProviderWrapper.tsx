@@ -15,6 +15,13 @@ export function ParaProviderWrapper({ children }: ParaProviderWrapperProps) {
           apiKey: import.meta.env.VITE_PARA_API_KEY,
         }}
         config={{ appName: 'ZoroSwap' }}
+        paraModalConfig={{
+          logo: "https://app.zoroswap.com/zoro-logo-full.svg",
+          theme: {"accentColor":"#ff5501","foregroundColor":"#000000","backgroundColor":"#FFFFFF"},
+          oAuthMethods: ["GOOGLE","TWITTER","TELEGRAM"],
+          authLayout: ["AUTH:FULL","EXTERNAL:FULL"],
+          recoverySecretStepEnabled: true,
+        }}
       >
         {children}
       </ParaProvider>
