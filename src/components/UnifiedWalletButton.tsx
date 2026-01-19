@@ -150,12 +150,13 @@ export function UnifiedWalletButton({ className }: UnifiedWalletButtonProps) {
         Connect Wallet
       </button>
 
-      <WalletSelectionModal
-        isOpen={showSelectionModal}
-        onClose={handleCloseSelectionModal}
-        onSelectMiden={handleSelectMiden}
-        onSelectPara={handleSelectPara}
-      />
+      {showSelectionModal && (
+        <WalletSelectionModal
+          onClose={handleCloseSelectionModal}
+          onSelectMiden={handleSelectMiden}
+          onSelectPara={handleSelectPara}
+        />
+      )}
     </>
   );
 }
