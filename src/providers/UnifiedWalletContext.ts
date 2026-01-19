@@ -1,4 +1,4 @@
-import type { AccountId, WebClient } from '@demox-labs/miden-sdk';
+import type { AccountId } from '@demox-labs/miden-sdk';
 import type { CustomTransaction, Transaction } from '@demox-labs/miden-wallet-adapter';
 import { createContext } from 'react';
 
@@ -18,9 +18,6 @@ export interface UnifiedWalletState {
   address: string | null; // Bech32 Miden address
   accountId: AccountId | undefined;
 
-  // For Para users, their Miden client
-  paraClient: WebClient | undefined;
-
   // Actions
   requestTransaction: (tx: TransactionRequest) => Promise<string | undefined>;
   disconnect: () => Promise<void>;
@@ -35,7 +32,6 @@ export const UnifiedWalletContext = createContext<UnifiedWalletState>({
   walletType: null,
   address: null,
   accountId: undefined,
-  paraClient: undefined,
   requestTransaction: async () => undefined,
   disconnect: async () => {},
   openWalletModal: () => {},

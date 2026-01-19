@@ -9,6 +9,7 @@ import { TransactionType, useWallet } from '@demox-labs/miden-wallet-adapter';
 import { useAccount, useLogout } from '@getpara/react-sdk';
 import { useParaMiden } from 'miden-para-react';
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import { ParaClientContext } from './ParaClientContext';
 import {
   type TransactionRequest,
   UnifiedWalletContext,
@@ -169,7 +170,6 @@ export function UnifiedWalletProvider({ children }: UnifiedWalletProviderProps) 
       walletType,
       address,
       accountId,
-      paraClient: walletType === 'para' ? paraMidenClient ?? undefined : undefined,
       requestTransaction,
       disconnect,
       openWalletModal,
@@ -189,9 +189,14 @@ export function UnifiedWalletProvider({ children }: UnifiedWalletProviderProps) 
     openWalletModal,
   ]);
 
+  // Para client for internal use by ZoroProvider (handles locking)
+  const paraClientValue = walletType === 'para' ? paraMidenClient ?? undefined : undefined;
+
   return (
     <UnifiedWalletContext.Provider value={value}>
-      {children}
+      <ParaClientContext.Provider value={paraClientValue}>
+        {children}
+      </ParaClientContext.Provider>
     </UnifiedWalletContext.Provider>
   );
 }

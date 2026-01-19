@@ -4,6 +4,7 @@ import { bech32ToAccountId, instantiateClient } from '@/lib/utils';
 import { AccountId, Address, WebClient } from '@demox-labs/miden-sdk';
 import { Mutex } from 'async-mutex';
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useParaClient } from './ParaClientContext';
 import { ZoroContext } from './ZoroContext';
 
 const SYNC_THROTTLE_MS = 1500;
@@ -15,7 +16,8 @@ export function ZoroProvider({
   // Mutex to prevent concurrent access to the Miden client
   const clientMutex = useRef(new Mutex());
   const lastSyncTime = useRef(0);
-  const { address, accountId: unifiedAccountId, paraClient, walletType } = useUnifiedWallet();
+  const { address, accountId: unifiedAccountId, walletType } = useUnifiedWallet();
+  const paraClient = useParaClient();
   // Use accountId from UnifiedWallet if available (Para), otherwise derive from address (Miden)
   const accountId = useMemo(
     () => unifiedAccountId ?? (address ? Address.fromBech32(address).accountId() : undefined),
