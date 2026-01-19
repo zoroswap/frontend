@@ -15,6 +15,12 @@ type ZoroProviderState = {
   getBalance: (accountId: AccountId, faucetId: AccountId) => Promise<bigint>;
   getConsumableNotes: (accountId: AccountId) => Promise<ConsumableNote[]>;
   consumeNotes: (accountId: AccountId, noteIds: string[]) => Promise<string>;
+
+  // Notes tracking state (for Para wallet)
+  pendingNotesCount: number;
+  isExpectingNotes: boolean;
+  startExpectingNotes: () => void;
+  refreshPendingNotes: () => Promise<void>;
 };
 
 const initialState: ZoroProviderState = {
@@ -27,6 +33,10 @@ const initialState: ZoroProviderState = {
   getBalance: () => Promise.resolve(0n),
   getConsumableNotes: () => Promise.resolve([]),
   consumeNotes: () => Promise.resolve(''),
+  pendingNotesCount: 0,
+  isExpectingNotes: false,
+  startExpectingNotes: () => {},
+  refreshPendingNotes: () => Promise.resolve(),
 };
 
 export const ZoroContext = createContext<ZoroProviderState>(initialState);

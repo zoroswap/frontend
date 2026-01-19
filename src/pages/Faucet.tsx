@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { UnifiedWalletButton } from '@/components/UnifiedWalletButton';
-import { startMinting, useClaimNotes } from '@/hooks/useClaimNotes';
+import { useClaimNotes } from '@/hooks/useClaimNotes';
 import { useUnifiedWallet } from '@/hooks/useUnifiedWallet';
 import { accountIdToBech32 } from '@/lib/utils';
 import { ZoroContext } from '@/providers/ZoroContext';
@@ -29,7 +29,7 @@ function Faucet() {
   const [mintStatuses, setMintStatuses] = useState<TokenMintStatuses>(
     {} as TokenMintStatuses,
   );
-  const { tokens, tokensLoading, accountId } = useContext(ZoroContext);
+  const { tokens, tokensLoading, accountId, startExpectingNotes } = useContext(ZoroContext);
   const updateMintStatus = useCallback((
     tokenSymbol: string,
     updates: Partial<MintStatus>,
@@ -72,7 +72,7 @@ function Faucet() {
       lastAttempt: Date.now(),
       showMessage: false,
     });
-    startMinting();
+    startExpectingNotes();
 
     try {
       const result = await mintFromFaucet(
@@ -86,7 +86,7 @@ function Faucet() {
       });
       // Refresh pending notes count after successful mint (sync with network)
       if (result.success) {
-        setTimeout(() => refreshPendingNotes(true), 2000);
+        setTimeout(() => refreshPendingNotes(), 2000);
       }
       setTimeout(() => {
         updateMintStatus(tokenFaucetId, {
@@ -119,7 +119,7 @@ function Faucet() {
         });
       }, 5100);
     }
-  }, [connected, accountId, updateMintStatus, tokens, refreshPendingNotes]);
+  }, [connected, accountId, updateMintStatus, tokens, refreshPendingNotes, startExpectingNotes]);
 
   const getButtonText = (tokenSymbol: string, status: MintStatus): string => {
     return status.isLoading ? `Minting ${tokenSymbol}...` : `Request ${tokenSymbol}`;

@@ -1,4 +1,3 @@
-import { startMinting } from '@/hooks/useClaimNotes';
 import { useUnifiedWallet } from '@/hooks/useUnifiedWallet';
 import { compileSwapTransaction } from '@/lib/ZoroSwapNote';
 import { ZoroContext } from '@/providers/ZoroContext';
@@ -13,7 +12,7 @@ export const useSwap = () => {
   const { requestTransaction } = useUnifiedWallet();
   const [txId, setTxId] = useState<undefined | string>();
   const [noteId, setNoteId] = useState<undefined | string>();
-  const { client, accountId, poolAccountId, syncState } = useContext(ZoroContext);
+  const { client, accountId, poolAccountId, syncState, startExpectingNotes } = useContext(ZoroContext);
 
   const swap = useCallback(async ({
     amount,
@@ -55,7 +54,7 @@ export const useSwap = () => {
       setNoteId(newNoteId);
       setTxId(newTxId);
       // Trigger wallet badge spinner until the swap result note can be claimed
-      startMinting();
+      startExpectingNotes();
     } catch (err) {
       console.error(err);
       toast.error(
@@ -69,7 +68,7 @@ export const useSwap = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [client, accountId, poolAccountId, requestTransaction, syncState]);
+  }, [client, accountId, poolAccountId, requestTransaction, syncState, startExpectingNotes]);
 
   const value = useMemo(() => ({ swap, isLoading, error, txId, noteId }), [
     swap,

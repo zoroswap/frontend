@@ -118,6 +118,57 @@ export function ZoroProvider({
     });
   }, [client, withClientLock]);
 
+  // Notes tracking state (for Para wallet)
+  const [pendingNotesCount, setPendingNotesCount] = useState(0);
+  const expectedNotesRef = useRef(0);
+  const lastKnownCountRef = useRef(-1);
+  const isRefreshingRef = useRef(false);
+
+  const isExpectingNotes = expectedNotesRef.current > 0;
+
+  // Call when user initiates an action that will result in receiving notes
+  const startExpectingNotes = useCallback(() => {
+    expectedNotesRef.current++;
+  }, []);
+
+  // Refresh pending notes count and detect when expected notes arrive
+  const refreshPendingNotes = useCallback(async () => {
+    if (walletType !== 'para' || !accountId || isRefreshingRef.current) {
+      return;
+    }
+    isRefreshingRef.current = true;
+    try {
+      const notes = await getConsumableNotes(accountId);
+      const newCount = notes.length;
+
+      // Detect if expected notes arrived
+      if (lastKnownCountRef.current >= 0 && newCount > lastKnownCountRef.current && expectedNotesRef.current > 0) {
+        const arrived = newCount - lastKnownCountRef.current;
+        expectedNotesRef.current = Math.max(0, expectedNotesRef.current - arrived);
+      }
+      lastKnownCountRef.current = newCount;
+      setPendingNotesCount(newCount);
+    } catch (e) {
+      console.error('Failed to fetch pending notes count:', e);
+    } finally {
+      isRefreshingRef.current = false;
+    }
+  }, [walletType, accountId, getConsumableNotes]);
+
+  // Periodic refresh for Para wallet users
+  useEffect(() => {
+    if (walletType !== 'para' || !accountId) {
+      // Reset state when not Para wallet
+      setPendingNotesCount(0);
+      lastKnownCountRef.current = -1;
+      return;
+    }
+
+    refreshPendingNotes();
+    const interval = setInterval(refreshPendingNotes, 3000);
+    return () => clearInterval(interval);
+  }, [walletType, accountId, refreshPendingNotes]);
+
   const value = useMemo(() => {
     return {
       tokens: generateTokenMetadata(poolsInfo?.liquidityPools || []),
@@ -133,8 +184,13 @@ export function ZoroProvider({
       getConsumableNotes,
       consumeNotes,
       client,
+      // Notes tracking
+      pendingNotesCount,
+      isExpectingNotes,
+      startExpectingNotes,
+      refreshPendingNotes,
     };
-  }, [accountId, poolsInfo, isPoolsInfoFetched, syncState, getAccount, getBalance, getConsumableNotes, consumeNotes, client]);
+  }, [accountId, poolsInfo, isPoolsInfoFetched, syncState, getAccount, getBalance, getConsumableNotes, consumeNotes, client, pendingNotesCount, isExpectingNotes, startExpectingNotes, refreshPendingNotes]);
 
   return (
     <ZoroContext.Provider value={{ ...value }}>

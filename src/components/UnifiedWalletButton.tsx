@@ -13,7 +13,7 @@ interface UnifiedWalletButtonProps {
 
 export function UnifiedWalletButton({ className }: UnifiedWalletButtonProps) {
   const { connected, connecting, walletType, address, disconnect } = useUnifiedWallet();
-  const { claimNotes, claiming, isParaWallet, isMinting, pendingNotesCount } =
+  const { claimNotes, claiming, isParaWallet, isExpectingNotes, pendingNotesCount } =
     useClaimNotes();
   const { openModal } = useModal();
   const { setVisible: setMidenModalVisible } = useWalletModal();
@@ -69,9 +69,9 @@ export function UnifiedWalletButton({ className }: UnifiedWalletButtonProps) {
         >
           <div className='relative'>
             <Wallet className='h-4 w-4' />
-            {isParaWallet && (isMinting || pendingNotesCount > 0) && (
+            {isParaWallet && (isExpectingNotes || pendingNotesCount > 0) && (
               <span className='absolute -top-1.5 -right-1.5 min-w-[14px] h-[14px] flex items-center justify-center text-[10px] font-bold bg-primary text-primary-foreground rounded-full px-0.5'>
-                {isMinting
+                {isExpectingNotes
                   ? <Loader2 className='h-2.5 w-2.5 animate-spin' />
                   : pendingNotesCount}
               </span>
