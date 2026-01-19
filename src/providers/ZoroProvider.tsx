@@ -78,6 +78,44 @@ export function ZoroProvider({
     });
   }, [client, withClientLock, throttledSync]);
 
+  const getBalance = useCallback(async (accountId: AccountId, faucetId: AccountId) => {
+    if (!client) {
+      return 0n;
+    }
+    return withClientLock(async () => {
+      await throttledSync();
+      const account = await client.getAccount(accountId);
+      return BigInt(account?.vault().getBalance(faucetId) ?? 0);
+    });
+  }, [client, withClientLock, throttledSync]);
+
+  const getConsumableNotes = useCallback(async (accountId: AccountId) => {
+    if (!client) {
+      return [];
+    }
+    return withClientLock(async () => {
+      await throttledSync();
+      const account = await client.getAccount(accountId);
+      if (!account) return [];
+      return await client.getConsumableNotes(account.id());
+    });
+  }, [client, withClientLock, throttledSync]);
+
+  const consumeNotes = useCallback(async (accountId: AccountId, noteIds: string[]) => {
+    if (!client) {
+      throw new Error('Client not initialized');
+    }
+    return withClientLock(async () => {
+      const account = await client.getAccount(accountId);
+      if (!account) {
+        throw new Error('Account not found');
+      }
+      const consumeTxRequest = client.newConsumeTransactionRequest(noteIds);
+      const txHash = await client.submitNewTransaction(account.id(), consumeTxRequest);
+      return txHash.toHex();
+    });
+  }, [client, withClientLock]);
+
   const value = useMemo(() => {
     return {
       tokens: generateTokenMetadata(poolsInfo?.liquidityPools || []),
@@ -89,10 +127,12 @@ export function ZoroProvider({
       accountId,
       syncState,
       getAccount,
+      getBalance,
+      getConsumableNotes,
+      consumeNotes,
       client,
-      withClientLock,
     };
-  }, [accountId, poolsInfo, isPoolsInfoFetched, syncState, getAccount, client, withClientLock]);
+  }, [accountId, poolsInfo, isPoolsInfoFetched, syncState, getAccount, getBalance, getConsumableNotes, consumeNotes, client]);
 
   return (
     <ZoroContext.Provider value={{ ...value }}>

@@ -10,21 +10,15 @@ interface BalanceParams {
 export const useBalance = (
   { token }: BalanceParams,
 ) => {
-  const { client, accountId, withClientLock, syncState } = useContext(ZoroContext);
+  const { accountId, getBalance } = useContext(ZoroContext);
   const [balance, setBalance] = useState<bigint | null>(null);
   const faucetId = token?.faucetId;
 
   const refetch = useCallback(async () => {
-    if (!accountId || !faucetId || !client) return;
-
-    // Use throttled syncState from context
-    await syncState();
-    const newBalance = await withClientLock(async () => {
-      const acc = await client.getAccount(accountId);
-      return acc?.vault().getBalance(faucetId);
-    });
-    setBalance(BigInt(newBalance ?? 0));
-  }, [accountId, client, faucetId, withClientLock, syncState]);
+    if (!accountId || !faucetId) return;
+    const newBalance = await getBalance(accountId, faucetId);
+    setBalance(newBalance);
+  }, [accountId, faucetId, getBalance]);
 
   useEffect(() => {
     refetch();

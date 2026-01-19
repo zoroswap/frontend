@@ -1,5 +1,5 @@
 import type { PoolInfo } from '@/hooks/usePoolsInfo';
-import type { Account, AccountId, WebClient } from '@demox-labs/miden-sdk';
+import type { Account, AccountId, ConsumableNote, WebClient } from '@demox-labs/miden-sdk';
 import { createContext } from 'react';
 import type { TokenConfig } from './ZoroProvider';
 
@@ -12,7 +12,9 @@ type ZoroProviderState = {
   tokensLoading: boolean;
   syncState: () => Promise<void>;
   getAccount: (accountId: AccountId) => Promise<Account | undefined>;
-  withClientLock: <T>(fn: () => Promise<T>) => Promise<T>;
+  getBalance: (accountId: AccountId, faucetId: AccountId) => Promise<bigint>;
+  getConsumableNotes: (accountId: AccountId) => Promise<ConsumableNote[]>;
+  consumeNotes: (accountId: AccountId, noteIds: string[]) => Promise<string>;
 };
 
 const initialState: ZoroProviderState = {
@@ -22,7 +24,9 @@ const initialState: ZoroProviderState = {
   tokensLoading: true,
   syncState: () => Promise.resolve(),
   getAccount: () => Promise.resolve(undefined),
-  withClientLock: (fn) => fn(),
+  getBalance: () => Promise.resolve(0n),
+  getConsumableNotes: () => Promise.resolve([]),
+  consumeNotes: () => Promise.resolve(''),
 };
 
 export const ZoroContext = createContext<ZoroProviderState>(initialState);

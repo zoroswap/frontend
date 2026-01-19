@@ -13,7 +13,7 @@ export const useSwap = () => {
   const { requestTransaction } = useUnifiedWallet();
   const [txId, setTxId] = useState<undefined | string>();
   const [noteId, setNoteId] = useState<undefined | string>();
-  const { client, accountId, poolAccountId, withClientLock } = useContext(ZoroContext);
+  const { client, accountId, poolAccountId, syncState } = useContext(ZoroContext);
 
   const swap = useCallback(async ({
     amount,
@@ -41,21 +41,16 @@ export const useSwap = () => {
         minAmountOut: minAmountOut,
         userAccountId: accountId,
         client,
-        syncState: async () => {
-          await withClientLock(() => client.syncState());
-        },
+        syncState,
       });
 
-      // Only sync and tx submission need the client lock
-      const newTxId = await withClientLock(async () => {
-        await client.syncState();
-        const txId = await requestTransaction({
-          type: TransactionType.Custom,
-          payload: tx,
-        });
-        await client.syncState();
-        return txId;
+      // Sync before and after tx submission (locking handled internally)
+      await syncState();
+      const newTxId = await requestTransaction({
+        type: TransactionType.Custom,
+        payload: tx,
       });
+      await syncState();
 
       setNoteId(newNoteId);
       setTxId(newTxId);
@@ -74,7 +69,7 @@ export const useSwap = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [client, accountId, poolAccountId, requestTransaction, withClientLock]);
+  }, [client, accountId, poolAccountId, requestTransaction, syncState]);
 
   const value = useMemo(() => ({ swap, isLoading, error, txId, noteId }), [
     swap,

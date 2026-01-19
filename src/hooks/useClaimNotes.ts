@@ -30,8 +30,8 @@ export function updatePendingNotesTracking(newCount: number) {
 }
 
 export function useClaimNotes() {
-  const { paraClient, accountId, walletType } = useUnifiedWallet();
-  const { withClientLock, syncState } = useContext(ZoroContext);
+  const { accountId, walletType } = useUnifiedWallet();
+  const { syncState, getConsumableNotes, consumeNotes } = useContext(ZoroContext);
   const [claiming, setClaiming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pendingNotesCount, setPendingNotesCount] = useState<number>(0);
@@ -53,30 +53,24 @@ export function useClaimNotes() {
 
   // Fetch pending notes count
   const refreshPendingNotes = useCallback(async (sync = false) => {
-    if (walletType !== 'para' || !paraClient || !accountId) {
+    if (walletType !== 'para' || !accountId) {
       setPendingNotesCount(0);
       return;
     }
     try {
-      // Use throttled syncState from context if sync requested
       if (sync) {
         await syncState();
       }
-      const count = await withClientLock(async () => {
-        const account = await paraClient.getAccount(accountId);
-        if (!account) return 0;
-        const consumableNotes = await paraClient.getConsumableNotes(account.id());
-        return consumableNotes.length;
-      });
-      setPendingNotesCount(count);
+      const notes = await getConsumableNotes(accountId);
+      setPendingNotesCount(notes.length);
     } catch (e) {
       console.error('Failed to fetch pending notes count:', e);
     }
-  }, [paraClient, accountId, walletType, withClientLock, syncState]);
+  }, [accountId, walletType, syncState, getConsumableNotes]);
 
   // Fetch pending notes count periodically (with sync)
   useEffect(() => {
-    if (walletType !== 'para' || !paraClient || !accountId) {
+    if (walletType !== 'para' || !accountId) {
       return;
     }
 
@@ -89,11 +83,11 @@ export function useClaimNotes() {
     doRefresh();
     const interval = setInterval(doRefresh, 3000);
     return () => clearInterval(interval);
-  }, [paraClient, accountId, walletType, refreshPendingNotes]);
+  }, [accountId, walletType, refreshPendingNotes]);
 
   const claimNotes = useCallback(async () => {
-    if (walletType !== 'para' || !paraClient || !accountId) {
-      console.log('useClaimNotes: missing requirements', { walletType, hasClient: !!paraClient, hasAccountId: !!accountId });
+    if (walletType !== 'para' || !accountId) {
+      console.log('useClaimNotes: missing requirements', { walletType, hasAccountId: !!accountId });
       return { claimed: 0 };
     }
 
@@ -103,48 +97,27 @@ export function useClaimNotes() {
     setError(null);
 
     try {
-      const claimedCount = await withClientLock(async () => {
-        console.log('useClaimNotes: syncing state');
+      // Sync and get consumable notes
+      await syncState();
+      const notes = await getConsumableNotes(accountId);
 
-        // Sync state first to discover pending notes (like miden-para example)
-        await paraClient.syncState();
+      console.log('useClaimNotes: found', notes.length, 'consumable notes');
 
-        console.log('useClaimNotes: getting account', accountId.toString());
+      if (notes.length === 0) {
+        claimingRef.current = false;
+        setClaiming(false);
+        return { claimed: 0 };
+      }
 
-        // Get the account first (like miden-para example does)
-        const account = await paraClient.getAccount(accountId);
-        if (!account) {
-          throw new Error('Account not found');
-        }
+      // Get note IDs as strings
+      const noteIds = notes.map((n) => n.inputNoteRecord().id().toString());
 
-        console.log('useClaimNotes: getting consumable notes');
+      console.log('useClaimNotes: consuming notes', noteIds);
 
-        // Get consumable notes for this account (using account.id() like miden-para)
-        const consumableNotes = await paraClient.getConsumableNotes(account.id());
+      // Consume the notes (locking handled internally)
+      const txHash = await consumeNotes(accountId, noteIds);
 
-        console.log('useClaimNotes: found', consumableNotes.length, 'consumable notes');
-
-        if (consumableNotes.length === 0) {
-          return 0;
-        }
-
-        // Get note IDs as strings (matching miden-para example)
-        const noteIds = consumableNotes.map((n) =>
-          n.inputNoteRecord().id().toString()
-        );
-
-        console.log('useClaimNotes: creating consume transaction for notes', noteIds);
-
-        // Use the helper method to create consume transaction request
-        const consumeTxRequest = paraClient.newConsumeTransactionRequest(noteIds);
-
-        // Submit transaction (executes, proves, and submits in one call)
-        const txHash = await paraClient.submitNewTransaction(account.id(), consumeTxRequest);
-
-        console.log('useClaimNotes: transaction submitted', txHash.toHex());
-
-        return consumableNotes.length;
-      });
+      console.log('useClaimNotes: transaction submitted', txHash);
 
       // Update pending notes count
       setPendingNotesCount(0);
@@ -152,7 +125,7 @@ export function useClaimNotes() {
       // Reset claiming state (ref first to allow periodic refresh)
       claimingRef.current = false;
       setClaiming(false);
-      return { claimed: claimedCount };
+      return { claimed: notes.length };
     } catch (e) {
       console.error('useClaimNotes: error', e);
       const errorMessage = e instanceof Error ? e.message : 'Failed to claim notes';
@@ -161,7 +134,7 @@ export function useClaimNotes() {
       setClaiming(false);
       throw e;
     }
-  }, [paraClient, accountId, walletType, withClientLock]);
+  }, [accountId, walletType, syncState, getConsumableNotes, consumeNotes]);
 
   return {
     claimNotes,
