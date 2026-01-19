@@ -32,26 +32,31 @@ export const useSwap = () => {
     setError('');
     setIsLoading(true);
     try {
-      // Use withClientLock to protect the entire compilation and sync operations
-      const { noteId: newNoteId, txId: newTxId } = await withClientLock(async () => {
-        const { tx, noteId } = await compileSwapTransaction({
-          amount,
-          poolAccountId,
-          buyToken,
-          sellToken,
-          minAmountOut: minAmountOut,
-          userAccountId: accountId,
-          client,
-          syncState: async () => { /* syncState is done inside the lock already */ },
-        });
+      // Compilation doesn't use the client, only miden libs
+      const { tx, noteId: newNoteId } = await compileSwapTransaction({
+        amount,
+        poolAccountId,
+        buyToken,
+        sellToken,
+        minAmountOut: minAmountOut,
+        userAccountId: accountId,
+        client,
+        syncState: async () => {
+          await withClientLock(() => client.syncState());
+        },
+      });
+
+      // Only sync and tx submission need the client lock
+      const newTxId = await withClientLock(async () => {
         await client.syncState();
         const txId = await requestTransaction({
           type: TransactionType.Custom,
           payload: tx,
         });
         await client.syncState();
-        return { tx, noteId, txId };
+        return txId;
       });
+
       setNoteId(newNoteId);
       setTxId(newTxId);
       // Trigger wallet badge spinner until the swap result note can be claimed
