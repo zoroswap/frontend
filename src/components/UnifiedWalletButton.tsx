@@ -1,5 +1,6 @@
 import { useClaimNotes } from '@/hooks/useClaimNotes';
 import { useUnifiedWallet } from '@/hooks/useUnifiedWallet';
+import { truncateAddress } from '@/utils/format';
 import { useWalletModal } from '@demox-labs/miden-wallet-adapter';
 import { useModal } from '@getpara/react-sdk';
 import { ChevronDown, Download, Loader2, LogOut, Wallet } from 'lucide-react';
@@ -53,11 +54,6 @@ export function UnifiedWalletButton({ className }: UnifiedWalletButtonProps) {
       toast.error(e instanceof Error ? e.message : 'Failed to claim notes');
     }
   }, [claimNotes]);
-
-  const truncateAddress = (addr: string): string => {
-    if (addr.length <= 16) return addr;
-    return `${addr.slice(0, 8)}...${addr.slice(-6)}`;
-  };
 
   // Connected state: show address with dropdown
   if (connected && address) {
