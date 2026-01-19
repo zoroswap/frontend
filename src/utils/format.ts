@@ -89,6 +89,14 @@ export const base64ToHex = (b64: string) =>
     .map((c) => c.charCodeAt(0).toString(16).padStart(2, '0'))
     .join('');
 
+/**
+ * Truncates a generic ID (note ID, transaction ID, etc.) for display.
+ */
+export const truncateId = (id: string): string => {
+  if (id.length <= 16) return id;
+  return `${id.slice(0, 8)}...${id.slice(-8)}`;
+};
+
 export const toDays = (milliseconds: number): number =>
   Math.floor(milliseconds / 86400000);
 export const toHours = (milliseconds: number): number =>
