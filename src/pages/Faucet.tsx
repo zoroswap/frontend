@@ -222,7 +222,7 @@ function Faucet() {
                   >
                     {status.lastResult && (
                       <div
-                        className={`text-xs p-2 rounded-md transform transition-all duration-300 ease-out text-center ${
+                        className={`text-xs p-2 rounded-md transform transition-all duration-300 ease-out text-center whitespace-pre-line ${
                           status.showMessage
                             ? 'translate-y-0 scale-100'
                             : '-translate-y-2 scale-95'
