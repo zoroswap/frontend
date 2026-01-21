@@ -11,7 +11,7 @@ import tseslint from 'typescript-eslint';
 
 export default defineConfig([
   {
-    ignores: ['dist/**', 'node_modules/**'],
+    ignores: ['dist/**', 'node_modules/**', 'package-lock.json'],
   },
   {
     files: ['**/*.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
@@ -27,8 +27,15 @@ export default defineConfig([
   tseslint.configs.recommended,
   {
     files: ['**/*.json'],
+    ignores: ['tsconfig*.json'],
     plugins: { json },
     language: 'json/json',
+    extends: ['json/recommended'],
+  },
+  {
+    files: ['tsconfig*.json'],
+    plugins: { json },
+    language: 'json/jsonc',
     extends: ['json/recommended'],
   },
   {
