@@ -21,6 +21,7 @@ export const useBalance = (
   }, [accountId, faucetId, getBalance]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     refetch();
     const clear = setInterval(refetch, 3000);
     return () => clearInterval(clear);
