@@ -17,4 +17,6 @@ jobs:
           node-version: latest
           cache: npm
 
+      - run: npm ci
+
       - run: npm run lint
