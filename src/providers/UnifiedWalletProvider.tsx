@@ -101,12 +101,6 @@ export function UnifiedWalletProvider({ children }: UnifiedWalletProviderProps) 
     setWalletType(null);
   }, [walletType, midenWallet, logoutAsync]);
 
-  // Open wallet modal: for Para, use Para's modal
-  const openWalletModal = useCallback(() => {
-    // This opens the wallet selection modal (handled by UnifiedWalletButton)
-    // For now, just a placeholder
-  }, []);
-
   // Convert paraMidenAccountId string to AccountId if available
   const [paraAccountIdObj, setParaAccountIdObj] = useState<AccountId | undefined>();
   useEffect(() => {
@@ -172,7 +166,6 @@ export function UnifiedWalletProvider({ children }: UnifiedWalletProviderProps) 
       accountId,
       requestTransaction,
       disconnect,
-      openWalletModal,
     };
   }, [
     walletType,
@@ -186,7 +179,6 @@ export function UnifiedWalletProvider({ children }: UnifiedWalletProviderProps) 
     paraAccountIdObj,
     requestTransaction,
     disconnect,
-    openWalletModal,
   ]);
 
   // Para client for internal use by ZoroProvider (handles locking)

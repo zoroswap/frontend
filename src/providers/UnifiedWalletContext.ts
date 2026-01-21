@@ -21,9 +21,6 @@ export interface UnifiedWalletState {
   // Actions
   requestTransaction: (tx: TransactionRequest) => Promise<string | undefined>;
   disconnect: () => Promise<void>;
-
-  // UI helpers
-  openWalletModal: () => void;
 }
 
 export const UnifiedWalletContext = createContext<UnifiedWalletState>({
@@ -34,5 +31,4 @@ export const UnifiedWalletContext = createContext<UnifiedWalletState>({
   accountId: undefined,
   requestTransaction: async () => undefined,
   disconnect: async () => {},
-  openWalletModal: () => {},
 });
