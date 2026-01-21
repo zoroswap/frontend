@@ -118,15 +118,15 @@ export function ZoroProvider({
 
   // Notes tracking state (for Para wallet)
   const [pendingNotesCount, setPendingNotesCount] = useState(0);
-  const expectedNotesRef = useRef(0);
+  const [expectedNotesCount, setExpectedNotesCount] = useState(0);
   const lastKnownCountRef = useRef(-1);
   const isRefreshingRef = useRef(false);
 
-  const isExpectingNotes = expectedNotesRef.current > 0;
+  const isExpectingNotes = expectedNotesCount > 0;
 
   // Call when user initiates an action that will result in receiving notes
   const startExpectingNotes = useCallback(() => {
-    expectedNotesRef.current++;
+    setExpectedNotesCount(c => c + 1);
   }, []);
 
   // Refresh pending notes count and detect when expected notes arrive
@@ -140,9 +140,9 @@ export function ZoroProvider({
       const newCount = notes.length;
 
       // Detect if expected notes arrived
-      if (lastKnownCountRef.current >= 0 && newCount > lastKnownCountRef.current && expectedNotesRef.current > 0) {
+      if (lastKnownCountRef.current >= 0 && newCount > lastKnownCountRef.current) {
         const arrived = newCount - lastKnownCountRef.current;
-        expectedNotesRef.current = Math.max(0, expectedNotesRef.current - arrived);
+        setExpectedNotesCount(c => Math.max(0, c - arrived));
       }
       lastKnownCountRef.current = newCount;
       setPendingNotesCount(newCount);

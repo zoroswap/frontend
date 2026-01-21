@@ -101,9 +101,11 @@ export function UnifiedWalletButton({ className }: UnifiedWalletButtonProps) {
                   <span className='flex-1'>
                     {claiming ? 'Claiming...' : 'Claim Notes'}
                   </span>
-                  {pendingNotesCount > 0 && !claiming && (
+                  {(isExpectingNotes || pendingNotesCount > 0) && !claiming && (
                     <span className='text-xs px-1.5 py-0.5 rounded-full bg-primary/20 text-primary'>
-                      {pendingNotesCount}
+                      {isExpectingNotes
+                        ? <Loader2 className='h-3 w-3 animate-spin' />
+                        : pendingNotesCount}
                     </span>
                   )}
                 </button>
