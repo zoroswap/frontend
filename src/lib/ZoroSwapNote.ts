@@ -32,7 +32,6 @@ export interface SwapParams {
   minAmountOut: bigint;
   userAccountId: AccountId;
   client: WebClient;
-  syncState: () => Promise<void>;
 }
 
 export interface SwapResult {
@@ -48,9 +47,8 @@ export async function compileSwapTransaction({
   minAmountOut,
   userAccountId,
   client,
-  syncState,
-}: SwapParams) {
-  await syncState();
+}: Omit<SwapParams, 'syncState'>) {
+  // Note: syncState should be called by the caller before invoking this function
   const builder = client.createScriptBuilder();
   const pool_script = builder.buildLibrary('zoro::zoropool', zoropool);
   builder.linkDynamicLibrary(pool_script);

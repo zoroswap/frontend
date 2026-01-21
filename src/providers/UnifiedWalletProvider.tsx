@@ -1,3 +1,4 @@
+import { clientMutex } from '@/lib/clientMutex';
 import { NETWORK } from '@/lib/config';
 import {
   AccountId,
@@ -65,26 +66,29 @@ export function UnifiedWalletProvider({ children }: UnifiedWalletProviderProps) 
         }
         return midenWallet.requestTransaction?.(tx);
       } else if (walletType === 'para' && paraMidenClient && paraMidenAccountId) {
-        // For Para users, execute transactions via the Miden client
-        if ('type' in tx && tx.type === TransactionType.Custom) {
-          const customTx = tx.payload as { transactionRequest: string };
+        // For Para users, execute transactions via the Miden client.
+        // Use mutex to prevent concurrent access to the client.
+        return clientMutex.runExclusive(async () => {
+          if ('type' in tx && tx.type === TransactionType.Custom) {
+            const customTx = tx.payload as { transactionRequest: string };
 
-          // The transactionRequest is base64 encoded serialized bytes
-          const txRequestBytes = Uint8Array.from(
-            atob(customTx.transactionRequest),
-            c => c.charCodeAt(0),
-          );
-          const txRequest = TxRequest.deserialize(txRequestBytes);
+            // The transactionRequest is base64 encoded serialized bytes
+            const txRequestBytes = Uint8Array.from(
+              atob(customTx.transactionRequest),
+              c => c.charCodeAt(0),
+            );
+            const txRequest = TxRequest.deserialize(txRequestBytes);
 
-          // Get the account ID
-          const accountId = AccountId.fromHex(paraMidenAccountId);
+            // Get the account ID
+            const accountId = AccountId.fromHex(paraMidenAccountId);
 
-          // Submit the transaction
-          const txHash = await paraMidenClient.submitNewTransaction(accountId, txRequest);
+            // Submit the transaction
+            const txHash = await paraMidenClient.submitNewTransaction(accountId, txRequest);
 
-          return txHash.toHex();
-        }
-        throw new Error('Unsupported transaction type for Para wallet');
+            return txHash.toHex();
+          }
+          throw new Error('Unsupported transaction type for Para wallet');
+        });
       }
       return undefined;
     },

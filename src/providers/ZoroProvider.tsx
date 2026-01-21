@@ -1,8 +1,8 @@
 import { type PoolInfo, usePoolsInfo } from '@/hooks/usePoolsInfo';
 import { useUnifiedWallet } from '@/hooks/useUnifiedWallet';
+import { clientMutex } from '@/lib/clientMutex';
 import { bech32ToAccountId, instantiateClient } from '@/lib/utils';
 import { AccountId, Address, WebClient } from '@demox-labs/miden-sdk';
-import { Mutex } from 'async-mutex';
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParaClient } from './ParaClientContext';
 import { ZoroContext } from './ZoroContext';
@@ -13,8 +13,6 @@ export function ZoroProvider({
   children,
 }: { children: ReactNode }) {
   const { data: poolsInfo, isFetched: isPoolsInfoFetched } = usePoolsInfo();
-  // Mutex to prevent concurrent access to the Miden client
-  const clientMutex = useRef(new Mutex());
   const lastSyncTime = useRef(0);
   const { address, accountId: unifiedAccountId, walletType } = useUnifiedWallet();
   const paraClient = useParaClient();
@@ -47,7 +45,7 @@ export function ZoroProvider({
 
   // Helper to run operations with the mutex lock
   const withClientLock = useCallback(
-    <T,>(fn: () => Promise<T>): Promise<T> => clientMutex.current.runExclusive(fn),
+    <T,>(fn: () => Promise<T>): Promise<T> => clientMutex.runExclusive(fn),
     [],
   );
 

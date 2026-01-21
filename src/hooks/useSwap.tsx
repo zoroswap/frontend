@@ -1,4 +1,5 @@
 import { useUnifiedWallet } from '@/hooks/useUnifiedWallet';
+import { clientMutex } from '@/lib/clientMutex';
 import { compileSwapTransaction } from '@/lib/ZoroSwapNote';
 import { ZoroContext } from '@/providers/ZoroContext';
 import { type TokenConfig } from '@/providers/ZoroProvider';
@@ -31,20 +32,22 @@ export const useSwap = () => {
     setError('');
     setIsLoading(true);
     try {
-      // Compilation doesn't use the client, only miden libs
-      const { tx, noteId: newNoteId } = await compileSwapTransaction({
-        amount,
-        poolAccountId,
-        buyToken,
-        sellToken,
-        minAmountOut: minAmountOut,
-        userAccountId: accountId,
-        client,
-        syncState,
-      });
-
-      // Sync before and after tx submission (locking handled internally)
+      // Sync state before compilation (locking handled internally)
       await syncState();
+
+      // Compilation uses client.createScriptBuilder(), hence we must
+      // use our mutex.
+      const { tx, noteId: newNoteId } = await clientMutex.runExclusive(() =>
+        compileSwapTransaction({
+          amount,
+          poolAccountId,
+          buyToken,
+          sellToken,
+          minAmountOut: minAmountOut,
+          userAccountId: accountId,
+          client,
+        }),
+      );
       const newTxId = await requestTransaction({
         type: TransactionType.Custom,
         payload: tx,
