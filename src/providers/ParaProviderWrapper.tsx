@@ -20,7 +20,8 @@ export function ParaProviderWrapper({ children }: ParaProviderWrapperProps) {
           theme: {
               "accentColor": "#ff5501",
               "foregroundColor": "#000000",
-              "backgroundColor": "#FFFFFF"
+              "backgroundColor": "#FFFFFF",
+              "mode": 'light',
           },
           oAuthMethods: ["GOOGLE","TWITTER","TELEGRAM"],
           authLayout: ["AUTH:FULL","EXTERNAL:FULL"],
