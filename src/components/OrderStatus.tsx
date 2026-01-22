@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button';
 import type { TokenConfig } from '@/providers/ZoroProvider';
 import type { OrderStatus } from '@/services/websocket';
-import { formalBigIntFormat } from '@/utils/format';
+import { formalBigIntFormat, truncateId } from '@/utils/format';
 import { CheckCircle, Clock, ExternalLink, Loader2, X, XCircle } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import type { LpActionType } from './PoolModal';
@@ -121,11 +121,6 @@ export function OrderStatus({
       console.error(e);
     }
   }
-
-  const truncateId = (id: string): string => {
-    if (id.length <= 16) return id;
-    return `${id.slice(0, 8)}...${id.slice(-8)}`;
-  };
 
   const handleClose = useCallback(() => {
     setIsClosing(true);

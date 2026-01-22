@@ -1,16 +1,16 @@
+import { useUnifiedWallet } from '@/hooks/useUnifiedWallet';
 import { API } from '@/lib/config';
 import { compileWithdrawTransaction } from '@/lib/ZoroWithdrawNote';
 import { ZoroContext } from '@/providers/ZoroContext';
 import { type TokenConfig } from '@/providers/ZoroProvider';
 import { NoteType } from '@demox-labs/miden-sdk';
-import { useWallet } from '@demox-labs/miden-wallet-adapter';
 import { useCallback, useContext, useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
 
 export const useWithdraw = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>();
-  const { requestTransaction } = useWallet();
+  const { requestTransaction } = useUnifiedWallet();
   const [txId, setTxId] = useState<undefined | string>();
   const [noteId, setNoteId] = useState<undefined | string>();
   const { client, accountId, poolAccountId, syncState } = useContext(ZoroContext);

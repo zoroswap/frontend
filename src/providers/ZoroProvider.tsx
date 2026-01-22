@@ -1,30 +1,34 @@
 import { type PoolInfo, usePoolsInfo } from '@/hooks/usePoolsInfo';
+import { useUnifiedWallet } from '@/hooks/useUnifiedWallet';
+import { clientMutex } from '@/lib/clientMutex';
 import { bech32ToAccountId, instantiateClient } from '@/lib/utils';
 import { AccountId, Address, WebClient } from '@demox-labs/miden-sdk';
-import { useWallet } from '@demox-labs/miden-wallet-adapter';
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useParaClient } from './ParaClientContext';
 import { ZoroContext } from './ZoroContext';
 
-enum ClientState {
-  NOT_INITIALIZED,
-  IDLE,
-  ACTIVE,
-}
+const SYNC_THROTTLE_MS = 1500;
 
 export function ZoroProvider({
   children,
 }: { children: ReactNode }) {
   const { data: poolsInfo, isFetched: isPoolsInfoFetched } = usePoolsInfo();
-  const { address } = useWallet();
+  const lastSyncTime = useRef(0);
+  const { address, accountId: unifiedAccountId, walletType } = useUnifiedWallet();
+  const paraClient = useParaClient();
+  // Use accountId from UnifiedWallet if available (Para), otherwise derive from address (Miden)
   const accountId = useMemo(
-    () => address ? Address.fromBech32(address).accountId() : undefined,
-    [address],
+    () => unifiedAccountId ?? (address ? Address.fromBech32(address).accountId() : undefined),
+    [address, unifiedAccountId],
   );
-  const [client, setClient] = useState<WebClient | undefined>(undefined);
-  const clientState = useRef<ClientState>(ClientState.NOT_INITIALIZED);
+  const [midenClient, setMidenClient] = useState<WebClient | undefined>(undefined);
 
+  // For Para users, use paraClient; for Miden users, create our own client
+  const client = walletType === 'para' ? paraClient : midenClient;
+
+  // Only create a client for Miden wallet users
   useEffect(() => {
-    if (client || !accountId || !poolsInfo) {
+    if (walletType === 'para' || midenClient || !accountId || !poolsInfo) {
       return;
     }
     (async () => {
@@ -35,49 +39,133 @@ export function ZoroProvider({
             : []),
         ],
       });
-      setClient(c);
-      clientState.current = ClientState.IDLE;
+      setMidenClient(c);
     })();
-  }, [poolsInfo, accountId, client, setClient]);
+  }, [poolsInfo, accountId, midenClient, walletType]);
+
+  // Helper to run operations with the mutex lock
+  const withClientLock = useCallback(
+    <T,>(fn: () => Promise<T>): Promise<T> => clientMutex.runExclusive(fn),
+    [],
+  );
+
+  // Throttled sync: only syncs if enough time has passed since last sync
+  const throttledSync = useCallback(async () => {
+    if (!client) return;
+    const now = Date.now();
+    if (now - lastSyncTime.current >= SYNC_THROTTLE_MS) {
+      await client.syncState();
+      lastSyncTime.current = now;
+    }
+  }, [client]);
 
   const syncState = useCallback(async () => {
-    if (clientState.current === ClientState.NOT_INITIALIZED) {
+    if (!client) {
       return;
     }
-    if (clientState.current === ClientState.ACTIVE) {
-      while (clientState.current === ClientState.ACTIVE) {
-        await new Promise(p => setTimeout(p, 50));
-      }
-      clientState.current = ClientState.ACTIVE;
-      client?.syncState().then();
-      clientState.current = ClientState.IDLE;
-    } else if (clientState.current === ClientState.IDLE) {
-      clientState.current = ClientState.ACTIVE;
-      await client?.syncState();
-      clientState.current = ClientState.IDLE;
-    }
-  }, [client]);
+    await withClientLock(async () => {
+      await throttledSync();
+    });
+  }, [client, withClientLock, throttledSync]);
 
   const getAccount = useCallback(async (accountId: AccountId) => {
-    if (clientState.current === ClientState.NOT_INITIALIZED) {
+    if (!client) {
       return;
     }
-    if (clientState.current === ClientState.ACTIVE) {
-      while (clientState.current === ClientState.ACTIVE) {
-        await new Promise(p => setTimeout(p, 50));
-      }
-      clientState.current = ClientState.ACTIVE;
-      const acc = client?.getAccount(accountId);
-      clientState.current = ClientState.IDLE;
-      return acc;
-    } else if (clientState.current === ClientState.IDLE) {
-      clientState.current = ClientState.ACTIVE;
-      await client?.syncState();
-      const acc = await client?.getAccount(accountId);
-      clientState.current = ClientState.IDLE;
-      return acc;
+    return withClientLock(async () => {
+      await throttledSync();
+      return await client.getAccount(accountId);
+    });
+  }, [client, withClientLock, throttledSync]);
+
+  const getBalance = useCallback(async (accountId: AccountId, faucetId: AccountId) => {
+    if (!client) {
+      return 0n;
     }
-  }, [client]);
+    return withClientLock(async () => {
+      await throttledSync();
+      const account = await client.getAccount(accountId);
+      return BigInt(account?.vault().getBalance(faucetId) ?? 0);
+    });
+  }, [client, withClientLock, throttledSync]);
+
+  const getConsumableNotes = useCallback(async (accountId: AccountId) => {
+    if (!client) {
+      return [];
+    }
+    return withClientLock(async () => {
+      await throttledSync();
+      const account = await client.getAccount(accountId);
+      if (!account) return [];
+      return await client.getConsumableNotes(account.id());
+    });
+  }, [client, withClientLock, throttledSync]);
+
+  const consumeNotes = useCallback(async (accountId: AccountId, noteIds: string[]) => {
+    if (!client) {
+      throw new Error('Client not initialized');
+    }
+    return withClientLock(async () => {
+      const account = await client.getAccount(accountId);
+      if (!account) {
+        throw new Error('Account not found');
+      }
+      const consumeTxRequest = client.newConsumeTransactionRequest(noteIds);
+      const txHash = await client.submitNewTransaction(account.id(), consumeTxRequest);
+      return txHash.toHex();
+    });
+  }, [client, withClientLock]);
+
+  // Notes tracking state (for Para wallet)
+  const [pendingNotesCount, setPendingNotesCount] = useState(0);
+  const [expectedNotesCount, setExpectedNotesCount] = useState(0);
+  const lastKnownCountRef = useRef(-1);
+  const isRefreshingRef = useRef(false);
+
+  const isExpectingNotes = expectedNotesCount > 0;
+
+  // Call when user initiates an action that will result in receiving notes
+  const startExpectingNotes = useCallback(() => {
+    setExpectedNotesCount(c => c + 1);
+  }, []);
+
+  // Refresh pending notes count and detect when expected notes arrive
+  const refreshPendingNotes = useCallback(async () => {
+    if (walletType !== 'para' || !accountId || isRefreshingRef.current) {
+      return;
+    }
+    isRefreshingRef.current = true;
+    try {
+      const notes = await getConsumableNotes(accountId);
+      const newCount = notes.length;
+
+      // Detect if expected notes arrived
+      if (lastKnownCountRef.current >= 0 && newCount > lastKnownCountRef.current) {
+        const arrived = newCount - lastKnownCountRef.current;
+        setExpectedNotesCount(c => Math.max(0, c - arrived));
+      }
+      lastKnownCountRef.current = newCount;
+      setPendingNotesCount(newCount);
+    } catch (e) {
+      console.error('Failed to fetch pending notes count:', e);
+    } finally {
+      isRefreshingRef.current = false;
+    }
+  }, [walletType, accountId, getConsumableNotes]);
+
+  // Periodic refresh for Para wallet users
+  useEffect(() => {
+    if (walletType !== 'para' || !accountId) {
+      // Reset state when not Para wallet
+      setPendingNotesCount(0);
+      lastKnownCountRef.current = -1;
+      return;
+    }
+
+    refreshPendingNotes();
+    const interval = setInterval(refreshPendingNotes, 3000);
+    return () => clearInterval(interval);
+  }, [walletType, accountId, refreshPendingNotes]);
 
   const value = useMemo(() => {
     return {
@@ -90,9 +178,17 @@ export function ZoroProvider({
       accountId,
       syncState,
       getAccount,
+      getBalance,
+      getConsumableNotes,
+      consumeNotes,
       client,
+      // Notes tracking
+      pendingNotesCount,
+      isExpectingNotes,
+      startExpectingNotes,
+      refreshPendingNotes,
     };
-  }, [accountId, poolsInfo, isPoolsInfoFetched, syncState, getAccount, client]);
+  }, [accountId, poolsInfo, isPoolsInfoFetched, syncState, getAccount, getBalance, getConsumableNotes, consumeNotes, client, pendingNotesCount, isExpectingNotes, startExpectingNotes, refreshPendingNotes]);
 
   return (
     <ZoroContext.Provider value={{ ...value }}>

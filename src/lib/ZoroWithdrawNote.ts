@@ -17,9 +17,6 @@ import {
   WebClient,
 } from '@demox-labs/miden-sdk';
 import { Transaction } from '@demox-labs/miden-wallet-adapter';
-import { Buffer } from 'buffer';
-
-window.Buffer = Buffer;
 
 import type { TokenConfig } from '@/providers/ZoroProvider';
 import zoropool from './zoropool.masm?raw';

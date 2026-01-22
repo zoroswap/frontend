@@ -89,6 +89,43 @@ export const base64ToHex = (b64: string) =>
     .map((c) => c.charCodeAt(0).toString(16).padStart(2, '0'))
     .join('');
 
+/**
+ * Truncates a Miden address for display. We show these three parts:
+ * - Start of account ID
+ * - End of account ID
+ * - End of routing params
+ *
+ * Example:
+ * "mtst1az7jaxdfz8f27ypevsq3uxx0dy06c9hq_qruqqypuyph" → "mtst1a...c9hq...uyph"
+ */
+export const truncateAddress = (addr: string): string => {
+  if (addr.length <= 20) return addr;
+
+  const underscoreIdx = addr.indexOf('_');
+  if (underscoreIdx === -1) {
+    // No underscore found, fall back to simple truncation
+    return `${addr.slice(0, 8)}...${addr.slice(-6)}`;
+  }
+
+  const accountId = addr.slice(0, underscoreIdx);
+  const routing = addr.slice(underscoreIdx + 1);
+
+  // Show: start of accountId ... end of accountId ... end of routing
+  const accountStart = accountId.slice(0, 8);
+  const accountEnd = accountId.slice(-4);
+  const routingEnd = routing.slice(-4);
+
+  return `${accountStart}...${accountEnd}...${routingEnd}`;
+};
+
+/**
+ * Truncates a generic ID (note ID, transaction ID, etc.) for display.
+ */
+export const truncateId = (id: string): string => {
+  if (id.length <= 16) return id;
+  return `${id.slice(0, 8)}...${id.slice(-8)}`;
+};
+
 export const toDays = (milliseconds: number): number =>
   Math.floor(milliseconds / 86400000);
 export const toHours = (milliseconds: number): number =>

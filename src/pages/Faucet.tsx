@@ -4,11 +4,12 @@ import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { UnifiedWalletButton } from '@/components/UnifiedWalletButton';
+import { useClaimNotes } from '@/hooks/useClaimNotes';
+import { useUnifiedWallet } from '@/hooks/useUnifiedWallet';
 import { accountIdToBech32 } from '@/lib/utils';
 import { ZoroContext } from '@/providers/ZoroContext';
 import { type FaucetMintResult, mintFromFaucet } from '@/services/faucet';
-import { useWallet } from '@demox-labs/miden-wallet-adapter';
-import { WalletMultiButton } from '@demox-labs/miden-wallet-adapter';
 import { Loader2 } from 'lucide-react';
 import { Fragment, useCallback, useContext, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -23,11 +24,12 @@ interface MintStatus {
 type TokenMintStatuses = Record<string, MintStatus>;
 
 function Faucet() {
-  const { connected } = useWallet();
+  const { connected } = useUnifiedWallet();
+  const { refreshPendingNotes } = useClaimNotes();
   const [mintStatuses, setMintStatuses] = useState<TokenMintStatuses>(
     {} as TokenMintStatuses,
   );
-  const { tokens, tokensLoading, accountId } = useContext(ZoroContext);
+  const { tokens, tokensLoading, accountId, startExpectingNotes } = useContext(ZoroContext);
   const updateMintStatus = useCallback((
     tokenSymbol: string,
     updates: Partial<MintStatus>,
@@ -70,6 +72,7 @@ function Faucet() {
       lastAttempt: Date.now(),
       showMessage: false,
     });
+    startExpectingNotes();
 
     try {
       const result = await mintFromFaucet(
@@ -81,6 +84,10 @@ function Faucet() {
         lastResult: result,
         showMessage: false,
       });
+      // Refresh pending notes count after successful mint (sync with network)
+      if (result.success) {
+        setTimeout(() => refreshPendingNotes(), 2000);
+      }
       setTimeout(() => {
         updateMintStatus(tokenFaucetId, {
           showMessage: true,
@@ -112,7 +119,7 @@ function Faucet() {
         });
       }, 5100);
     }
-  }, [connected, accountId, updateMintStatus, tokens]);
+  }, [connected, accountId, updateMintStatus, tokens, refreshPendingNotes, startExpectingNotes]);
 
   const getButtonText = (tokenSymbol: string, status: MintStatus): string => {
     return status.isLoading ? `Minting ${tokenSymbol}...` : `Request ${tokenSymbol}`;
@@ -204,9 +211,7 @@ function Faucet() {
                     </Button>
                   )}
                   {!connected && (
-                    <WalletMultiButton className='!font-bold !p-5 w-full !font-semibold !font-sans h-full !rounded-xl !text-sm sm:!text-lg !bg-primary !text-primary-foreground hover:!bg-primary/90 !border-none !text-center !flex !items-center !justify-center'>
-                      Connect
-                    </WalletMultiButton>
+                    <UnifiedWalletButton className='!font-bold !p-5 w-full !font-semibold !font-sans h-full !rounded-xl !text-sm sm:!text-lg !bg-primary !text-primary-foreground hover:!bg-primary/90 !border-none !text-center !flex !items-center !justify-center' />
                   )}
                   <div
                     className={`overflow-hidden transition-all duration-300 ease-out ${
@@ -217,7 +222,7 @@ function Faucet() {
                   >
                     {status.lastResult && (
                       <div
-                        className={`text-xs p-2 rounded-md transform transition-all duration-300 ease-out text-center ${
+                        className={`text-xs p-2 rounded-md transform transition-all duration-300 ease-out text-center whitespace-pre-line ${
                           status.showMessage
                             ? 'translate-y-0 scale-100'
                             : '-translate-y-2 scale-95'
