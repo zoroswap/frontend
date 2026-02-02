@@ -7,8 +7,8 @@ import {
   TransactionRequest as TxRequest,
 } from '@demox-labs/miden-sdk';
 import { TransactionType, useWallet } from '@demox-labs/miden-wallet-adapter';
-import { useAccount, useLogout } from '@getpara/react-sdk';
-import { useParaMiden } from 'miden-para-react';
+import { useAccount, useLogout } from '@getpara/react-sdk-lite';
+import { useParaMiden } from '@miden-sdk/use-miden-para-react';
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { ParaClientContext } from './ParaClientContext';
 import {
