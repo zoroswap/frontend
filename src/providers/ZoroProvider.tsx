@@ -2,7 +2,7 @@ import { type PoolInfo, usePoolsInfo } from '@/hooks/usePoolsInfo';
 import { useUnifiedWallet } from '@/hooks/useUnifiedWallet';
 import { clientMutex } from '@/lib/clientMutex';
 import { bech32ToAccountId, instantiateClient } from '@/lib/utils';
-import { AccountId, Address, WebClient } from '@demox-labs/miden-sdk';
+import { AccountId, Address, WebClient } from '@miden-sdk/miden-sdk';
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParaClient } from './ParaClientContext';
 import { ZoroContext } from './ZoroContext';

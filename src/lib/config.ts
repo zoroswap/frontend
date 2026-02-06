@@ -1,4 +1,4 @@
-import { NetworkId } from '@demox-labs/miden-sdk';
+import { NetworkId } from '@miden-sdk/miden-sdk';
 
 export interface NetworkConfig {
   readonly rpcEndpoint: string;

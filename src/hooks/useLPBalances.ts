@@ -1,6 +1,6 @@
 import { ZoroContext } from '@/providers/ZoroContext';
 import type { TokenConfig } from '@/providers/ZoroProvider';
-import { Felt, Word } from '@demox-labs/miden-sdk';
+import { Felt, Word } from '@miden-sdk/miden-sdk';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 export const useLPBalances = ({ tokens }: { tokens?: TokenConfig[] }) => {

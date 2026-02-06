@@ -1,5 +1,5 @@
-import { Environment, ParaProvider } from '@getpara/react-sdk';
-import '@getpara/react-sdk/styles.css';
+import { Environment, ParaProvider } from '@getpara/react-sdk-lite';
+import '@getpara/react-sdk-lite/styles.css';
 import type { ReactNode } from 'react';
 
 interface ParaProviderWrapperProps {

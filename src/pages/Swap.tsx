@@ -21,7 +21,7 @@ import { bech32ToAccountId } from '@/lib/utils';
 import { OracleContext, useOraclePrices } from '@/providers/OracleContext';
 import { ZoroContext } from '@/providers/ZoroContext';
 import { type TokenConfig } from '@/providers/ZoroProvider.tsx';
-import type { AccountId } from '@demox-labs/miden-sdk';
+import type { AccountId } from '@miden-sdk/miden-sdk';
 import { Loader2 } from 'lucide-react';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'react-toastify';

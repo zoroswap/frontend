@@ -5,7 +5,7 @@ import {
   Felt,
   WebClient,
   Word,
-} from '@demox-labs/miden-sdk';
+} from '@miden-sdk/miden-sdk';
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { NETWORK, NETWORK_ID } from './config';
@@ -18,7 +18,7 @@ export const instantiateClient = async (
   { accountsToImport }: { accountsToImport: (AccountId | undefined)[] },
 ) => {
   const { Address: DynamicAddress, WebClient } = await import(
-    '@demox-labs/miden-sdk'
+    '@miden-sdk/miden-sdk'
   );
   const client = await WebClient.createClient(NETWORK.rpcEndpoint);
   for (const acc of accountsToImport) {

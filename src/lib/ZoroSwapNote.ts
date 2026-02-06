@@ -15,7 +15,7 @@ import {
   OutputNote,
   TransactionRequestBuilder,
   WebClient,
-} from '@demox-labs/miden-sdk';
+} from '@miden-sdk/miden-sdk';
 import { CustomTransaction } from '@demox-labs/miden-wallet-adapter';
 
 import type { TokenConfig } from '@/providers/ZoroProvider';

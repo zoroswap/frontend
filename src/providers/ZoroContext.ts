@@ -1,5 +1,5 @@
 import type { PoolInfo } from '@/hooks/usePoolsInfo';
-import type { Account, AccountId, ConsumableNoteRecord, WebClient } from '@demox-labs/miden-sdk';
+import type { Account, AccountId, ConsumableNoteRecord, WebClient } from '@miden-sdk/miden-sdk';
 import { createContext } from 'react';
 import type { TokenConfig } from './ZoroProvider';
 
