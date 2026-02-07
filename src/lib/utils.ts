@@ -15,6 +15,10 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/** Create a fresh NetworkId matching the configured network (toBech32 consumes the NetworkId) */
+const createNetworkId = () =>
+  import.meta.env.VITE_NETWORK_ID === 'mainnet' ? NetworkId.mainnet() : NetworkId.testnet();
+
 export const instantiateClient = async (
   { accountsToImport }: { accountsToImport: (AccountId | undefined)[] },
 ) => {
@@ -26,8 +30,7 @@ export const instantiateClient = async (
     if (!acc) continue;
     try {
       // Convert to bech32 and back to ensure we have an AccountId from the same module instance
-      // toBech32 consumes (destroys) the NetworkId, so we must create a fresh one each call
-      const bech32 = acc.toBech32(NetworkId.testnet(), AccountInterface.BasicWallet);
+      const bech32 = acc.toBech32(createNetworkId(), AccountInterface.BasicWallet);
       const accountId = DynamicAddress.fromBech32(bech32).accountId();
       await safeAccountImport(client, accountId);
     } catch (e) {
@@ -52,9 +55,7 @@ export const safeAccountImport = async (client: WebClient, accountId: AccountId)
 export const accountIdToBech32 = (
   accountId: AccountId,
 ) => {
-  // toBech32 consumes (destroys) the NetworkId, so we must create a fresh one each call
-  const networkId = NetworkId.testnet();
-  return accountId.toBech32(networkId, AccountInterface.BasicWallet).split('_')[0];
+  return accountId.toBech32(createNetworkId(), AccountInterface.BasicWallet).split('_')[0];
 };
 
 export const bech32ToAccountId = (bech32str?: string) => {
