@@ -1,4 +1,4 @@
-import type { AccountId } from '@demox-labs/miden-sdk';
+import type { AccountId } from '@miden-sdk/miden-sdk';
 import type { CustomTransaction, Transaction } from '@demox-labs/miden-wallet-adapter';
 import { createContext } from 'react';
 

@@ -2,7 +2,7 @@ import { useDeposit } from '@/hooks/useDeposit';
 import { useWithdraw } from '@/hooks/useWithdraw';
 import { ZoroContext } from '@/providers/ZoroContext';
 import type { TokenConfig } from '@/providers/ZoroProvider';
-import { NoteType } from '@demox-labs/miden-sdk';
+import { NoteType } from '@miden-sdk/miden-sdk';
 import { Loader, X } from 'lucide-react';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { parseUnits } from 'viem';

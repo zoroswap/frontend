@@ -35,7 +35,7 @@ export const useSwap = () => {
       // Sync state before compilation (locking handled internally)
       await syncState();
 
-      // Compilation uses client.createScriptBuilder(), hence we must
+      // Compilation uses client.createCodeBuilder(), hence we must
       // use our mutex.
       const { tx, noteId: newNoteId } = await clientMutex.runExclusive(() =>
         compileSwapTransaction({

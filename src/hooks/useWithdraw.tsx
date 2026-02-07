@@ -3,7 +3,7 @@ import { API } from '@/lib/config';
 import { compileWithdrawTransaction } from '@/lib/ZoroWithdrawNote';
 import { ZoroContext } from '@/providers/ZoroContext';
 import { type TokenConfig } from '@/providers/ZoroProvider';
-import { NoteType } from '@demox-labs/miden-sdk';
+import { NoteType } from '@miden-sdk/miden-sdk';
 import { useCallback, useContext, useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
 

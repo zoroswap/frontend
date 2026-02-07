@@ -1,6 +1,6 @@
 import { API } from '@/lib/config';
 import { bech32ToAccountId } from '@/lib/utils';
-import type { AccountId } from '@demox-labs/miden-sdk';
+import type { AccountId } from '@miden-sdk/miden-sdk';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 

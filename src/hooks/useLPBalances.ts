@@ -1,20 +1,20 @@
 import { ZoroContext } from '@/providers/ZoroContext';
 import type { TokenConfig } from '@/providers/ZoroProvider';
-import { Felt, Word } from '@demox-labs/miden-sdk';
+import { Felt, Word } from '@miden-sdk/miden-sdk';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 export const useLPBalances = ({ tokens }: { tokens?: TokenConfig[] }) => {
-  const { client, poolAccountId, accountId, getAccount } = useContext(ZoroContext);
+  const { rpcClient, poolAccountId, accountId } = useContext(ZoroContext);
   const [balances, setBalances] = useState<Record<string, bigint>>({});
 
   const refetch = useCallback(async () => {
-    if (!poolAccountId || !client || !accountId || !tokens) return;
+    if (!poolAccountId || !rpcClient || !accountId || !tokens) return;
     const balances: Record<string, bigint> = {};
-    const account = await getAccount(poolAccountId);
-    const storage = account?.storage();
+    const fetched = await rpcClient.getAccountDetails(poolAccountId);
+    const storage = fetched.account()?.storage();
     for (const token of tokens) {
       const lp = storage?.getMapItem(
-        5,
+        "zoro::user_deposits",
         Word.newFromFelts([
           new Felt(accountId.suffix().asInt()),
           new Felt(accountId.prefix().asInt()),
@@ -26,7 +26,7 @@ export const useLPBalances = ({ tokens }: { tokens?: TokenConfig[] }) => {
       balances[token.faucetIdBech32] = balance;
     }
     setBalances(balances);
-  }, [poolAccountId, client, accountId, tokens, getAccount]);
+  }, [poolAccountId, rpcClient, accountId, tokens]);
 
   useEffect(() => {
     // eslint-disable-next-line

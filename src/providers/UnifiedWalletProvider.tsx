@@ -5,10 +5,10 @@ import {
   AccountInterface,
   NetworkId,
   TransactionRequest as TxRequest,
-} from '@demox-labs/miden-sdk';
+} from '@miden-sdk/miden-sdk';
 import { TransactionType, useWallet } from '@demox-labs/miden-wallet-adapter';
-import { useAccount, useLogout } from '@getpara/react-sdk';
-import { useParaMiden } from 'miden-para-react';
+import { useAccount, useLogout } from '@getpara/react-sdk-lite';
+import { useParaMiden } from '@miden-sdk/use-miden-para-react';
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { ParaClientContext } from './ParaClientContext';
 import {
@@ -126,8 +126,8 @@ export function UnifiedWalletProvider({ children }: UnifiedWalletProviderProps) 
     if (paraAccountIdObj && walletType === 'para') {
       try {
         const networkId = NETWORK.rpcEndpoint.includes('testnet')
-          ? NetworkId.Testnet
-          : NetworkId.Mainnet;
+          ? NetworkId.testnet()
+          : NetworkId.mainnet();
         // eslint-disable-next-line react-hooks/set-state-in-effect
         setParaAddress(
           paraAccountIdObj.toBech32(networkId, AccountInterface.BasicWallet),

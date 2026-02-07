@@ -6,7 +6,6 @@ import {
   MidenArrays,
   Note,
   NoteAssets,
-  NoteExecutionHint,
   NoteInputs,
   NoteMetadata,
   NoteRecipient,
@@ -15,8 +14,8 @@ import {
   OutputNote,
   TransactionRequestBuilder,
   WebClient,
-} from '@demox-labs/miden-sdk';
-import { Transaction } from '@demox-labs/miden-wallet-adapter';
+} from '@miden-sdk/miden-sdk';
+import { CustomTransaction } from '@demox-labs/miden-wallet-adapter';
 
 import type { TokenConfig } from '@/providers/ZoroProvider';
 import zoropool from './zoropool.masm?raw';
@@ -50,7 +49,7 @@ export async function compileWithdrawTransaction({
   noteType,
 }: WithdrawParams) {
   await syncState();
-  const builder = client.createScriptBuilder();
+  const builder = client.createCodeBuilder();
   const pool_script = builder.buildLibrary('zoro::zoropool', zoropool);
   builder.linkDynamicLibrary(pool_script);
   const script = builder.compileNoteScript(
@@ -61,21 +60,19 @@ export async function compileWithdrawTransaction({
   // Note should only contain the offered asset
   const noteAssets = new NoteAssets([]);
   const noteTag = noteType === NoteType.Private
-    ? NoteTag.forLocalUseCase(0, 0)
-    : NoteTag.fromAccountId(poolAccountId);
+    ? new NoteTag(0)
+    : NoteTag.withAccountTarget(poolAccountId);
 
   const metadata = new NoteMetadata(
     userAccountId,
     noteType,
     noteTag,
-    NoteExecutionHint.always(),
-    new Felt(BigInt(0)), // aux
   );
 
   const deadline = Date.now() + 120_000; // 2 min from now
 
   // Use the AccountId for p2id tag
-  const p2idTag = NoteTag.fromAccountId(userAccountId).asU32();
+  const p2idTag = NoteTag.withAccountTarget(userAccountId).asU32();
 
   // Following the pattern: [asset_id_prefix, asset_id_suffix, 0, min_amount_out]
   const inputs = new NoteInputs(
@@ -104,7 +101,7 @@ export async function compileWithdrawTransaction({
     .withOwnOutputNotes(new MidenArrays.OutputNoteArray([OutputNote.full(note)]))
     .build();
 
-  const tx = Transaction.createCustomTransaction(
+  const tx = new CustomTransaction(
     accountIdToBech32(userAccountId),
     accountIdToBech32(poolAccountId),
     transactionRequest,

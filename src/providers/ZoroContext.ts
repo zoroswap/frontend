@@ -1,11 +1,12 @@
 import type { PoolInfo } from '@/hooks/usePoolsInfo';
-import type { Account, AccountId, ConsumableNoteRecord, WebClient } from '@demox-labs/miden-sdk';
+import type { Account, AccountId, ConsumableNoteRecord, Note, RpcClient, WebClient } from '@miden-sdk/miden-sdk';
 import { createContext } from 'react';
 import type { TokenConfig } from './ZoroProvider';
 
 type ZoroProviderState = {
   poolAccountId?: AccountId;
   client?: WebClient;
+  rpcClient?: RpcClient;
   liquidity_pools: PoolInfo[];
   accountId?: AccountId;
   tokens: Record<string, TokenConfig>;
@@ -14,7 +15,7 @@ type ZoroProviderState = {
   getAccount: (accountId: AccountId) => Promise<Account | undefined>;
   getBalance: (accountId: AccountId, faucetId: AccountId) => Promise<bigint>;
   getConsumableNotes: (accountId: AccountId) => Promise<ConsumableNoteRecord[]>;
-  consumeNotes: (accountId: AccountId, noteIds: string[]) => Promise<string>;
+  consumeNotes: (accountId: AccountId, notes: Note[]) => Promise<string>;
 
   // Notes tracking state (for Para wallet)
   pendingNotesCount: number;
