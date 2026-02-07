@@ -42,7 +42,7 @@ export const useWithdraw = () => {
         syncState,
         noteType,
       });
-      const txId = await requestTransaction(tx);
+      const txId = await requestTransaction({ type: 'Custom', payload: tx });
       await syncState();
 
       if (noteType === NoteType.Private) {
