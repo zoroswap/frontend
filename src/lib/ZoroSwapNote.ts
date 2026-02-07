@@ -49,7 +49,7 @@ export async function compileSwapTransaction({
 }: Omit<SwapParams, 'syncState'>) {
   // Note: syncState should be called by the caller before invoking this function
   const builder = client.createCodeBuilder();
-  const pool_script = builder.buildLibrary('zoro::zoropool', zoropool);
+  const pool_script = builder.buildLibrary('zoroswap::zoropool', zoropool);
   builder.linkDynamicLibrary(pool_script);
   const script = builder.compileNoteScript(ZOROSWAP_SCRIPT);
   const noteType = NoteType.Public;

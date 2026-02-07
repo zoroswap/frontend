@@ -17,7 +17,6 @@ export function useClaimNotes() {
 
   const claimNotes = useCallback(async () => {
     if (walletType !== 'para' || !accountId) {
-      console.log('useClaimNotes: missing requirements', { walletType, hasAccountId: !!accountId });
       return { claimed: 0 };
     }
 
@@ -29,8 +28,6 @@ export function useClaimNotes() {
       await syncState();
       const notes = await getConsumableNotes(accountId);
 
-      console.log('useClaimNotes: found', notes.length, 'consumable notes');
-
       if (notes.length === 0) {
         setClaiming(false);
         return { claimed: 0 };
@@ -39,12 +36,8 @@ export function useClaimNotes() {
       // Convert consumable note records to Note objects
       const noteObjects = notes.map((n) => n.inputNoteRecord().toNote());
 
-      console.log('useClaimNotes: consuming', noteObjects.length, 'notes');
-
       // Consume the notes (locking handled internally)
-      const txHash = await consumeNotes(accountId, noteObjects);
-
-      console.log('useClaimNotes: transaction submitted', txHash);
+      await consumeNotes(accountId, noteObjects);
 
       // Refresh pending notes count
       await refreshPendingNotes();
