@@ -241,7 +241,8 @@ function Swap() {
   // Handle order status updates, show toast on failure
   useEffect(() => {
     if (noteId && orderStatus[noteId]?.status === 'failed') {
-      toast.error('Swap order failed');
+      const reason = orderStatus[noteId]?.details?.reason;
+      toast.error(reason || 'Swap order failed');
     }
   }, [noteId, orderStatus]);
 
@@ -476,6 +477,7 @@ function Swap() {
             buyAmount: rawBuy,
           }}
           orderStatus={noteId ? orderStatus[noteId]?.status : undefined}
+          orderReason={noteId ? orderStatus[noteId]?.details?.reason : undefined}
           title='Swap order'
         />
       )}

@@ -127,6 +127,9 @@ const LiquidityPoolsTable = () => {
           orderStatus={txResult?.noteId
             ? orderStatus[txResult.noteId]?.status
             : undefined}
+          orderReason={txResult?.noteId
+            ? orderStatus[txResult.noteId]?.details?.reason
+            : undefined}
         />
       )}
     </div>

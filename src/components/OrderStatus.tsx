@@ -38,6 +38,7 @@ interface OrderStatusProps {
   readonly swapDetails?: SwapDetails;
   readonly lpDetails?: LpDetails;
   readonly orderStatus?: OrderStatus;
+  readonly orderReason?: string;
   readonly title: string;
 }
 
@@ -98,6 +99,7 @@ export function OrderStatus({
   swapDetails,
   lpDetails,
   orderStatus,
+  orderReason,
   title,
 }: OrderStatusProps) {
   const [copiedText, setCopiedText] = useState<boolean>(false);
@@ -187,6 +189,11 @@ export function OrderStatus({
               {orderStatus === 'executed' && (
                 <p className='text-xs text-center mt-1 text-green-600 dark:text-green-400'>
                   Your order has been completed successfully!
+                </p>
+              )}
+              {(orderStatus === 'failed' || orderStatus === 'expired') && orderReason && (
+                <p className='text-xs text-center mt-1 text-red-600 dark:text-red-400'>
+                  {orderReason}
                 </p>
               )}
               {orderStatus === 'matching' && (

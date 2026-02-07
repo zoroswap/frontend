@@ -22,6 +22,7 @@ export interface OrderUpdateDetails {
   amount_out?: number;
   asset_in_faucet: string;
   asset_out_faucet: string;
+  reason?: string;
 }
 
 export type ServerMessage =
