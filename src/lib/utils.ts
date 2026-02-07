@@ -64,10 +64,12 @@ export const bech32ToAccountId = (bech32str?: string) => {
 };
 
 export const generateRandomSerialNumber = () => {
+  const values = new Uint32Array(4);
+  crypto.getRandomValues(values);
   return Word.newFromFelts([
-    new Felt(BigInt(Math.floor(Math.random() * 0x1_0000_0000))),
-    new Felt(BigInt(Math.floor(Math.random() * 0x1_0000_0000))),
-    new Felt(BigInt(Math.floor(Math.random() * 0x1_0000_0000))),
-    new Felt(BigInt(Math.floor(Math.random() * 0x1_0000_0000))),
+    new Felt(BigInt(values[0])),
+    new Felt(BigInt(values[1])),
+    new Felt(BigInt(values[2])),
+    new Felt(BigInt(values[3])),
   ]);
 };
