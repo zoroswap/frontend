@@ -70,9 +70,19 @@ export const API: ApiConfig = {
 // UI Configuration
 export const DEFAULT_SLIPPAGE = getNumericEnvVar('VITE_DEFAULT_SLIPPAGE', 0.5);
 
-export const NETWORK_ID = import.meta.env.VITE_NETWORK_ID === 'mainnet'
-  ? NetworkId.mainnet()
-  : NetworkId.testnet();
+/** Create a fresh NetworkId matching the configured network (toBech32 consumes the NetworkId) */
+export const createNetworkId = (): NetworkId => {
+  switch (import.meta.env.VITE_NETWORK_ID) {
+    case 'mainnet':
+      return NetworkId.mainnet();
+    case 'devnet':
+      return NetworkId.devnet();
+    case 'localhost':
+      return NetworkId.testnet();
+    default:
+      return NetworkId.testnet();
+  }
+};
 
 /**
  * Validate all configurations on module load

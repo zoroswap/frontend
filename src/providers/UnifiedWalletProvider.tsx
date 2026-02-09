@@ -1,9 +1,8 @@
 import { clientMutex } from '@/lib/clientMutex';
-import { NETWORK } from '@/lib/config';
+import { createNetworkId, NETWORK } from '@/lib/config';
 import {
   AccountId,
   AccountInterface,
-  NetworkId,
   TransactionRequest as TxRequest,
 } from '@miden-sdk/miden-sdk';
 import { TransactionType, useWallet } from '@demox-labs/miden-wallet-adapter';
@@ -125,9 +124,7 @@ export function UnifiedWalletProvider({ children }: UnifiedWalletProviderProps) 
   useEffect(() => {
     if (paraAccountIdObj && walletType === 'para') {
       try {
-        const networkId = NETWORK.rpcEndpoint.includes('testnet')
-          ? NetworkId.testnet()
-          : NetworkId.mainnet();
+        const networkId = createNetworkId();
         // eslint-disable-next-line react-hooks/set-state-in-effect
         setParaAddress(
           paraAccountIdObj.toBech32(networkId, AccountInterface.BasicWallet),
