@@ -20,7 +20,6 @@ const ERR_WITHDRAW_MIN_ASSET_OUT_NOT_MET="WITHDRAW min asset out not met"
 # =================================================================================================
 
 const PUBLIC_NOTE=1
-const EXECUTION_HINT_ALWAYS=1
 
 # MEMORY
 # =================================================================================================
@@ -134,7 +133,8 @@ proc build_p2id_recipient_hash
     # => [SERIAL_SCRIPT_HASH]
 
     # Compute inputs commitment: hash_elements([suffix, prefix])
-    # Must match Rust NoteInputs::new(vec![suffix, prefix]).commitment()
+    # Must match build_p2id_recipient() from miden_standards which internally
+    # computes NoteInputs::new(vec![suffix, prefix]).commitment()
     push.0.0
     mem_load.CREATOR_ID_PREFIX mem_load.CREATOR_ID_SUFFIX
     # => [suffix, prefix, 0, 0, SERIAL_SCRIPT_HASH]
