@@ -14,7 +14,7 @@ export const useLPBalances = ({ tokens }: { tokens?: TokenConfig[] }) => {
     const storage = fetched.account()?.storage();
     for (const token of tokens) {
       const lp = storage?.getMapItem(
-        "zoro::user_deposits",
+        "zoroswap::user_deposits",
         Word.newFromFelts([
           new Felt(accountId.suffix().asInt()),
           new Felt(accountId.prefix().asInt()),

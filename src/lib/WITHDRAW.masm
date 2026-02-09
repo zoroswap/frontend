@@ -3,7 +3,7 @@ use miden::protocol::output_note
 use miden::core::crypto::hashes::rpo256
 use miden::core::sys
 
-use zoro::zoropool
+use zoroswap::zoropool
 
 
 # ERRORS

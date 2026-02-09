@@ -40,14 +40,14 @@ const HELPER_SLOT_S_LOC = 0x00B1
 #! pool state: [liabilities, reserve, reserve_with_slippage, 0]
 #! fees: [swap_fee, backstop_fee, protocol_fee, 0 ]
 #! curve: c, beta
-const ASSETS_MAPPING_SLOT = word("zoro::assets")
-const POOL_STATE_MAPPING_SLOT = word("zoro::pool_state")
+const ASSETS_MAPPING_SLOT = word("zoroswap::assets")
+const POOL_STATE_MAPPING_SLOT = word("zoroswap::pool_state")
 
-const USER_DEPOSITS_MAPPING_SLOT = word("zoro::user_deposits")
+const USER_DEPOSITS_MAPPING_SLOT = word("zoroswap::user_deposits")
 
 
-const POOL_CURVE_MAPPING_SLOT = word("zoro::pool_curve")
-const POOL_FEES_MAPPING_SLOT = word("zoro::fees")
+const POOL_CURVE_MAPPING_SLOT = word("zoroswap::pool_curve")
+const POOL_FEES_MAPPING_SLOT = word("zoroswap::fees")
 
 
 #! INDEXES

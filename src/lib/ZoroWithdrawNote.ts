@@ -50,7 +50,7 @@ export async function compileWithdrawTransaction({
 }: WithdrawParams) {
   await syncState();
   const builder = client.createCodeBuilder();
-  const pool_script = builder.buildLibrary('zoro::zoropool', zoropool);
+  const pool_script = builder.buildLibrary('zoroswap::zoropool', zoropool);
   builder.linkDynamicLibrary(pool_script);
   const script = builder.compileNoteScript(
     WITHDRAW_SCRIPT,
