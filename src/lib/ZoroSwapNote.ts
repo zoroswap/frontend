@@ -6,7 +6,6 @@ import {
   MidenArrays,
   Note,
   NoteAssets,
-  NoteExecutionHint,
   NoteInputs,
   NoteMetadata,
   NoteRecipient,
@@ -15,7 +14,7 @@ import {
   OutputNote,
   TransactionRequestBuilder,
   WebClient,
-} from '@demox-labs/miden-sdk';
+} from '@miden-sdk/miden-sdk';
 import { CustomTransaction } from '@demox-labs/miden-wallet-adapter';
 
 import type { TokenConfig } from '@/providers/ZoroProvider';
@@ -49,7 +48,7 @@ export async function compileSwapTransaction({
   client,
 }: Omit<SwapParams, 'syncState'>) {
   // Note: syncState should be called by the caller before invoking this function
-  const builder = client.createScriptBuilder();
+  const builder = client.createCodeBuilder();
   const pool_script = builder.buildLibrary('zoro::zoropool', zoropool);
   builder.linkDynamicLibrary(pool_script);
   const script = builder.compileNoteScript(ZOROSWAP_SCRIPT);
@@ -58,20 +57,18 @@ export async function compileSwapTransaction({
 
   // Note should only contain the offered asset
   const noteAssets = new NoteAssets([offeredAsset]);
-  const noteTag = NoteTag.fromAccountId(poolAccountId);
+  const noteTag = NoteTag.withAccountTarget(poolAccountId);
 
   const metadata = new NoteMetadata(
     userAccountId,
     noteType,
     noteTag,
-    NoteExecutionHint.always(),
-    new Felt(BigInt(0)), // aux
   );
 
   const deadline = Date.now() + 120_000; // 2 min from now
 
   // Use the AccountId for p2id tag
-  const p2idTag = NoteTag.fromAccountId(userAccountId).asU32();
+  const p2idTag = NoteTag.withAccountTarget(userAccountId).asU32();
 
   // Following the pattern: [asset_id_prefix, asset_id_suffix, 0, min_amount_out]
   const inputs = new NoteInputs(

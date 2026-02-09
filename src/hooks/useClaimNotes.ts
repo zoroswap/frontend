@@ -36,13 +36,13 @@ export function useClaimNotes() {
         return { claimed: 0 };
       }
 
-      // Get note IDs as strings
-      const noteIds = notes.map((n) => n.inputNoteRecord().id().toString());
+      // Convert consumable note records to Note objects
+      const noteObjects = notes.map((n) => n.inputNoteRecord().toNote());
 
-      console.log('useClaimNotes: consuming notes', noteIds);
+      console.log('useClaimNotes: consuming', noteObjects.length, 'notes');
 
       // Consume the notes (locking handled internally)
-      const txHash = await consumeNotes(accountId, noteIds);
+      const txHash = await consumeNotes(accountId, noteObjects);
 
       console.log('useClaimNotes: transaction submitted', txHash);
 

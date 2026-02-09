@@ -1,4 +1,4 @@
-import { NetworkId } from '@demox-labs/miden-sdk';
+import { NetworkId } from '@miden-sdk/miden-sdk';
 
 export interface NetworkConfig {
   readonly rpcEndpoint: string;
@@ -71,8 +71,8 @@ export const API: ApiConfig = {
 export const DEFAULT_SLIPPAGE = getNumericEnvVar('VITE_DEFAULT_SLIPPAGE', 0.5);
 
 export const NETWORK_ID = import.meta.env.VITE_NETWORK_ID === 'mainnet'
-  ? NetworkId.Mainnet
-  : NetworkId.Testnet;
+  ? NetworkId.mainnet()
+  : NetworkId.testnet();
 
 /**
  * Validate all configurations on module load
