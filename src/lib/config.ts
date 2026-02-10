@@ -78,6 +78,7 @@ export const createNetworkId = (): NetworkId => {
     case 'devnet':
       return NetworkId.devnet();
     case 'localhost':
+      // No NetworkId.localhost() exists, we use the next best one
       return NetworkId.testnet();
     default:
       return NetworkId.testnet();
