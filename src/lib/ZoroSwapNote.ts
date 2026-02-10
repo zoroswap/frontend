@@ -81,9 +81,9 @@ export async function compileSwapTransaction({
       new Felt(BigInt(p2idTag)),
       new Felt(BigInt(0)),
       new Felt(BigInt(0)),
-      new Felt(BigInt(0)),
-      new Felt(BigInt(0)),
-      userAccountId.suffix(),
+      userAccountId.suffix(),   // beneficiary
+      userAccountId.prefix(),
+      userAccountId.suffix(),   // creator
       userAccountId.prefix(),
     ]),
   );
