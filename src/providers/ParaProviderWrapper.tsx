@@ -1,5 +1,5 @@
-import { Environment, ParaProvider } from '@getpara/react-sdk';
-import '@getpara/react-sdk/styles.css';
+import { Environment, ParaProvider } from '@getpara/react-sdk-lite';
+import '@getpara/react-sdk-lite/styles.css';
 import type { ReactNode } from 'react';
 
 interface ParaProviderWrapperProps {
@@ -15,6 +15,7 @@ export function ParaProviderWrapper({ children }: ParaProviderWrapperProps) {
           apiKey: import.meta.env.VITE_PARA_API_KEY,
         }}
         config={{ appName: 'ZoroSwap' }}
+        externalWalletConfig={{ wallets: [] }}
         paraModalConfig={{
           logo: "https://app.zoroswap.com/zoro-logo-full.svg",
           theme: {
@@ -24,7 +25,7 @@ export function ParaProviderWrapper({ children }: ParaProviderWrapperProps) {
               "mode": 'light',
           },
           oAuthMethods: ["GOOGLE","TWITTER","TELEGRAM"],
-          authLayout: ["AUTH:FULL","EXTERNAL:FULL"],
+          authLayout: ["AUTH:FULL"],
           recoverySecretStepEnabled: true,
         }}
       >
