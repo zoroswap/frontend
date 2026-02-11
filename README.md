@@ -28,7 +28,7 @@ npm run dev
 To develop against a local Miden node (default port `57291`), set the RPC endpoint
 to the Vite dev server's origin in your `.env`:
 
-```
+```bash
 VITE_RPC_ENDPOINT=http://localhost:5173
 VITE_NETWORK_ID=localhost
 ```
