@@ -1,4 +1,5 @@
 import { useUnifiedWallet } from '@/hooks/useUnifiedWallet';
+import { clientMutex } from '@/lib/clientMutex';
 import { API } from '@/lib/config';
 import { compileWithdrawTransaction } from '@/lib/ZoroWithdrawNote';
 import { ZoroContext } from '@/providers/ZoroContext';
@@ -32,16 +33,19 @@ export const useWithdraw = () => {
     setError('');
     setIsLoading(true);
     try {
-      const { tx, noteId, note } = await compileWithdrawTransaction({
-        amount,
-        poolAccountId,
-        token,
-        minAmountOut: minAmountOut,
-        userAccountId: accountId,
-        client,
-        syncState,
-        noteType,
-      });
+      await syncState();
+
+      const { tx, noteId, note } = await clientMutex.runExclusive(() =>
+        compileWithdrawTransaction({
+          amount,
+          poolAccountId,
+          token,
+          minAmountOut: minAmountOut,
+          userAccountId: accountId,
+          client,
+          noteType,
+        }),
+      );
       const txId = await requestTransaction({ type: 'Custom', payload: tx });
       await syncState();
 

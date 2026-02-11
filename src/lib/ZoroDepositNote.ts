@@ -29,7 +29,6 @@ export interface DepositParams {
   minAmountOut: bigint;
   userAccountId: AccountId;
   client: WebClient;
-  syncState: () => Promise<void>;
   noteType: NoteType;
 }
 
@@ -45,10 +44,8 @@ export async function compileDepositTransaction({
   minAmountOut,
   userAccountId,
   client,
-  syncState,
   noteType,
 }: DepositParams) {
-  await syncState();
   const builder = client.createCodeBuilder();
   const pool_script = builder.buildLibrary('zoroswap::zoropool', zoropool);
   builder.linkDynamicLibrary(pool_script);
