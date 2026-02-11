@@ -15,6 +15,7 @@
     "@getpara/react-sdk-lite": "^2.2.0",
     "@miden-sdk/miden-para": "^0.13.0",
     "@miden-sdk/miden-sdk": "^0.13.0",
+    "@miden-sdk/react": "^0.13.2",
     "@miden-sdk/use-miden-para-react": "^0.13.0",
     "@radix-ui/react-dropdown-menu": "^2.1.16",
     "@radix-ui/react-slot": "^1.2.4",
