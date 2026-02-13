@@ -1,8 +1,9 @@
 import { type PoolInfo, usePoolsInfo } from '@/hooks/usePoolsInfo';
 import { useUnifiedWallet } from '@/hooks/useUnifiedWallet';
+import { NETWORK } from '@/lib/config';
 import { clientMutex } from '@/lib/clientMutex';
 import { bech32ToAccountId, instantiateClient } from '@/lib/utils';
-import { AccountId, Address, WebClient } from '@demox-labs/miden-sdk';
+import { AccountId, Address, Endpoint, Note, RpcClient, WebClient } from '@miden-sdk/miden-sdk';
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParaClient } from './ParaClientContext';
 import { ZoroContext } from './ZoroContext';
@@ -22,9 +23,17 @@ export function ZoroProvider({
     [address, unifiedAccountId],
   );
   const [midenClient, setMidenClient] = useState<WebClient | undefined>(undefined);
+  const rpcClientRef = useRef<RpcClient | null>(null);
 
   // For Para users, use paraClient; for Miden users, create our own client
   const client = walletType === 'para' ? paraClient : midenClient;
+
+  const rpcClient = useMemo(() => {
+    if (!rpcClientRef.current) {
+      rpcClientRef.current = new RpcClient(new Endpoint(NETWORK.rpcEndpoint));
+    }
+    return rpcClientRef.current;
+  }, []);
 
   // Only create a client for Miden wallet users
   useEffect(() => {
@@ -34,9 +43,7 @@ export function ZoroProvider({
     (async () => {
       const c = await instantiateClient({
         accountsToImport: [
-          ...(accountId
-            ? [accountId, bech32ToAccountId(poolsInfo.poolAccountId) as AccountId]
-            : []),
+          ...(accountId ? [accountId] : []),
         ],
       });
       setMidenClient(c);
@@ -101,7 +108,7 @@ export function ZoroProvider({
     });
   }, [client, withClientLock, throttledSync]);
 
-  const consumeNotes = useCallback(async (accountId: AccountId, noteIds: string[]) => {
+  const consumeNotes = useCallback(async (accountId: AccountId, notes: Note[]) => {
     if (!client) {
       throw new Error('Client not initialized');
     }
@@ -110,7 +117,7 @@ export function ZoroProvider({
       if (!account) {
         throw new Error('Account not found');
       }
-      const consumeTxRequest = client.newConsumeTransactionRequest(noteIds);
+      const consumeTxRequest = client.newConsumeTransactionRequest(notes);
       const txHash = await client.submitNewTransaction(account.id(), consumeTxRequest);
       return txHash.toHex();
     });
@@ -182,13 +189,14 @@ export function ZoroProvider({
       getConsumableNotes,
       consumeNotes,
       client,
+      rpcClient,
       // Notes tracking
       pendingNotesCount,
       isExpectingNotes,
       startExpectingNotes,
       refreshPendingNotes,
     };
-  }, [accountId, poolsInfo, isPoolsInfoFetched, syncState, getAccount, getBalance, getConsumableNotes, consumeNotes, client, pendingNotesCount, isExpectingNotes, startExpectingNotes, refreshPendingNotes]);
+  }, [accountId, poolsInfo, isPoolsInfoFetched, syncState, getAccount, getBalance, getConsumableNotes, consumeNotes, client, rpcClient, pendingNotesCount, isExpectingNotes, startExpectingNotes, refreshPendingNotes]);
 
   return (
     <ZoroContext.Provider value={{ ...value }}>

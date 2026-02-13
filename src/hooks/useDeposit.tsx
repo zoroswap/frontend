@@ -1,9 +1,10 @@
 import { useUnifiedWallet } from '@/hooks/useUnifiedWallet';
+import { clientMutex } from '@/lib/clientMutex';
 import { API } from '@/lib/config';
 import { compileDepositTransaction } from '@/lib/ZoroDepositNote';
 import { ZoroContext } from '@/providers/ZoroContext';
 import { type TokenConfig } from '@/providers/ZoroProvider';
-import { NoteType } from '@demox-labs/miden-sdk';
+import { NoteType } from '@miden-sdk/miden-sdk';
 import { useCallback, useContext, useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
 
@@ -32,17 +33,20 @@ export const useDeposit = () => {
     setError('');
     setIsLoading(true);
     try {
-      const { tx, noteId, note } = await compileDepositTransaction({
-        amount,
-        poolAccountId,
-        token,
-        minAmountOut: minAmountOut,
-        userAccountId: accountId,
-        client,
-        syncState,
-        noteType,
-      });
-      const txId = await requestTransaction(tx);
+      await syncState();
+
+      const { tx, noteId, note } = await clientMutex.runExclusive(() =>
+        compileDepositTransaction({
+          amount,
+          poolAccountId,
+          token,
+          minAmountOut: minAmountOut,
+          userAccountId: accountId,
+          client,
+          noteType,
+        }),
+      );
+      const txId = await requestTransaction({ type: 'Custom', payload: tx });
       await syncState();
       if (noteType === NoteType.Private) {
         const serialized = btoa(

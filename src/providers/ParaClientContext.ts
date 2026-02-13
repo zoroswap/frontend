@@ -1,4 +1,4 @@
-import type { WebClient } from '@demox-labs/miden-sdk';
+import type { WebClient } from '@miden-sdk/miden-sdk';
 import { createContext, useContext } from 'react';
 
 /**

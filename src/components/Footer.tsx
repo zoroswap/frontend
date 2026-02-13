@@ -81,9 +81,18 @@ export function Footer() {
           >
             About us
           </a>
+          <a
+            href='https://zoroswap.com/developer-integration'
+            className='text-primary hover:text-foreground transition-colors'
+            title='Developer integration for ZoroSwap'
+            target='_blank'
+            rel='noopener noreferrer'
+          >
+            Developers
+          </a>
         </div>
         <div className='opacity-25 absolute right-4 text-xs sm:block hidden'>
-          testnet v.12
+          testnet 0.13
         </div>
       </div>
     </footer>

@@ -7,7 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { UnifiedWalletButton } from '@/components/UnifiedWalletButton';
 import { useClaimNotes } from '@/hooks/useClaimNotes';
 import { useUnifiedWallet } from '@/hooks/useUnifiedWallet';
-import { accountIdToBech32 } from '@/lib/utils';
+
 import { ZoroContext } from '@/providers/ZoroContext';
 import { type FaucetMintResult, mintFromFaucet } from '@/services/faucet';
 import { Loader2 } from 'lucide-react';
@@ -24,12 +24,12 @@ interface MintStatus {
 type TokenMintStatuses = Record<string, MintStatus>;
 
 function Faucet() {
-  const { connected } = useUnifiedWallet();
+  const { connected, address } = useUnifiedWallet();
   const { refreshPendingNotes } = useClaimNotes();
   const [mintStatuses, setMintStatuses] = useState<TokenMintStatuses>(
     {} as TokenMintStatuses,
   );
-  const { tokens, tokensLoading, accountId, startExpectingNotes } = useContext(ZoroContext);
+  const { tokens, tokensLoading, startExpectingNotes } = useContext(ZoroContext);
   const updateMintStatus = useCallback((
     tokenSymbol: string,
     updates: Partial<MintStatus>,
@@ -59,14 +59,13 @@ function Faucet() {
   }, [tokens, mintStatuses, setMintStatuses, updateMintStatus]);
 
   const requestTokens = useCallback(async (tokenFaucetId: string): Promise<void> => {
-    if (!connected || !accountId) {
+    if (!connected || !address) {
       return;
     }
     const token = tokens[tokenFaucetId];
-    if (!token || !token.faucetId) {
+    if (!token || !token.faucetIdBech32) {
       return;
     }
-    const faucetId = token.faucetId;
     updateMintStatus(tokenFaucetId, {
       isLoading: true,
       lastAttempt: Date.now(),
@@ -76,8 +75,8 @@ function Faucet() {
 
     try {
       const result = await mintFromFaucet(
-        accountIdToBech32(accountId),
-        accountIdToBech32(faucetId),
+        address.split('_')[0],
+        token.faucetIdBech32,
       );
       updateMintStatus(tokenFaucetId, {
         isLoading: false,
@@ -119,7 +118,7 @@ function Faucet() {
         });
       }, 5100);
     }
-  }, [connected, accountId, updateMintStatus, tokens, refreshPendingNotes, startExpectingNotes]);
+  }, [connected, address, updateMintStatus, tokens, refreshPendingNotes, startExpectingNotes]);
 
   const getButtonText = (tokenSymbol: string, status: MintStatus): string => {
     return status.isLoading ? `Minting ${tokenSymbol}...` : `Request ${tokenSymbol}`;
@@ -177,7 +176,7 @@ function Faucet() {
                 : null;
 
               return (
-                <Fragment key={token.faucetId.toString()}>
+                <Fragment key={token.faucetIdBech32}>
                   {lineBetween}
                   <Card
                     key={token.symbol}
@@ -190,10 +189,10 @@ function Faucet() {
                       </h3>
                       <div className='text-xs text-muted-foreground overflow-hidden'>
                         <span className='hidden sm:inline'>
-                          {accountIdToBech32(token.faucetId)}
+                          {token.faucetIdBech32}
                         </span>
                         <span className='sm:hidden break-all'>
-                          {accountIdToBech32(token.faucetId)}
+                          {token.faucetIdBech32}
                         </span>
                       </div>
                     </CardContent>

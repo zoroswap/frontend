@@ -23,6 +23,20 @@ npm i
 npm run dev
 ```
 
+### Local Development
+
+To develop against a local Miden node (default port `57291`), set the RPC endpoint
+to the Vite dev server's origin in your `.env`:
+
+```bash
+VITE_RPC_ENDPOINT=http://localhost:5173
+VITE_NETWORK_ID=localhost
+```
+
+This keeps gRPC-web requests same-origin, avoiding CORS issues. A dev-server
+middleware in `vite.config.ts` automatically proxies these requests to
+`localhost:57291`.
+
 ## Resetting the MidenClientDB
 
 The Miden webclient stores account and note data in the browser. To clear the account and node data in the browser, paste this code snippet into the browser console:
