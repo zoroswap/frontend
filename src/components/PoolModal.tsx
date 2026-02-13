@@ -123,7 +123,11 @@ const PoolModal = (
     if (token == null) return;
     await deposit({
       amount: rawValue,
-      minAmountOut: BigInt(0), // rawValue,
+
+      // TODO: This needs to be the correct LP amount, not token amount
+      // BigInt(rawValue * BigInt(1e8 - 1e6 * slippage) / BigInt(1e8))
+      // find a way to simulate it properly
+      minAmountOut: BigInt(1),
       token,
       noteType: NoteType.Public,
     });
@@ -131,9 +135,13 @@ const PoolModal = (
 
   const writeWithdraw = useCallback(async () => {
     if (token == null) return;
+
     await withdraw({
       amount: rawValue,
-      minAmountOut: rawValue,
+      // TODO: This needs to be the correct LP amount, not token amount
+      // BigInt(rawValue * BigInt(1e8 - 1e6 * slippage) / BigInt(1e8))
+      // find a way to simulate it properly
+      minAmountOut: BigInt(1),
       token,
       noteType: NoteType.Public,
     });

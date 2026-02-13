@@ -1,3 +1,4 @@
+import { CustomTransaction } from '@demox-labs/miden-wallet-adapter';
 import {
   AccountId,
   Felt,
@@ -15,12 +16,11 @@ import {
   TransactionRequestBuilder,
   WebClient,
 } from '@miden-sdk/miden-sdk';
-import { CustomTransaction } from '@demox-labs/miden-wallet-adapter';
 
 import type { TokenConfig } from '@/providers/ZoroProvider';
-import zoropool from './zoropool.masm?raw';
 import { accountIdToBech32, generateRandomSerialNumber } from './utils';
 import WITHDRAW_SCRIPT from './WITHDRAW.masm?raw';
+import zoropool from './zoropool.masm?raw';
 
 export interface WithdrawParams {
   poolAccountId: AccountId;
@@ -52,7 +52,8 @@ export async function compileWithdrawTransaction({
   const script = builder.compileNoteScript(
     WITHDRAW_SCRIPT,
   );
-  const requestedAsset = new FungibleAsset(token.faucetId, amount).intoWord().toFelts();
+  const requestedAsset = new FungibleAsset(token.faucetId, minAmountOut).intoWord()
+    .toFelts();
 
   // Note should only contain the offered asset
   const noteAssets = new NoteAssets([]);
@@ -76,7 +77,7 @@ export async function compileWithdrawTransaction({
     new FeltArray([
       ...requestedAsset,
       new Felt(BigInt(0)),
-      new Felt(minAmountOut),
+      new Felt(amount),
       new Felt(BigInt(deadline)),
       new Felt(BigInt(p2idTag)),
       new Felt(BigInt(0)),

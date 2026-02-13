@@ -1,3 +1,4 @@
+import { CustomTransaction } from '@demox-labs/miden-wallet-adapter';
 import {
   AccountId,
   Felt,
@@ -15,12 +16,11 @@ import {
   TransactionRequestBuilder,
   WebClient,
 } from '@miden-sdk/miden-sdk';
-import { CustomTransaction } from '@demox-labs/miden-wallet-adapter';
 
 import type { TokenConfig } from '@/providers/ZoroProvider';
 import DEPOSIT_SCRIPT from './DEPOSIT.masm?raw';
-import zoropool from './zoropool.masm?raw';
 import { accountIdToBech32, generateRandomSerialNumber } from './utils';
+import zoropool from './zoropool.masm?raw';
 
 export interface DepositParams {
   poolAccountId: AccountId;
@@ -71,13 +71,12 @@ export async function compileDepositTransaction({
   // Use the AccountId for p2id tag
   const p2idTag = NoteTag.withAccountTarget(userAccountId).asU32();
 
-  // Following the pattern: [asset_id_prefix, asset_id_suffix, 0, min_amount_out]
   const inputs = new NoteInputs(
     new FeltArray([
-      new Felt(BigInt(0)),
       new Felt(minAmountOut),
       new Felt(BigInt(deadline)),
       new Felt(BigInt(p2idTag)),
+      new Felt(BigInt(0)),
       new Felt(BigInt(0)),
       new Felt(BigInt(0)),
       userAccountId.suffix(),
