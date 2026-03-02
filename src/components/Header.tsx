@@ -1,43 +1,45 @@
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { ModeToggle } from './ModeToggle';
 import { UnifiedWalletButton } from './UnifiedWalletButton';
 
 export function Header() {
+  const location = useLocation();
+
+  const navLinkClass = (path: string) =>
+    `px-4 py-2 rounded-md text-sm font-medium transition-colors h-10 inline-flex items-center ${
+      location.pathname === path
+        ? 'text-foreground'
+        : 'text-muted-foreground hover:text-foreground'
+    }`;
+
   return (
-    <div className='flex flex-col gap-4 sm:gap-8 sm:flex-row items-center p-4 relative'>
-      <Link to='/'>
-        <h1 className='font-cal-sans text-2xl sm:text-3xl font-bold text-foreground mb-4 sm:mb-0'>
-          <img
-            src='/zoro-logo-full.svg'
-            alt='Zoro logo'
-            title='ZoroSwap | DeFi on Miden'
-            className='h-12 w-12 sm:h-16 sm:w-16'
-          />
-        </h1>
+    <header className='flex flex-wrap items-center justify-between gap-4 px-6 py-4 border-b border-border bg-background'>
+      <Link to='/' className='flex items-center gap-2 shrink-0'>
+        <img
+          src='/zoro-logo-full.svg'
+          alt='Zoro'
+          title='ZoroSwap | DeFi on Miden'
+          className='h-9 w-9'
+        />
+        <span className='font-cal-sans text-xl font-bold text-foreground lowercase'>
+          zoro swap
+        </span>
       </Link>
-      <div className='flex flex-grow text-md items-center ml-4 font-cal-sans'>
-        <Link to='/'>
-          <div className='px-4 opacity-70 hover:opacity-100 h-12 sm:h-16inline-block flex flex-col justify-center'>
-            Swap
-          </div>
+      <nav className='flex items-center gap-1 font-cal-sans'>
+        <Link to='/' className={navLinkClass('/')}>
+          Swap
         </Link>
-        <Link to='/pools'>
-          <span className='px-4 opacity-70 hover:opacity-100 h-12 sm:h-16 inline-block flex flex-col justify-center'>
-            Pools
-          </span>
+        <Link to='/explore' className={navLinkClass('/explore')}>
+          Explore
         </Link>
-        <Link to='/faucet'>
-          <span className='px-4 opacity-70 hover:opacity-100 h-12 sm:h-16 inline-block flex flex-col justify-center'>
-            Faucet
-          </span>
+        <Link to='/pools' className={navLinkClass('/pools')}>
+          Pools
         </Link>
-      </div>
-      <div className='flex items-center gap-4'>
+      </nav>
+      <div className='flex items-center gap-3'>
         <ModeToggle />
-        <div className='top-4'>
-          <UnifiedWalletButton />
-        </div>
+        <UnifiedWalletButton className='bg-muted hover:bg-muted/80 text-foreground rounded-lg px-4 py-2 text-sm font-medium' />
       </div>
-    </div>
+    </header>
   );
 }

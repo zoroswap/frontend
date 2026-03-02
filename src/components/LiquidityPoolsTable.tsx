@@ -1,113 +1,124 @@
-import { useLPBalances } from '@/hooks/useLPBalances';
-import { usePoolsBalances } from '@/hooks/usePoolsBalances';
-import { type PoolInfo, usePoolsInfo } from '@/hooks/usePoolsInfo';
-import { useOrderUpdates } from '@/hooks/useWebSocket';
-import { ModalContext } from '@/providers/ModalContext';
-import { ZoroContext } from '@/providers/ZoroContext';
-import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import type { PoolBalance } from '@/hooks/usePoolsBalances';
+import { type PoolInfo } from '@/hooks/usePoolsInfo';
+import type { TokenConfig } from '@/providers/ZoroProvider';
+import { useMemo, useState } from 'react';
 import LiquidityPoolRow from './LiquidityPoolRow';
-import { type LpDetails, OrderStatus, type TxResult } from './OrderStatus';
-import PoolModal from './PoolModal';
 import { poweredByMiden } from './PoweredByMiden';
 import { Card } from './ui/card';
+import { Input } from './ui/input';
+import { Button } from './ui/button';
+import { Search, Flame, Clock, Star } from 'lucide-react';
 
-const LiquidityPoolsTable = () => {
-  const { data: poolsInfo, refetch: refetchPoolsInfo } = usePoolsInfo();
-  const { data: poolBalances, refetch: refetchPoolBalances } = usePoolsBalances();
-  const modalContext = useContext(ModalContext);
-  const lastShownNoteId = useRef<string | undefined>(undefined);
-  const [txResult, setTxResult] = useState<undefined | TxResult>();
-  const [lpDetails, setLpDetails] = useState<undefined | LpDetails>(undefined);
-  const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
-  const { orderStatus, registerCallback } = useOrderUpdates();
-  const { tokens } = useContext(ZoroContext);
+export interface LiquidityPoolsTableProps {
+  poolsInfo?: { poolAccountId?: string; liquidityPools?: PoolInfo[] } | null;
+  poolBalances?: PoolBalance[] | null;
+  lpBalances: Record<string, bigint>;
+  tokenConfigs?: (TokenConfig | undefined)[];
+  openPoolModal: (pool: PoolInfo) => void;
+}
 
-  const tokenConfigs = useMemo(
-    () => poolsInfo?.liquidityPools?.map(p => tokens[p.faucetIdBech32]),
-    [tokens, poolsInfo?.liquidityPools],
-  );
+const LiquidityPoolsTable = ({
+  poolsInfo,
+  poolBalances,
+  lpBalances,
+  tokenConfigs,
+  openPoolModal,
+}: LiquidityPoolsTableProps) => {
+  const [search, setSearch] = useState('');
+  const [poolFilter, setPoolFilter] = useState<'all' | 'hot' | 'new' | 'stables'>('all');
 
-  const openOrderStatusModal = useCallback((noteId: string) => {
-    lastShownNoteId.current = noteId;
-    setIsSuccessModalOpen(true);
-  }, []);
-
-  const { balances: lpBalances, refetch: refetchLpBalances } = useLPBalances({
-    tokens: tokenConfigs,
-  });
-
-  useEffect(() => {
-    if (txResult?.noteId) {
-      registerCallback(txResult.noteId, status => {
-        if (status === 'executed') {
-          refetchLpBalances();
-          refetchPoolBalances();
-        }
-      });
-    }
-  }, [
-    orderStatus,
-    txResult?.noteId,
-    refetchPoolBalances,
-    refetchLpBalances,
-    registerCallback,
-  ]);
-
-  const openPoolManagementModal = useCallback(
-    (pool: PoolInfo) => {
-      modalContext.openModal(
-        <PoolModal
-          pool={pool}
-          refetchPoolInfo={refetchPoolsInfo}
-          setTxResult={setTxResult}
-          setLpDetails={setLpDetails}
-          onSuccess={openOrderStatusModal}
-          lpBalance={lpBalances[pool.faucetIdBech32]}
-        />,
+  const filteredPools = useMemo(() => {
+    const pools = poolsInfo?.liquidityPools ?? [];
+    let list = pools;
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      list = list.filter(
+        p =>
+          p.name.toLowerCase().includes(q) ||
+          p.symbol.toLowerCase().includes(q),
       );
-    },
-    [modalContext, refetchPoolsInfo, openOrderStatusModal, lpBalances],
-  );
+    }
+    if (poolFilter === 'stables') {
+      list = list.filter(p => /USDC|USDT|DAI|BUSD/i.test(p.symbol));
+    }
+    return list;
+  }, [poolsInfo?.liquidityPools, search, poolFilter]);
 
   return (
-    <div className='w-full max-w-[920px]'>
-      <Card>
-        <h1 className='sr-only'>Liquidity Pools</h1>
-        <div className='relative overflow-x-auto bg-neutral-primary-soft shadow-xs rounded-xl'>
-          <table className='w-full text-sm text-left rtl:text-right text-body rounded-xl text-xs'>
+    <div className='w-full'>
+      <div className='flex flex-wrap items-center gap-3 mb-4'>
+        <div className='relative flex-1 min-w-[200px]'>
+          <Search className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground' />
+          <Input
+            placeholder='Search by token name or pair...'
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className='pl-9 rounded-lg bg-muted/50 border-muted-foreground/20'
+          />
+        </div>
+        <div className='flex gap-2'>
+          <Button
+            variant='outline'
+            size='sm'
+            className={`rounded-lg ${poolFilter === 'hot' ? 'bg-primary/10 border-primary text-primary' : 'bg-muted/50 border-muted-foreground/20'}`}
+            onClick={() => setPoolFilter('hot')}
+          >
+            <Flame className='h-4 w-4 mr-1' />
+            Hot
+          </Button>
+          <Button
+            variant='outline'
+            size='sm'
+            className={`rounded-lg ${poolFilter === 'new' ? 'bg-primary/10 border-primary text-primary' : 'bg-muted/50 border-muted-foreground/20'}`}
+            onClick={() => setPoolFilter('new')}
+          >
+            <Clock className='h-4 w-4 mr-1' />
+            New
+          </Button>
+          <Button
+            variant='outline'
+            size='sm'
+            className={`rounded-lg ${poolFilter === 'stables' ? 'bg-primary/10 border-primary text-primary' : 'bg-muted/50 border-muted-foreground/20'}`}
+            onClick={() => setPoolFilter('stables')}
+          >
+            <Star className='h-4 w-4 mr-1' />
+            Stables
+          </Button>
+        </div>
+      </div>
+
+      <Card className='rounded-xl border overflow-hidden'>
+        <div className='relative overflow-x-auto'>
+          <table className='w-full text-sm text-left text-foreground'>
             <thead>
-              <tr>
-                <th></th>
-                <th>Apr(24h / 7d)</th>
-                <th>TVL / Cap</th>
-                <th>Saturation</th>
-                <th>My position</th>
-                <th className='sticky'></th>
+              <tr className='border-b border-border text-muted-foreground uppercase tracking-wide text-xs'>
+                <th className='py-3 px-4 font-medium'>Pool</th>
+                <th className='py-3 px-4 font-medium'>TVL ↑</th>
+                <th className='py-3 px-4 font-medium'>APR ↑</th>
+                <th className='py-3 px-4 font-medium'>1D VOL ↑</th>
+                <th className='py-3 px-4 font-medium'>7D VOL ↑</th>
+                <th className='py-3 px-4 font-medium text-right sticky right-0 bg-card'> </th>
               </tr>
             </thead>
             <tbody>
-              {poolsInfo?.liquidityPools?.map(p => {
-                const balances = poolBalances?.find(b =>
-                  b.faucetIdBech32 == p.faucetIdBech32
-                );
-                const tokenConfig = tokenConfigs?.find(c =>
-                  c.faucetIdBech32 === p.faucetIdBech32
-                );
+              {filteredPools.map(pool => {
+                const balances = poolBalances?.find(b => b.faucetIdBech32 === pool.faucetIdBech32);
+                const tokenConfig = tokenConfigs?.find(c => c?.faucetIdBech32 === pool.faucetIdBech32);
                 return balances
                   ? (
                     <LiquidityPoolRow
+                      key={pool.faucetIdBech32}
                       tokenConfig={tokenConfig}
-                      key={p.faucetIdBech32}
-                      pool={p}
+                      pool={pool}
                       poolBalances={balances}
-                      managePool={openPoolManagementModal}
-                      lpBalance={lpBalances[p.faucetIdBech32]}
+                      managePool={openPoolModal}
+                      lpBalance={lpBalances[pool.faucetIdBech32] ?? BigInt(0)}
+                      variant='addLiquidity'
                     />
                   )
                   : (
-                    <tr key={p.faucetId + '-skeleton'}>
-                      <td>
-                      </td>
+                    <tr key={pool.faucetIdBech32 + '-skeleton'}>
+                      <td colSpan={6} className='py-4' />
                     </tr>
                   );
               })}
@@ -115,20 +126,10 @@ const LiquidityPoolsTable = () => {
           </table>
         </div>
       </Card>
+
       <div className='flex justify-center mt-6'>
         {poweredByMiden}
       </div>
-      {isSuccessModalOpen && (
-        <OrderStatus
-          title={lpDetails?.actionType + ' Order'}
-          onClose={() => setIsSuccessModalOpen(false)}
-          swapResult={txResult}
-          lpDetails={lpDetails}
-          orderStatus={txResult?.noteId
-            ? orderStatus[txResult.noteId]?.status
-            : undefined}
-        />
-      )}
     </div>
   );
 };

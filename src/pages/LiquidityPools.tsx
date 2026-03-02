@@ -1,8 +1,95 @@
 import { Footer } from '@/components/Footer';
 import { Header } from '@/components/Header';
 import LiquidityPoolsTable from '@/components/LiquidityPoolsTable';
+import { PositionCard } from '@/components/PositionCard';
+import { AllDropdown } from '@/components/AllDropdown';
+import { useLPBalances } from '@/hooks/useLPBalances';
+import { usePoolsBalances } from '@/hooks/usePoolsBalances';
+import { type PoolInfo, usePoolsInfo } from '@/hooks/usePoolsInfo';
+import { useOrderUpdates } from '@/hooks/useWebSocket';
+import { ModalContext } from '@/providers/ModalContext';
+import { ZoroContext } from '@/providers/ZoroContext';
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import { OrderStatus, type LpDetails, type TxResult } from '@/components/OrderStatus';
+import PoolModal from '@/components/PoolModal';
+import { Button } from '@/components/ui/button';
 
 function LiquidityPools() {
+  const { data: poolsInfo, refetch: refetchPoolsInfo } = usePoolsInfo();
+  const { data: poolBalances, refetch: refetchPoolBalances } = usePoolsBalances();
+  const modalContext = useContext(ModalContext);
+  const { tokens } = useContext(ZoroContext);
+  const { orderStatus, registerCallback } = useOrderUpdates();
+  const lastShownNoteId = useRef<string | undefined>(undefined);
+  const [txResult, setTxResult] = useState<undefined | TxResult>();
+  const [lpDetails, setLpDetails] = useState<undefined | LpDetails>(undefined);
+  const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
+
+  const tokenConfigs = useMemo(
+    () => poolsInfo?.liquidityPools?.map(p => tokens[p.faucetIdBech32]),
+    [tokens, poolsInfo?.liquidityPools],
+  );
+
+  const { balances: lpBalances, refetch: refetchLpBalances } = useLPBalances({
+    tokens: tokenConfigs,
+  });
+
+  const openOrderStatusModal = useCallback((noteId: string) => {
+    lastShownNoteId.current = noteId;
+    setIsSuccessModalOpen(true);
+  }, []);
+
+  useEffect(() => {
+    if (txResult?.noteId) {
+      registerCallback(txResult.noteId, status => {
+        if (status === 'executed') {
+          refetchLpBalances();
+          refetchPoolBalances();
+        }
+      });
+    }
+  }, [
+    txResult?.noteId,
+    refetchPoolBalances,
+    refetchLpBalances,
+    registerCallback,
+  ]);
+
+  const openPoolModal = useCallback(
+    (pool: PoolInfo) => {
+      modalContext.openModal(
+        <PoolModal
+          pool={pool}
+          refetchPoolInfo={refetchPoolsInfo}
+          setTxResult={setTxResult}
+          setLpDetails={setLpDetails}
+          onSuccess={openOrderStatusModal}
+          lpBalance={lpBalances[pool.faucetIdBech32] ?? BigInt(0)}
+        />,
+      );
+    },
+    [modalContext, refetchPoolsInfo, openOrderStatusModal, lpBalances],
+  );
+
+  const userPositions = useMemo(() => {
+    if (!poolsInfo?.liquidityPools || !poolBalances) return [];
+    return poolsInfo.liquidityPools
+      .map(pool => {
+        const balance = poolBalances.find(b => b.faucetIdBech32 === pool.faucetIdBech32);
+        const lp = lpBalances[pool.faucetIdBech32] ?? BigInt(0);
+        if (!balance || lp <= BigInt(0)) return null;
+        return { pool, poolBalance: balance, lpBalance: lp };
+      })
+      .filter((x): x is NonNullable<typeof x> => x !== null);
+  }, [poolsInfo?.liquidityPools, poolBalances, lpBalances]);
+
   return (
     <div className='min-h-screen bg-background text-foreground flex flex-col dotted-bg'>
       <title>Pools - ZoroSwap | DeFi on Miden</title>
@@ -10,21 +97,68 @@ function LiquidityPools() {
         name='description'
         content='Deposit to ZoroSwap pools to earn attractive yield'
       />
-      <meta property='og:title' content='About - ZoroSwap | DeFi on Miden' />
-      <meta
-        property='og:description'
-        content='Deposit to ZoroSwap pools to earn attractive yield'
-      />
-      <meta name='twitter:title' content='About - ZoroSwap | DeFi on Miden' />
-      <meta
-        name='twitter:description'
-        content='Deposit to ZoroSwap pools to earn attractive yield'
-      />
       <Header />
-      <main className='flex flex-1 items-center justify-center p-4 sm:mt-10'>
-        <LiquidityPoolsTable />
+      <main className='flex-1 w-full max-w-5xl mx-auto px-6 py-8'>
+        {/* Your positions */}
+        <section className='mb-12'>
+          <div className='flex flex-wrap items-center justify-between gap-4 mb-4'>
+            <h2 className='text-2xl font-bold font-cal-sans text-foreground'>
+              Your positions
+            </h2>
+            <div className='flex items-center gap-3'>
+              <AllDropdown />
+              <AllDropdown />
+              <Button size='sm' className='rounded-lg bg-primary text-primary-foreground'>
+                New Position
+              </Button>
+            </div>
+          </div>
+          <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
+            {userPositions.length > 0
+              ? userPositions.map(({ pool, poolBalance, lpBalance }) => (
+                <PositionCard
+                  key={pool.faucetIdBech32}
+                  pool={pool}
+                  poolBalance={poolBalance}
+                  lpBalance={lpBalance}
+                  onDeposit={() => openPoolModal(pool)}
+                  onWithdraw={() => openPoolModal(pool)}
+                />
+              ))
+              : (
+                <div className='col-span-full rounded-xl border border-dashed border-muted-foreground/30 bg-muted/20 p-8 text-center text-muted-foreground text-sm'>
+                  No positions yet. Add liquidity in Existing Pools below.
+                </div>
+              )}
+          </div>
+        </section>
+
+        {/* Existing Pools */}
+        <section>
+          <h2 className='text-2xl font-bold font-cal-sans text-foreground mb-4'>
+            Existing Pools
+          </h2>
+          <LiquidityPoolsTable
+            poolsInfo={poolsInfo}
+            poolBalances={poolBalances}
+            lpBalances={lpBalances}
+            tokenConfigs={tokenConfigs}
+            openPoolModal={openPoolModal}
+          />
+        </section>
       </main>
       <Footer />
+      {isSuccessModalOpen && (
+        <OrderStatus
+          title={lpDetails?.actionType + ' Order'}
+          onClose={() => setIsSuccessModalOpen(false)}
+          swapResult={txResult}
+          lpDetails={lpDetails}
+          orderStatus={
+            txResult?.noteId ? orderStatus[txResult.noteId]?.status : undefined
+          }
+        />
+      )}
     </div>
   );
 }

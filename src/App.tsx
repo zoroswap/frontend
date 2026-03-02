@@ -27,6 +27,7 @@ function AppRouter() {
       <Routes>
         <Route path='/' element={<SwapPage />} />
         <Route path='/faucet' element={<FaucetPage />} />
+        <Route path='/explore' element={<LiquidityPools />} />
         <Route path='/pools' element={<LiquidityPools />} />
         <Route path='*' element={<NotFound />} />
       </Routes>
