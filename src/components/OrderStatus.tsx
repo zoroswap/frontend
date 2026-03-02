@@ -4,6 +4,7 @@ import type { OrderStatus } from '@/services/websocket';
 import { formalBigIntFormat, truncateId } from '@/utils/format';
 import { CheckCircle, Clock, ExternalLink, Loader2, X, XCircle } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
+import AssetIcon from './AssetIcon';
 import type { LpActionType } from './PoolModal';
 
 const AnimatedDots = () => (
@@ -129,6 +130,22 @@ export function OrderStatus({
 
   if (!swapResult) return null;
 
+  const isLpSuccess = orderStatus === 'executed' && lpDetails;
+  const successTitle =
+    lpDetails?.actionType === 'Withdraw'
+      ? 'Withdrawal Successful!'
+      : 'Deposit Successful!';
+  const successMessage =
+    lpDetails?.actionType === 'Withdraw'
+      ? 'Your liquidity has been removed from the pool.'
+      : 'Your liquidity has been added to the pool.';
+  const amountFormatted = lpDetails
+    ? formalBigIntFormat({
+        val: lpDetails.amount,
+        expo: lpDetails.token?.decimals ?? 6,
+      })
+    : '';
+
   return (
     <>
       <div
@@ -150,7 +167,123 @@ export function OrderStatus({
               : 'opacity-0 translate-y-[100%] scale-95'
           }`}
         >
-          <div className='bg-background border border-border rounded-2xl shadow-xl p-4'>
+          <div className='bg-background border border-border rounded-2xl shadow-xl p-6'>
+            {isLpSuccess ? (
+              <>
+                <div className='flex justify-end mb-2'>
+                  <Button
+                    variant='ghost'
+                    size='icon'
+                    onClick={handleClose}
+                    className='h-8 w-8 rounded-full hover:bg-muted'
+                  >
+                    <X className='h-4 w-4' />
+                  </Button>
+                </div>
+                <div className='flex flex-col items-center text-center mb-6'>
+                  <div className='h-14 w-14 rounded-full bg-green-500/20 flex items-center justify-center mb-4'>
+                    <CheckCircle className='h-8 w-8 text-green-600 dark:text-green-400' />
+                  </div>
+                  <h3 className='text-xl font-bold text-foreground mb-1'>
+                    {successTitle}
+                  </h3>
+                  <p className='text-sm text-muted-foreground'>
+                    {successMessage}
+                  </p>
+                </div>
+                <div className='rounded-xl border border-border bg-muted/30 p-3 mb-4'>
+                  <div className='flex items-center gap-2 mb-2'>
+                    <div className='flex -space-x-2'>
+                      <span className='rounded-full border-2 border-background overflow-hidden'>
+                        <AssetIcon
+                          symbol={lpDetails.token?.symbol ?? ''}
+                          size={24}
+                        />
+                      </span>
+                      <span className='rounded-full border-2 border-background overflow-hidden'>
+                        <AssetIcon symbol='USDC' size={24} />
+                      </span>
+                    </div>
+                    <span className='font-medium text-sm'>
+                      {lpDetails.token?.symbol} / USDC
+                    </span>
+                  </div>
+                  {lpDetails.actionType === 'Deposit' ? (
+                    <>
+                      <p className='text-xs text-muted-foreground mb-1'>
+                        Liquidity Added
+                      </p>
+                      <div className='flex items-center gap-2 text-sm'>
+                        <AssetIcon symbol={lpDetails.token?.symbol ?? ''} size={16} />
+                        <span>{lpDetails.token?.symbol}</span>
+                        <span className='text-green-600'>+{amountFormatted}</span>
+                      </div>
+                      <div className='flex items-center gap-2 text-sm mt-1'>
+                        <AssetIcon symbol='USDC' size={16} />
+                        <span>USDC</span>
+                        <span className='text-green-600'>+—</span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className='flex items-center justify-between text-sm'>
+                        <span>{lpDetails.token?.symbol}</span>
+                        <span>{amountFormatted}</span>
+                      </div>
+                      <div className='flex items-center justify-between text-sm mt-1'>
+                        <span>USDC</span>
+                        <span>—</span>
+                      </div>
+                      <div className='flex justify-between text-sm mt-2 pt-2 border-t border-border'>
+                        <span className='text-muted-foreground'>Fees Claimed</span>
+                        <span className='text-green-600'>+$0.00</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+                <div className='mb-4'>
+                  <label className='text-xs text-muted-foreground block mb-1'>
+                    Transaction
+                  </label>
+                  <div className='flex items-center gap-2 p-2 rounded-lg bg-muted/50'>
+                    <button
+                      type='button'
+                      onClick={() => copyText(swapResult.noteId ?? '')}
+                      className='flex-1 text-left text-sm font-mono truncate'
+                    >
+                      {copiedText ? 'Copied!' : truncateId(swapResult.noteId ?? '')}
+                    </button>
+                    <a
+                      href={`https://testnet.midenscan.com/note/${swapResult.noteId}`}
+                      target='_blank'
+                      rel='noopener noreferrer'
+                      className='shrink-0 text-muted-foreground hover:text-foreground'
+                    >
+                      <ExternalLink className='h-4 w-4' />
+                    </a>
+                  </div>
+                </div>
+                <div className='flex flex-col gap-2'>
+                  <Button
+                    onClick={handleClose}
+                    className='w-full rounded-lg h-11'
+                    size='lg'
+                  >
+                    Done
+                  </Button>
+                  <a
+                    href={`https://testnet.midenscan.com/note/${swapResult.noteId}`}
+                    target='_blank'
+                    rel='noopener noreferrer'
+                    className='inline-flex items-center justify-center gap-2 rounded-lg border border-border py-2.5 text-sm font-medium hover:bg-muted/50'
+                  >
+                    <ExternalLink className='h-4 w-4' />
+                    View on Explorer
+                  </a>
+                </div>
+              </>
+            ) : (
+              <>
             <div className='flex justify-between items-center mb-3'>
               <span className='font-semibold text-sm'>{title}</span>
               <Button
@@ -162,7 +295,6 @@ export function OrderStatus({
                 <X className='h-3 w-3' />
               </Button>
             </div>
-            {/* Order Status */}
             <div
               className={`mb-4 p-3 rounded-lg border-2 ${statusDisplay.bgColor} ${
                 orderStatus === 'executed'
@@ -285,6 +417,8 @@ export function OrderStatus({
                 )}
               </div>
             </div>
+              </>
+            )}
           </div>
         </div>
       </div>

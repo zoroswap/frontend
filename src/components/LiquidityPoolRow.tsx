@@ -16,6 +16,7 @@ const LiquidityPoolRow = ({
   className,
   lpBalance,
   variant = 'manage',
+  onRowClick,
 }: {
   pool: PoolInfo;
   tokenConfig?: TokenConfig;
@@ -24,6 +25,7 @@ const LiquidityPoolRow = ({
   managePool: (pool: PoolInfo) => void;
   className?: string;
   variant?: 'manage' | 'addLiquidity';
+  onRowClick?: (pool: PoolInfo) => void;
 }) => {
   const { connected: isConnected } = useUnifiedWallet();
   const decimals = pool.decimals;
@@ -33,9 +35,26 @@ const LiquidityPoolRow = ({
     expo: decimals,
   });
 
+  const isRowClickable = variant === 'addLiquidity' && onRowClick;
+
   if (variant === 'addLiquidity') {
     return (
-      <tr className={`border-b border-border ${className ?? ''}`}>
+      <tr
+        className={`border-b border-border ${className ?? ''} ${isRowClickable ? 'cursor-pointer hover:bg-muted/30' : ''}`}
+        role={isRowClickable ? 'button' : undefined}
+        tabIndex={isRowClickable ? 0 : undefined}
+        onClick={isRowClickable ? () => onRowClick?.(pool) : undefined}
+        onKeyDown={
+          isRowClickable
+            ? (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  onRowClick?.(pool);
+                }
+              }
+            : undefined
+        }
+      >
         <td className='py-3 px-4'>
           <div className='flex items-center gap-2'>
             <div className='flex -space-x-2'>
@@ -46,9 +65,14 @@ const LiquidityPoolRow = ({
                 <AssetIcon symbol='USDC' size={24} />
               </span>
             </div>
-            <div>
+            <div className='flex items-center gap-1.5 flex-wrap'>
               <span className='font-medium'>{pool.name}</span>
-              <span className='text-xs text-muted-foreground ml-1'>{feeTier}</span>
+              {pool.poolType && (
+                <span className='text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground'>
+                  {pool.poolType}
+                </span>
+              )}
+              <span className='text-xs text-muted-foreground'>{feeTier}</span>
             </div>
           </div>
         </td>
@@ -56,7 +80,10 @@ const LiquidityPoolRow = ({
         <td className='py-3 px-4 text-green-600'>—</td>
         <td className='py-3 px-4'>—</td>
         <td className='py-3 px-4'>—</td>
-        <td className='py-3 px-4 text-right sticky right-0 bg-card'>
+        <td
+          className='py-3 px-4 text-right sticky right-0 bg-card'
+          onClick={(e) => e.stopPropagation()}
+        >
           <Button
             onClick={() => managePool(pool)}
             size='sm'

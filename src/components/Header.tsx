@@ -32,8 +32,8 @@ export function Header() {
         <Link to='/explore' className={navLinkClass('/explore')}>
           Explore
         </Link>
-        <Link to='/pools' className={navLinkClass('/pools')}>
-          Pools
+        <Link to='/faucet' className={navLinkClass('/faucet')}>
+          Faucet
         </Link>
       </nav>
       <div className='flex items-center gap-3'>

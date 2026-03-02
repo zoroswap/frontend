@@ -15,6 +15,7 @@ export interface LiquidityPoolsTableProps {
   lpBalances: Record<string, bigint>;
   tokenConfigs?: (TokenConfig | undefined)[];
   openPoolModal: (pool: PoolInfo) => void;
+  onPoolRowClick?: (pool: PoolInfo) => void;
 }
 
 const LiquidityPoolsTable = ({
@@ -23,6 +24,7 @@ const LiquidityPoolsTable = ({
   lpBalances,
   tokenConfigs,
   openPoolModal,
+  onPoolRowClick,
 }: LiquidityPoolsTableProps) => {
   const [search, setSearch] = useState('');
   const [poolFilter, setPoolFilter] = useState<'all' | 'hot' | 'new' | 'stables'>('all');
@@ -114,6 +116,7 @@ const LiquidityPoolsTable = ({
                       managePool={openPoolModal}
                       lpBalance={lpBalances[pool.faucetIdBech32] ?? BigInt(0)}
                       variant='addLiquidity'
+                      onRowClick={onPoolRowClick}
                     />
                   )
                   : (

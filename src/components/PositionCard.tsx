@@ -42,12 +42,17 @@ export function PositionCard({
             </span>
           </div>
           <span className='font-semibold text-foreground'>{pool.name}</span>
+          {pool.poolType && (
+            <span className='text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground'>
+              {pool.poolType}
+            </span>
+          )}
           <span className='text-xs text-muted-foreground'>{feeTier}</span>
         </div>
         <div className='space-y-2 text-sm'>
           <div className='flex justify-between'>
-            <span className='text-muted-foreground uppercase tracking-wide'>Liquidity</span>
-            <span className='font-medium'>${liquidityFormatted}</span>
+            <span className='text-muted-foreground uppercase tracking-wide'>Your deposit</span>
+            <span className='font-medium'>{liquidityFormatted}</span>
           </div>
           <div className='flex justify-between'>
             <span className='text-muted-foreground uppercase tracking-wide'>Fees earned</span>

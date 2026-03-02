@@ -14,6 +14,7 @@ import '@demox-labs/miden-wallet-adapter-reactui/styles.css';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Bounce, ToastContainer } from 'react-toastify';
 import LiquidityPools from './pages/LiquidityPools';
+import PoolDetail from './pages/PoolDetail';
 import ModalProvider from './providers/ModalProvider';
 import { ZoroProvider } from './providers/ZoroProvider';
 import { ParaProviderWrapper } from './providers/ParaProviderWrapper';
@@ -28,7 +29,7 @@ function AppRouter() {
         <Route path='/' element={<SwapPage />} />
         <Route path='/faucet' element={<FaucetPage />} />
         <Route path='/explore' element={<LiquidityPools />} />
-        <Route path='/pools' element={<LiquidityPools />} />
+        <Route path='/explore/pool/:poolId' element={<PoolDetail />} />
         <Route path='*' element={<NotFound />} />
       </Routes>
     </Router>

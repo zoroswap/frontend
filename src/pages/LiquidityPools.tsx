@@ -17,11 +17,14 @@ import {
   useRef,
   useState,
 } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { OrderStatus, type LpDetails, type TxResult } from '@/components/OrderStatus';
 import PoolModal from '@/components/PoolModal';
+import type { LpActionType } from '@/components/PoolModal';
 import { Button } from '@/components/ui/button';
 
 function LiquidityPools() {
+  const navigate = useNavigate();
   const { data: poolsInfo, refetch: refetchPoolsInfo } = usePoolsInfo();
   const { data: poolBalances, refetch: refetchPoolBalances } = usePoolsBalances();
   const modalContext = useContext(ModalContext);
@@ -63,7 +66,7 @@ function LiquidityPools() {
   ]);
 
   const openPoolModal = useCallback(
-    (pool: PoolInfo) => {
+    (pool: PoolInfo, initialMode?: LpActionType) => {
       modalContext.openModal(
         <PoolModal
           pool={pool}
@@ -72,17 +75,26 @@ function LiquidityPools() {
           setLpDetails={setLpDetails}
           onSuccess={openOrderStatusModal}
           lpBalance={lpBalances[pool.faucetIdBech32] ?? BigInt(0)}
+          initialMode={initialMode}
         />,
       );
     },
     [modalContext, refetchPoolsInfo, openOrderStatusModal, lpBalances],
   );
 
+  const onPoolRowClick = useCallback(
+    (pool: PoolInfo) => {
+      navigate(`/explore/pool/${encodeURIComponent(pool.faucetIdBech32)}`);
+    },
+    [navigate],
+  );
+
   const userPositions = useMemo(() => {
     if (!poolsInfo?.liquidityPools || !poolBalances) return [];
     return poolsInfo.liquidityPools
-      .map(pool => {
-        const balance = poolBalances.find(b => b.faucetIdBech32 === pool.faucetIdBech32);
+      .filter((pool) => pool.poolType === 'hfAMM')
+      .map((pool) => {
+        const balance = poolBalances.find((b) => b.faucetIdBech32 === pool.faucetIdBech32);
         const lp = lpBalances[pool.faucetIdBech32] ?? BigInt(0);
         if (!balance || lp <= BigInt(0)) return null;
         return { pool, poolBalance: balance, lpBalance: lp };
@@ -99,7 +111,6 @@ function LiquidityPools() {
       />
       <Header />
       <main className='flex-1 w-full max-w-5xl mx-auto px-6 py-8'>
-        {/* Your positions */}
         <section className='mb-12'>
           <div className='flex flex-wrap items-center justify-between gap-4 mb-4'>
             <h2 className='text-2xl font-bold font-cal-sans text-foreground'>
@@ -133,7 +144,6 @@ function LiquidityPools() {
           </div>
         </section>
 
-        {/* Existing Pools */}
         <section>
           <h2 className='text-2xl font-bold font-cal-sans text-foreground mb-4'>
             Existing Pools
@@ -144,6 +154,7 @@ function LiquidityPools() {
             lpBalances={lpBalances}
             tokenConfigs={tokenConfigs}
             openPoolModal={openPoolModal}
+            onPoolRowClick={onPoolRowClick}
           />
         </section>
       </main>
