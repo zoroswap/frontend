@@ -15,6 +15,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Bounce, ToastContainer } from 'react-toastify';
 import LiquidityPools from './pages/LiquidityPools';
 import PoolDetail from './pages/PoolDetail';
+import Pools from './pages/Pools';
 import ModalProvider from './providers/ModalProvider';
 import { ZoroProvider } from './providers/ZoroProvider';
 import { ParaProviderWrapper } from './providers/ParaProviderWrapper';
@@ -30,6 +31,7 @@ function AppRouter() {
         <Route path='/faucet' element={<FaucetPage />} />
         <Route path='/explore' element={<LiquidityPools />} />
         <Route path='/explore/pool/:poolId' element={<PoolDetail />} />
+        <Route path='/pools' element={<Pools />} />
         <Route path='*' element={<NotFound />} />
       </Routes>
     </Router>

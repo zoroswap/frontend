@@ -7,7 +7,7 @@ export function Header() {
 
   const navLinkClass = (path: string) =>
     `px-4 py-2 rounded-md text-sm font-medium transition-colors h-10 inline-flex items-center ${
-      location.pathname === path
+      location.pathname === path || location.pathname.startsWith(path + '/')
         ? 'text-foreground'
         : 'text-muted-foreground hover:text-foreground'
     }`;
@@ -15,23 +15,27 @@ export function Header() {
   return (
     <header className='px-6 py-4 border-b border-border bg-background'>
       <div className='grid grid-cols-[1fr_auto_1fr] items-center gap-4'>
-        <Link to='/' className='flex items-center gap-2 shrink-0 justify-self-start'>
+        <Link
+          to='/'
+          aria-label='ZoroSwap'
+          className='flex items-center shrink-0 justify-self-start'
+        >
         <img
           src='/zoro-logo-full.svg'
           alt='Zoro'
           title='ZoroSwap | DeFi on Miden'
-          className='h-9 w-9'
+            className='h-10 w-10'
         />
-        <span className='font-cal-sans text-xl font-bold text-foreground lowercase'>
-          zoro swap
-        </span>
       </Link>
         <nav className='flex items-center gap-1 font-cal-sans justify-self-center'>
         <Link to='/' className={navLinkClass('/')}>
           Swap
         </Link>
-        <Link to='/explore' className={navLinkClass('/explore')}>
+          <Link to='/explore' className={navLinkClass('/explore')}>
           Explore
+        </Link>
+        <Link to='/pools' className={navLinkClass('/pools')}>
+          Pools
         </Link>
         <Link to='/faucet' className={navLinkClass('/faucet')}>
           Faucet

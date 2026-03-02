@@ -193,19 +193,14 @@ export function OrderStatus({
                 </div>
                 <div className='rounded-xl border border-border bg-muted/30 p-3 mb-4'>
                   <div className='flex items-center gap-2 mb-2'>
-                    <div className='flex -space-x-2'>
-                      <span className='rounded-full border-2 border-background overflow-hidden'>
-                        <AssetIcon
-                          symbol={lpDetails.token?.symbol ?? ''}
-                          size={24}
-                        />
-                      </span>
-                      <span className='rounded-full border-2 border-background overflow-hidden'>
-                        <AssetIcon symbol='USDC' size={24} />
-                      </span>
-                    </div>
+                    <span className='rounded-full border-2 border-background overflow-hidden'>
+                      <AssetIcon
+                        symbol={lpDetails.token?.symbol ?? ''}
+                        size={24}
+                      />
+                    </span>
                     <span className='font-medium text-sm'>
-                      {lpDetails.token?.symbol} / USDC
+                      {lpDetails.token?.symbol}
                     </span>
                   </div>
                   {lpDetails.actionType === 'Deposit' ? (
@@ -217,11 +212,6 @@ export function OrderStatus({
                         <AssetIcon symbol={lpDetails.token?.symbol ?? ''} size={16} />
                         <span>{lpDetails.token?.symbol}</span>
                         <span className='text-green-600'>+{amountFormatted}</span>
-                      </div>
-                      <div className='flex items-center gap-2 text-sm mt-1'>
-                        <AssetIcon symbol='USDC' size={16} />
-                        <span>USDC</span>
-                        <span className='text-green-600'>+—</span>
                       </div>
                     </>
                   ) : (

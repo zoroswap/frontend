@@ -23,6 +23,7 @@ export function PoolDetailView({
   onClose,
 }: PoolDetailViewProps) {
   const decimals = pool.decimals;
+  const isHfAmm = pool.poolType === 'hfAMM';
   const tvlFormatted = prettyBigintFormat({
     value: poolBalance.totalLiabilities,
     expo: decimals,
@@ -33,14 +34,22 @@ export function PoolDetailView({
     <div className='flex flex-col gap-6'>
       <div className='flex items-center justify-between'>
         <div className='flex items-center gap-3'>
-          <div className='flex -space-x-2'>
-            <span className='inline-block rounded-full border-2 border-background overflow-hidden bg-muted'>
-              <AssetIcon symbol={pool.symbol} size={32} />
-            </span>
-            <span className='inline-block rounded-full border-2 border-background overflow-hidden bg-muted'>
-              <AssetIcon symbol='USDC' size={32} />
-            </span>
-          </div>
+          {isHfAmm
+            ? (
+              <span className='inline-block rounded-full border-2 border-background overflow-hidden bg-muted'>
+                <AssetIcon symbol={pool.symbol} size={32} />
+              </span>
+            )
+            : (
+              <div className='flex -space-x-2'>
+                <span className='inline-block rounded-full border-2 border-background overflow-hidden bg-muted'>
+                  <AssetIcon symbol={pool.symbol} size={32} />
+                </span>
+                <span className='inline-block rounded-full border-2 border-background overflow-hidden bg-muted'>
+                  <AssetIcon symbol='USDC' size={32} />
+                </span>
+              </div>
+            )}
           <div>
             <div className='flex items-center gap-2'>
               <h2 className='font-semibold text-lg'>{pool.name}</h2>
@@ -51,7 +60,7 @@ export function PoolDetailView({
               )}
             </div>
             <p className='text-sm text-muted-foreground'>
-              {pool.symbol} / USDC
+              {isHfAmm ? pool.symbol : `${pool.symbol} / USDC`}
             </p>
           </div>
         </div>

@@ -2,12 +2,20 @@ import type { PoolBalance } from '@/hooks/usePoolsBalances';
 import type { PoolInfo } from '@/hooks/usePoolsInfo';
 import { useUnifiedWallet } from '@/hooks/useUnifiedWallet';
 import type { TokenConfig } from '@/providers/ZoroProvider';
+import { cn } from '@/lib/utils';
 import { prettyBigintFormat } from '@/utils/format';
 import AssetIcon from './AssetIcon';
 import { Button } from './ui/button';
 
 const feeTierForSymbol = (symbol: string) =>
   /USDC|USDT|DAI|BUSD/i.test(symbol) ? '0.01%' : '0.30%';
+
+/** Saturation = (reserve / total_liabilities) as percentage (can exceed 100) */
+function getSaturationPercent(poolBalances: PoolBalance): number | null {
+  const { reserve, totalLiabilities } = poolBalances;
+  if (totalLiabilities === BigInt(0)) return null;
+  return (Number(reserve) / Number(totalLiabilities)) * 100;
+}
 
 const LiquidityPoolRow = ({
   pool,
@@ -17,6 +25,7 @@ const LiquidityPoolRow = ({
   lpBalance,
   variant = 'manage',
   onRowClick,
+  showSaturation = false,
 }: {
   pool: PoolInfo;
   tokenConfig?: TokenConfig;
@@ -26,6 +35,7 @@ const LiquidityPoolRow = ({
   className?: string;
   variant?: 'manage' | 'addLiquidity';
   onRowClick?: (pool: PoolInfo) => void;
+  showSaturation?: boolean;
 }) => {
   const { connected: isConnected } = useUnifiedWallet();
   const decimals = pool.decimals;
@@ -34,8 +44,12 @@ const LiquidityPoolRow = ({
     value: poolBalances.totalLiabilities,
     expo: decimals,
   });
+  const isHfAmm = pool.poolType === 'hfAMM';
 
   const isRowClickable = variant === 'addLiquidity' && onRowClick;
+
+  const saturationPercent = getSaturationPercent(poolBalances);
+  const saturationColor = saturationPercent != null ? getSaturationColorClass(saturationPercent) : '';
 
   if (variant === 'addLiquidity') {
     return (
@@ -57,14 +71,22 @@ const LiquidityPoolRow = ({
       >
         <td className='py-3 px-4'>
           <div className='flex items-center gap-2'>
-            <div className='flex -space-x-2'>
-              <span className='inline-block rounded-full border-2 border-card overflow-hidden'>
-                <AssetIcon symbol={pool.symbol} size={24} />
-              </span>
-              <span className='inline-block rounded-full border-2 border-card overflow-hidden bg-muted'>
-                <AssetIcon symbol='USDC' size={24} />
-              </span>
-            </div>
+            {isHfAmm
+              ? (
+                <span className='inline-block rounded-full border-2 border-card overflow-hidden'>
+                  <AssetIcon symbol={pool.symbol} size={24} />
+                </span>
+              )
+              : (
+                <div className='flex -space-x-2'>
+                  <span className='inline-block rounded-full border-2 border-card overflow-hidden'>
+                    <AssetIcon symbol={pool.symbol} size={24} />
+                  </span>
+                  <span className='inline-block rounded-full border-2 border-card overflow-hidden bg-muted'>
+                    <AssetIcon symbol='USDC' size={24} />
+                  </span>
+                </div>
+              )}
             <div className='flex items-center gap-1.5 flex-wrap'>
               <span className='font-medium'>{pool.name}</span>
               {pool.poolType && (
@@ -77,6 +99,23 @@ const LiquidityPoolRow = ({
           </div>
         </td>
         <td className='py-3 px-4'>${tvlFormatted}</td>
+        {showSaturation && (
+          <td className='py-3 px-4'>
+            {saturationPercent != null
+              ? (
+                <span
+                  className={cn(
+                    'inline-flex items-center justify-center min-w-[72px] px-2 py-1 rounded-md border text-xs font-medium',
+                    saturationColor,
+                  )}
+                  title='Saturation (reserve / total liabilities)'
+                >
+                  {saturationPercent.toFixed(2)}%
+                </span>
+              )
+              : <span className='text-muted-foreground'>—</span>}
+          </td>
+        )}
         <td className='py-3 px-4 text-green-600'>—</td>
         <td className='py-3 px-4'>—</td>
         <td className='py-3 px-4'>—</td>
@@ -130,3 +169,10 @@ const LiquidityPoolRow = ({
 };
 
 export default LiquidityPoolRow;
+
+function getSaturationColorClass(pct: number) {
+  if (pct < 15 || pct > 185) return 'text-red-600 border-red-600/30 bg-red-500/10';
+  if ((pct >= 15 && pct < 30) || (pct >= 170 && pct <= 185)) return 'text-yellow-600 border-yellow-600/30 bg-yellow-500/10';
+  if (pct >= 30 && pct < 170) return 'text-green-600 border-green-600/30 bg-green-500/10';
+  return 'text-muted-foreground border-border bg-muted/30';
+}

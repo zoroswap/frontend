@@ -35,22 +35,17 @@ export function UnifiedWalletProvider({ children }: UnifiedWalletProviderProps) 
   } = useParaMiden(NETWORK.rpcEndpoint);
 
   // Local state
-  const [walletType, setWalletType] = useState<WalletType>(null);
-
   // Determine connection state
   const midenConnected = midenWallet.connected;
+  const midenConnecting = midenWallet.connecting;
 
-  // Set wallet type based on connection
-  useEffect(() => {
-    if (midenConnected && walletType !== 'miden') {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setWalletType('miden');
-    } else if (paraConnected && !midenConnected && walletType !== 'para') {
-      setWalletType('para');
-    } else if (!midenConnected && !paraConnected && walletType !== null) {
-      setWalletType(null);
-    }
-  }, [midenConnected, paraConnected, walletType]);
+  // Derive wallet type from live connection state.
+  // This avoids any "stuck" UI where the adapter is connecting but our app still thinks no wallet is active.
+  const walletType: WalletType = (midenConnected || midenConnecting)
+    ? 'miden'
+    : paraConnected
+    ? 'para'
+    : null;
 
   // Request transaction handler
   const requestTransaction = useCallback(
@@ -101,7 +96,6 @@ export function UnifiedWalletProvider({ children }: UnifiedWalletProviderProps) 
     } else if (walletType === 'para') {
       await logoutAsync();
     }
-    setWalletType(null);
   }, [walletType, midenWallet, logoutAsync]);
 
   // Convert paraMidenAccountId string to AccountId if available
@@ -146,7 +140,7 @@ export function UnifiedWalletProvider({ children }: UnifiedWalletProviderProps) 
       : false;
 
     const connecting = walletType === 'miden'
-      ? midenWallet.connecting
+      ? midenConnecting
       : walletType === 'para'
       ? paraConnected && !paraMidenClient
       : false;
@@ -171,7 +165,7 @@ export function UnifiedWalletProvider({ children }: UnifiedWalletProviderProps) 
   }, [
     walletType,
     midenConnected,
-    midenWallet.connecting,
+    midenConnecting,
     midenWallet.address,
     paraConnected,
     paraMidenClient,

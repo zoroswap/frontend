@@ -189,7 +189,8 @@ export default function PoolModal({
 
   const handleClose = useCallback(() => modalContext.closeModal(), [modalContext]);
 
-  const poolLabel = pool.name || `${pool.symbol} / USDC`;
+  const isHfAmm = pool.poolType === 'hfAMM';
+  const poolLabel = pool.name || (isHfAmm ? `${pool.symbol}` : `${pool.symbol} / USDC`);
   const withdrawReceiveAmount = rawValue;
   const withdrawReceiveFormatted = formatTokenAmount({
     value: withdrawReceiveAmount,
@@ -201,14 +202,22 @@ export default function PoolModal({
     <div className='flex flex-col gap-5'>
       <div className='flex items-center justify-between gap-2'>
         <div className='flex items-center gap-2'>
-          <div className='flex -space-x-2'>
-            <span className='inline-block rounded-full border-2 border-background overflow-hidden bg-muted'>
-              <AssetIcon symbol={pool.symbol} size={28} />
-            </span>
-            <span className='inline-block rounded-full border-2 border-background overflow-hidden bg-muted'>
-              <AssetIcon symbol='USDC' size={28} />
-            </span>
-          </div>
+          {isHfAmm
+            ? (
+              <span className='inline-block rounded-full border-2 border-background overflow-hidden bg-muted'>
+                <AssetIcon symbol={pool.symbol} size={28} />
+              </span>
+            )
+            : (
+              <div className='flex -space-x-2'>
+                <span className='inline-block rounded-full border-2 border-background overflow-hidden bg-muted'>
+                  <AssetIcon symbol={pool.symbol} size={28} />
+                </span>
+                <span className='inline-block rounded-full border-2 border-background overflow-hidden bg-muted'>
+                  <AssetIcon symbol='USDC' size={28} />
+                </span>
+              </div>
+            )}
           <span className='font-semibold text-lg'>
             {mode === 'Withdraw' ? `Withdraw from ${poolLabel}` : poolLabel}
           </span>

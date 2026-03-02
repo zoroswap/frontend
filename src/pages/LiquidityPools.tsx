@@ -21,12 +21,14 @@ import { useNavigate } from 'react-router-dom';
 import { OrderStatus, type LpDetails, type TxResult } from '@/components/OrderStatus';
 import PoolModal from '@/components/PoolModal';
 import type { LpActionType } from '@/components/PoolModal';
+import { CreatePoolWizard } from '@/components/CreatePoolWizard';
+import { SelectPoolModal } from '@/components/SelectPoolModal';
 import { Button } from '@/components/ui/button';
 
 function LiquidityPools() {
   const navigate = useNavigate();
-  const { data: poolsInfo, refetch: refetchPoolsInfo } = usePoolsInfo();
-  const { data: poolBalances, refetch: refetchPoolBalances } = usePoolsBalances();
+  const { data: poolsInfo, refetch: refetchPoolsInfo, isLoading: isLoadingPools } = usePoolsInfo();
+  const { data: poolBalances, refetch: refetchPoolBalances, isLoading: isLoadingBalances } = usePoolsBalances();
   const modalContext = useContext(ModalContext);
   const { tokens } = useContext(ZoroContext);
   const { orderStatus, registerCallback } = useOrderUpdates();
@@ -89,6 +91,23 @@ function LiquidityPools() {
     [navigate],
   );
 
+  const openCreatePoolWizard = useCallback(() => {
+    modalContext.openModal(<CreatePoolWizard onCreated={refetchPoolsInfo} />);
+  }, [modalContext, refetchPoolsInfo]);
+
+  const openNewPositionModal = useCallback(() => {
+    const pools = poolsInfo?.liquidityPools ?? [];
+    modalContext.openModal(
+      <SelectPoolModal
+        pools={pools}
+        onSelect={(pool) => {
+          setTimeout(() => openPoolModal(pool, 'Deposit'), 0);
+        }}
+        onClose={() => modalContext.closeModal()}
+      />,
+    );
+  }, [modalContext, poolsInfo?.liquidityPools, openPoolModal]);
+
   const userPositions = useMemo(() => {
     const liquidityPools = poolsInfo?.liquidityPools;
     if (!liquidityPools || !poolBalances) return [];
@@ -105,7 +124,7 @@ function LiquidityPools() {
 
   return (
     <div className='min-h-screen bg-background text-foreground flex flex-col dotted-bg'>
-      <title>Pools - ZoroSwap | DeFi on Miden</title>
+      <title>Explore - ZoroSwap | DeFi on Miden</title>
       <meta
         name='description'
         content='Deposit to ZoroSwap pools to earn attractive yield'
@@ -120,7 +139,11 @@ function LiquidityPools() {
             <div className='flex items-center gap-3'>
               <AllDropdown />
               <AllDropdown />
-              <Button size='sm' className='rounded-lg bg-primary text-primary-foreground'>
+              <Button
+                size='sm'
+                className='rounded-lg bg-primary text-primary-foreground'
+                onClick={openNewPositionModal}
+              >
                 New Position
               </Button>
             </div>
@@ -133,6 +156,7 @@ function LiquidityPools() {
                   pool={pool}
                   poolBalance={poolBalance}
                   lpBalance={lpBalance}
+                  variant='slim'
                   onDeposit={() => openPoolModal(pool)}
                   onWithdraw={() => openPoolModal(pool)}
                 />
@@ -145,7 +169,7 @@ function LiquidityPools() {
           </div>
         </section>
 
-        <section>
+        <section id='existing-pools'>
           <h2 className='text-2xl font-bold font-cal-sans text-foreground mb-4'>
             Existing Pools
           </h2>
@@ -156,6 +180,8 @@ function LiquidityPools() {
             tokenConfigs={tokenConfigs}
             openPoolModal={openPoolModal}
             onPoolRowClick={onPoolRowClick}
+            onCreatePool={openCreatePoolWizard}
+            isLoading={isLoadingPools || isLoadingBalances}
           />
         </section>
       </main>

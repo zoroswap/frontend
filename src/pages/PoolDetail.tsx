@@ -124,7 +124,8 @@ export default function PoolDetail() {
     value: poolBalance.totalLiabilities,
     expo: decimals,
   });
-  const pairLabel = `${pool.symbol} / USDC`;
+  const isHfAmm = pool.poolType === 'hfAMM';
+  const pairLabel = isHfAmm ? `${pool.symbol}` : `${pool.symbol} / USDC`;
   const mockCandles = useMemo(() => {
     return getMockPoolCandles({
       seedKey: pool.faucetIdBech32,
@@ -154,14 +155,22 @@ export default function PoolDetail() {
 
         <div className='flex flex-wrap items-start justify-between gap-4 mb-8'>
           <div className='flex items-center gap-3'>
-            <div className='flex -space-x-2'>
-              <span className='inline-block rounded-full border-2 border-background overflow-hidden bg-muted'>
-                <AssetIcon symbol={pool.symbol} size={40} />
-              </span>
-              <span className='inline-block rounded-full border-2 border-background overflow-hidden bg-muted'>
-                <AssetIcon symbol='USDC' size={40} />
-              </span>
-            </div>
+            {isHfAmm
+              ? (
+                <span className='inline-block rounded-full border-2 border-background overflow-hidden bg-muted'>
+                  <AssetIcon symbol={pool.symbol} size={40} />
+                </span>
+              )
+              : (
+                <div className='flex -space-x-2'>
+                  <span className='inline-block rounded-full border-2 border-background overflow-hidden bg-muted'>
+                    <AssetIcon symbol={pool.symbol} size={40} />
+                  </span>
+                  <span className='inline-block rounded-full border-2 border-background overflow-hidden bg-muted'>
+                    <AssetIcon symbol='USDC' size={40} />
+                  </span>
+                </div>
+              )}
             <div>
               <h1 className='text-2xl font-bold font-cal-sans'>{pairLabel}</h1>
               <div className='flex items-center gap-2 text-sm text-muted-foreground mt-0.5'>
@@ -241,33 +250,55 @@ export default function PoolDetail() {
                 <CardTitle className='text-base font-semibold'>Pool Composition</CardTitle>
               </CardHeader>
               <CardContent className='space-y-3'>
-                <div className='flex items-center justify-between'>
-                  <div className='flex items-center gap-2'>
-                    <AssetIcon symbol={pool.symbol} size={24} />
-                    <span>{pool.symbol}</span>
-                  </div>
-                  <div className='text-right'>
-                    <p className='font-medium'>21.56</p>
-                    <p className='text-xs text-muted-foreground'>$2,180.00</p>
-                  </div>
-                </div>
-                <div className='flex items-center justify-between'>
-                  <div className='flex items-center gap-2'>
-                    <AssetIcon symbol='USDC' size={24} />
-                    <span>USDC</span>
-                  </div>
-                  <div className='text-right'>
-                    <p className='font-medium'>45,020.00</p>
-                    <p className='text-xs text-muted-foreground'>$1.00</p>
-                  </div>
-                </div>
-                <div className='h-2 rounded-full bg-muted overflow-hidden flex'>
-                  <div className='h-full bg-primary/80 rounded-l-full' style={{ width: '48%' }} />
-                  <div className='h-full bg-blue-400/80' style={{ width: '52%' }} />
-                </div>
-                <p className='text-xs text-muted-foreground'>
-                  ETH 48% · USDC 52%
-                </p>
+                {isHfAmm
+                  ? (
+                    <>
+                      <div className='flex items-center justify-between'>
+                        <div className='flex items-center gap-2'>
+                          <AssetIcon symbol={pool.symbol} size={24} />
+                          <span>{pool.symbol}</span>
+                        </div>
+                        <div className='text-right'>
+                          <p className='font-medium'>—</p>
+                          <p className='text-xs text-muted-foreground'>Single-sided</p>
+                        </div>
+                      </div>
+                      <p className='text-xs text-muted-foreground'>
+                        hfAMM pools are single-sided.
+                      </p>
+                    </>
+                  )
+                  : (
+                    <>
+                      <div className='flex items-center justify-between'>
+                        <div className='flex items-center gap-2'>
+                          <AssetIcon symbol={pool.symbol} size={24} />
+                          <span>{pool.symbol}</span>
+                        </div>
+                        <div className='text-right'>
+                          <p className='font-medium'>21.56</p>
+                          <p className='text-xs text-muted-foreground'>$2,180.00</p>
+                        </div>
+                      </div>
+                      <div className='flex items-center justify-between'>
+                        <div className='flex items-center gap-2'>
+                          <AssetIcon symbol='USDC' size={24} />
+                          <span>USDC</span>
+                        </div>
+                        <div className='text-right'>
+                          <p className='font-medium'>45,020.00</p>
+                          <p className='text-xs text-muted-foreground'>$1.00</p>
+                        </div>
+                      </div>
+                      <div className='h-2 rounded-full bg-muted overflow-hidden flex'>
+                        <div className='h-full bg-primary/80 rounded-l-full' style={{ width: '48%' }} />
+                        <div className='h-full bg-blue-400/80' style={{ width: '52%' }} />
+                      </div>
+                      <p className='text-xs text-muted-foreground'>
+                        ETH 48% · USDC 52%
+                      </p>
+                    </>
+                  )}
               </CardContent>
             </Card>
 
@@ -295,21 +326,23 @@ export default function PoolDetail() {
               </CardContent>
             </Card>
 
-            <Card className='rounded-xl border-amber-500/30 bg-amber-500/5'>
-              <CardHeader className='pb-2'>
-                <CardTitle className='text-base font-semibold flex items-center gap-2'>
-                  <AlertTriangle className='h-4 w-4 text-amber-600' />
-                  IL Risk
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className='text-sm text-muted-foreground'>
-                  This pool&apos;s tokens have moderate price correlation. Estimated
-                  impermanent loss at ±25% price divergence is -5.7%. Consider
-                  concentrated ranges carefully.
-                </p>
-              </CardContent>
-            </Card>
+            {!isHfAmm && (
+              <Card className='rounded-xl border-amber-500/30 bg-amber-500/5'>
+                <CardHeader className='pb-2'>
+                  <CardTitle className='text-base font-semibold flex items-center gap-2'>
+                    <AlertTriangle className='h-4 w-4 text-amber-600' />
+                    IL Risk
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className='text-sm text-muted-foreground'>
+                    This pool&apos;s tokens have moderate price correlation. Estimated
+                    impermanent loss at ±25% price divergence is -5.7%. Consider
+                    concentrated ranges carefully.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           <div className='lg:col-span-2 space-y-6'>
