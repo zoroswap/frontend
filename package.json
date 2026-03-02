@@ -1,7 +1,7 @@
 {
-  "name": "vite-project",
+  "name": "zoroswap-frontend",
   "private": true,
-  "version": "0.3.0",
+  "version": "0.5.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@demox-labs/miden-wallet-adapter": "0.10.0",
-    "@getpara/react-sdk-lite": "^2.2.0",
+    "@getpara/react-sdk-lite": "^2.13.0",
     "@miden-sdk/miden-para": "^0.13.0",
     "@miden-sdk/miden-sdk": "^0.13.0",
     "@miden-sdk/react": "^0.13.2",
@@ -24,6 +24,7 @@
     "async-mutex": "^0.5.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "lightweight-charts": "^5.1.0",
     "lucide-react": "^0.556.0",
     "react": "^19.2.1",
     "react-dom": "^19.2.1",
@@ -35,7 +36,7 @@
     "wagmi": "^3.1.0"
   },
   "overrides": {
-    "@getpara/web-sdk": "2.8.0"
+    "@getpara/web-sdk": "2.13.0"
   },
   "devDependencies": {
     "@eslint/css": "^0.14.1",

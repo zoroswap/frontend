@@ -23,17 +23,11 @@ import { Link, useParams } from 'react-router-dom';
 import AssetIcon from '@/components/AssetIcon';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { TradingViewCandlesChart } from '@/components/TradingViewCandlesChart';
+import { getMockPoolCandles, getMockRecentTransactions } from '@/mocks/poolDetailMocks';
 
 const feeTierForSymbol = (symbol: string) =>
   /USDC|USDT|DAI|BUSD/i.test(symbol) ? '0.01%' : '0.30%';
-
-const PLACEHOLDER_TXS = [
-  { type: 'Swap' as const, in: '0.5 ETH', out: '1,090 USDC', account: '0x1a2b...3c4d', time: '2 min ago' },
-  { type: 'Add' as const, in: '1.0 ETH', out: '2,180 USDC', account: '0x5e6f...7a8b', time: '8 min ago' },
-  { type: 'Remove' as const, in: '0.25 ETH', out: '545 USDC', account: '0x9c0d...1e2f', time: '14 min ago' },
-  { type: 'Swap' as const, in: '2,500 USDC', out: '1.14 ETH', account: '0x3a4b...5c6d', time: '22 min ago' },
-  { type: 'Swap' as const, in: '0.1 ETH', out: '218 USDC', account: '0x7e8f...9a0b', time: '31 min ago' },
-];
 
 const TYPE_COLORS: Record<string, string> = {
   Swap: 'text-primary',
@@ -131,6 +125,19 @@ export default function PoolDetail() {
     expo: decimals,
   });
   const pairLabel = `${pool.symbol} / USDC`;
+  const mockCandles = useMemo(() => {
+    return getMockPoolCandles({
+      seedKey: pool.faucetIdBech32,
+      range: chartRange,
+    });
+  }, [pool.faucetIdBech32, chartRange]);
+
+  const mockRecentTxs = useMemo(() => {
+    return getMockRecentTransactions({
+      seedKey: pool.faucetIdBech32,
+      baseSymbol: pool.symbol,
+    });
+  }, [pool.faucetIdBech32, pool.symbol]);
 
   return (
     <div className='min-h-screen bg-background text-foreground flex flex-col dotted-bg'>
@@ -323,15 +330,15 @@ export default function PoolDetail() {
                       </tr>
                     </thead>
                     <tbody>
-                      {PLACEHOLDER_TXS.map((tx, i) => (
+                      {mockRecentTxs.map((tx, i) => (
                         <tr key={i} className='border-b border-border/50'>
                           <td className={`py-3 px-4 font-medium ${TYPE_COLORS[tx.type] ?? ''}`}>
                             {tx.type}
                           </td>
-                          <td className='py-3 px-4'>{tx.in}</td>
-                          <td className='py-3 px-4'>{tx.out}</td>
+                          <td className='py-3 px-4'>{tx.amountIn}</td>
+                          <td className='py-3 px-4'>{tx.amountOut}</td>
                           <td className='py-3 px-4 font-mono text-muted-foreground'>{tx.account}</td>
-                          <td className='py-3 px-4 text-right text-muted-foreground'>{tx.time}</td>
+                          <td className='py-3 px-4 text-right text-muted-foreground'>{tx.timeAgo}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -358,14 +365,11 @@ export default function PoolDetail() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className='h-64 rounded-lg bg-muted/50 flex items-end justify-around gap-1 px-2 pb-2'>
-                  {[40, 65, 45, 80, 55, 70, 50].map((h, i) => (
-                    <div
-                      key={i}
-                      className='flex-1 min-w-[8px] rounded-t bg-primary/70 transition-all'
-                      style={{ height: `${h}%` }}
-                    />
-                  ))}
+                <div className='rounded-lg overflow-hidden border border-border/60'>
+                  <TradingViewCandlesChart
+                    candles={mockCandles}
+                    height={256}
+                  />
                 </div>
               </CardContent>
             </Card>

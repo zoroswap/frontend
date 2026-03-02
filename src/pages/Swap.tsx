@@ -1,4 +1,3 @@
-import AssetIcon from '@/components/AssetIcon';
 import ExchangeRatio from '@/components/ExchangeRatio';
 import { Footer } from '@/components/Footer';
 import { Header } from '@/components/Header';
@@ -8,6 +7,7 @@ import Price from '@/components/Price';
 import Slippage from '@/components/Slippage';
 import SwapInputBuy from '@/components/SwapInputBuy';
 import SwapPairs from '@/components/SwapPairs';
+import { TokenAutocomplete } from '@/components/TokenAutocomplete';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -277,25 +277,12 @@ function Swap() {
                         }`}
                       />
                       <div className='relative'>
-                        <div className='absolute top-1 left-1'>
-                          <AssetIcon symbol={selectedAssetSell?.symbol ?? ''} />
-                        </div>
-                        <select
-                          value={selectedAssetSell?.faucetIdBech32}
-                          onChange={(e) => setAsset('sell', e.target.value)}
-                          className='h-auto border-1 rounded-xl pl-10 py-2 text-xs sm:text-sm bg-background cursor-default hover:bg-background'
-                        >
-                          {Object.values(tokens).map(t => (
-                            <option
-                              key={t.faucetIdBech32}
-                              value={t.faucetIdBech32}
-                              disabled={t.faucetIdBech32
-                                === selectedAssetSell?.faucetIdBech32}
-                            >
-                              {t.symbol}
-                            </option>
-                          ))}
-                        </select>
+                        <TokenAutocomplete
+                          tokens={Object.values(tokens)}
+                          value={selectedAssetSell}
+                          onChange={(id) => setAsset('sell', id)}
+                          excludeFaucetIdBech32={selectedAssetBuy?.faucetIdBech32}
+                        />
                       </div>
                     </div>
                     {sellInputError && (
@@ -356,25 +343,12 @@ function Swap() {
                         assetSell={selectedAssetSell}
                       />
                       <div className='relative'>
-                        <div className='absolute top-1 left-1'>
-                          <AssetIcon symbol={selectedAssetBuy?.symbol ?? ''} />
-                        </div>
-                        <select
-                          value={selectedAssetBuy?.faucetIdBech32}
-                          onChange={(e) => setAsset('buy', e.target.value)}
-                          className='h-auto border-1 rounded-xl pl-10 py-2 text-xs sm:text-sm bg-background cursor-default hover:bg-background'
-                        >
-                          {Object.values(tokens).map(t => (
-                            <option
-                              key={t.faucetIdBech32}
-                              value={t.faucetIdBech32}
-                              disabled={t.faucetIdBech32
-                                === selectedAssetSell?.faucetIdBech32}
-                            >
-                              {t.symbol}
-                            </option>
-                          ))}
-                        </select>
+                        <TokenAutocomplete
+                          tokens={Object.values(tokens)}
+                          value={selectedAssetBuy}
+                          onChange={(id) => setAsset('buy', id)}
+                          excludeFaucetIdBech32={selectedAssetSell?.faucetIdBech32}
+                        />
                       </div>
                     </div>
                     <div className='flex items-center justify-end text-xs h-5'>
