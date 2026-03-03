@@ -459,16 +459,35 @@ function Swap() {
 
 export default Swap;
 
-const getLocalStoredToken = (side: 'buy' | 'sell') => {
+const getLocalStoredToken = (side: 'buy' | 'sell'): TokenConfig | undefined => {
   const item = localStorage.getItem('swap-' + side);
-  if (item) {
-    const parsed = JSON.parse(item) as TokenConfig;
-    parsed.faucetId = bech32ToAccountId(parsed.faucetIdBech32) as AccountId;
-    return parsed;
-  } else return undefined;
+  if (!item) return undefined;
+  try {
+    const parsed = JSON.parse(item) as Partial<TokenConfig> & { faucetIdBech32?: string };
+    const bech32 = parsed.faucetIdBech32;
+    if (typeof bech32 !== 'string' || bech32.trim() === '') return undefined;
+    const faucetId = bech32ToAccountId(bech32);
+    if (!faucetId) return undefined;
+    return {
+      symbol: parsed.symbol ?? '?',
+      name: parsed.name ?? '?',
+      decimals: typeof parsed.decimals === 'number' ? parsed.decimals : 6,
+      faucetId,
+      faucetIdBech32: bech32,
+      oracleId: typeof parsed.oracleId === 'string' ? parsed.oracleId : '',
+    } as TokenConfig;
+  } catch {
+    return undefined;
+  }
 };
 const setLocalStoredToken = (side: 'buy' | 'sell', token?: TokenConfig) => {
   if (token) {
-    localStorage.setItem('swap-' + side, JSON.stringify(token));
+    localStorage.setItem('swap-' + side, JSON.stringify({
+      symbol: token.symbol,
+      name: token.name,
+      decimals: token.decimals,
+      faucetIdBech32: token.faucetIdBech32,
+      oracleId: token.oracleId,
+    }));
   }
 };

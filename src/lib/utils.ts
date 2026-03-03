@@ -17,16 +17,12 @@ export function cn(...inputs: ClassValue[]) {
 export const instantiateClient = async (
   { accountsToImport }: { accountsToImport: (AccountId | undefined)[] },
 ) => {
-  const { Address: DynamicAddress, WebClient } = await import(
-    '@miden-sdk/miden-sdk'
-  );
   const client = await WebClient.createClient(NETWORK.rpcEndpoint);
   for (const acc of accountsToImport) {
     if (!acc) continue;
     try {
-      // Convert to bech32 and back to ensure we have an AccountId from the same module instance
       const bech32 = acc.toBech32(createNetworkId(), AccountInterface.BasicWallet);
-      const accountId = DynamicAddress.fromBech32(bech32).accountId();
+      const accountId = Address.fromBech32(bech32).accountId();
       await safeAccountImport(client, accountId);
     } catch (e) {
       console.error(e);

@@ -1,29 +1,65 @@
-import type { AccountId } from '@miden-sdk/miden-sdk';
-import AssetIcon from '@/components/AssetIcon';
+import { type AccountId, AccountId as AccountIdClass } from '@miden-sdk/miden-sdk';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ModalContext } from '@/providers/ModalContext';
 import type { TokenConfig } from '@/providers/ZoroProvider';
+import { ZoroContext } from '@/providers/ZoroContext';
 import { useBalance } from '@/hooks/useBalance';
-import { bech32ToAccountId } from '@/lib/utils';
+import { accountIdToBech32, bech32ToAccountId } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { ArrowRight, Check, ChevronLeft, X } from 'lucide-react';
-import { useCallback, useContext, useMemo, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
-const FAUCET_ID_MIN_LENGTH = 40;
-const FAUCET_ID_MAX_LENGTH = 100;
+/** Two circles with first letter of each symbol (XYK pool style) */
+function XykPairIcon({ symbolA, symbolB, size = 24 }: { symbolA: string; symbolB: string; size?: number }) {
+  const letterA = (symbolA || '?')[0].toUpperCase();
+  const letterB = (symbolB || '?')[0].toUpperCase();
+  return (
+    <span className="flex items-center">
+      <span
+        className="inline-flex h-8 w-8 items-center justify-center rounded-full border-2 border-background bg-muted text-xs font-semibold text-foreground"
+        style={{ width: size, height: size, marginRight: -size / 4, zIndex: 1 }}
+      >
+        {letterA}
+      </span>
+      <span
+        className="inline-flex h-8 w-8 items-center justify-center rounded-full border-2 border-background bg-muted/80 text-xs font-semibold text-foreground"
+        style={{ width: size, height: size, zIndex: 0 }}
+      >
+        {letterB}
+      </span>
+    </span>
+  );
+}
 
-function validateFaucetId(value: string): { valid: boolean; error?: string } {
+const HEX_REGEX = /^(0x)?[0-9a-fA-F]+$/;
+
+/** Parse faucet ID from bech32 (e.g. mtst1...) or hex (with or without 0x). Returns AccountId or null. */
+function parseFaucetIdToAccountId(value: string): AccountId | null {
+  const v = value?.trim();
+  if (!v) return null;
+  try {
+    if (HEX_REGEX.test(v)) {
+      const hex = v.startsWith('0x') ? v : `0x${v}`;
+      return AccountIdClass.fromHex(hex);
+    }
+    const id = bech32ToAccountId(v);
+    return id ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function validateFaucetId(value: string): { valid: boolean; error: string } {
   const v = value?.trim();
   if (!v) return { valid: false, error: 'Faucet ID is required' };
-  if (v.length < FAUCET_ID_MIN_LENGTH) return { valid: false, error: 'Faucet ID is too short' };
-  if (v.length > FAUCET_ID_MAX_LENGTH) return { valid: false, error: 'Faucet ID is too long' };
   try {
-    const id = bech32ToAccountId(v);
-    if (id == null) return { valid: false, error: 'Invalid faucet ID format' };
-    return { valid: true };
-  } catch {
-    return { valid: false, error: 'Must be a valid bech32 faucet ID (AccountId)' };
+    const id = parseFaucetIdToAccountId(v);
+    if (id == null) return { valid: false, error: 'Invalid format (use bech32 or hex)' };
+    return { valid: true, error: '' };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'Invalid format';
+    return { valid: false, error: msg.length > 60 ? 'Invalid format (use bech32 or hex)' : msg };
   }
 }
 
@@ -32,25 +68,42 @@ function isValidFaucetId(value: string): boolean {
 }
 
 function minimalTokenFromFaucetId(
-  faucetIdBech32: string,
+  rawInput: string,
   symbol: string,
+  decimals = 18,
 ): TokenConfig | null {
-  const v = faucetIdBech32?.trim();
+  const v = rawInput?.trim();
   if (!v) return null;
   try {
-    const faucetId = bech32ToAccountId(v) as AccountId | undefined;
+    const faucetId = parseFaucetIdToAccountId(v);
     if (!faucetId) return null;
+    const faucetIdBech32 = HEX_REGEX.test(v) ? accountIdToBech32(faucetId) : v;
     return {
       symbol,
       name: symbol,
-      decimals: 18,
+      decimals,
       faucetId,
-      faucetIdBech32: v,
+      faucetIdBech32,
       oracleId: '',
     };
   } catch {
     return null;
   }
+}
+
+/** Resolve faucet input to token: use known token symbol/decimals if faucet matches, else minimal token. */
+function resolveTokenFromFaucetInput(
+  rawInput: string,
+  fallbackSymbol: string,
+  knownTokens: Record<string, TokenConfig> | undefined,
+): TokenConfig | null {
+  const minimal = minimalTokenFromFaucetId(rawInput, fallbackSymbol);
+  if (!minimal || !knownTokens) return minimal;
+  const known = knownTokens[minimal.faucetIdBech32];
+  if (known) {
+    return { ...minimal, symbol: known.symbol, name: known.name, decimals: known.decimals };
+  }
+  return minimal;
 }
 
 type Step = 1 | 2 | 3 | 4;
@@ -95,6 +148,7 @@ export function clearCreatedPools(): void {
 
 export function CreatePoolWizard({ onCreated }: { onCreated?: () => void }) {
   const { closeModal } = useContext(ModalContext);
+  const { tokens: knownTokens } = useContext(ZoroContext);
 
   const [step, setStep] = useState<Step>(1);
   const [baseFaucetId, setBaseFaucetId] = useState('');
@@ -104,24 +158,48 @@ export function CreatePoolWizard({ onCreated }: { onCreated?: () => void }) {
   const [amountB, setAmountB] = useState('');
 
   const tokenA = useMemo(
-    () => minimalTokenFromFaucetId(baseFaucetId, 'Base'),
-    [baseFaucetId],
+    () => resolveTokenFromFaucetInput(baseFaucetId, 'Base', knownTokens ?? undefined),
+    [baseFaucetId, knownTokens],
   );
   const tokenB = useMemo(
-    () => minimalTokenFromFaucetId(quoteFaucetId, 'Quote'),
-    [quoteFaucetId],
+    () => resolveTokenFromFaucetInput(quoteFaucetId, 'Quote', knownTokens ?? undefined),
+    [quoteFaucetId, knownTokens],
   );
 
-  const { balance: balanceA, formatted: formattedBalanceA } = useBalance({ token: tokenA ?? undefined });
-  const { balance: balanceB, formatted: formattedBalanceB } = useBalance({ token: tokenB ?? undefined });
+  const {
+    balance: balanceA,
+    formatted: formattedBalanceA,
+    refetch: refetchBalanceA,
+  } = useBalance({ token: tokenA ?? undefined });
+  const {
+    balance: balanceB,
+    formatted: formattedBalanceB,
+    refetch: refetchBalanceB,
+  } = useBalance({ token: tokenB ?? undefined });
+
+  useEffect(() => {
+    if (step === 2) {
+      refetchBalanceA();
+      refetchBalanceB();
+    }
+  }, [step, refetchBalanceA, refetchBalanceB]);
 
   const baseValidation = useMemo(() => validateFaucetId(baseFaucetId), [baseFaucetId]);
   const quoteValidation = useMemo(() => validateFaucetId(quoteFaucetId), [quoteFaucetId]);
   const baseValid = baseValidation.valid;
   const quoteValid = quoteValidation.valid;
+  const sameIds = baseFaucetId.trim() === quoteFaucetId.trim() && baseFaucetId.trim().length > 0;
   const canContinueStep1 = Boolean(
-    baseValid && quoteValid && baseFaucetId.trim() !== quoteFaucetId.trim(),
+    baseValid && quoteValid && !sameIds,
   );
+  const step1BlockReason =
+    !baseValid && baseValidation.error
+      ? baseValidation.error
+      : !quoteValid && quoteValidation.error
+        ? quoteValidation.error
+        : sameIds
+          ? 'Base and quote must be different.'
+          : null;
   const canContinueStep2 = useMemo(() => {
     const a = amountA.trim() && parseFloat(amountA) > 0;
     const b = amountB.trim() && parseFloat(amountB) > 0;
@@ -276,37 +354,52 @@ export function CreatePoolWizard({ onCreated }: { onCreated?: () => void }) {
             </p>
             <div className="flex items-center gap-2 mt-2">
               <div className="flex-1 space-y-1">
+                <label className="text-xs text-muted-foreground sr-only">Base faucet ID</label>
                 <Input
-                  placeholder="Base faucet id (bech32)"
+                  placeholder="Base faucet id (bech32 or hex)"
                   value={baseFaucetId}
                   onChange={(e) => setBaseFaucetId(e.target.value)}
                   className={cn(
                     'rounded-xl bg-background border font-mono text-sm',
-                    baseFaucetId.trim() && !baseValid && 'border-destructive',
+                    !baseValid && 'border-destructive',
                   )}
+                  aria-invalid={!baseValid}
+                  aria-describedby={!baseValid && baseValidation.error ? 'base-faucet-error' : undefined}
                 />
-                {baseFaucetId.trim() && !baseValid && baseValidation.error && (
-                  <p className="text-xs text-destructive">{baseValidation.error}</p>
+                {!baseValid && baseValidation.error && (
+                  <p id="base-faucet-error" className="text-xs text-destructive" role="alert">
+                    {baseValidation.error}
+                  </p>
                 )}
               </div>
               <span className="text-muted-foreground shrink-0">
                 <ArrowRight className="h-4 w-4" />
               </span>
               <div className="flex-1 space-y-1">
+                <label className="text-xs text-muted-foreground sr-only">Quote faucet ID</label>
                 <Input
-                  placeholder="Quote faucet id (bech32)"
+                  placeholder="Quote faucet id (bech32 or hex)"
                   value={quoteFaucetId}
                   onChange={(e) => setQuoteFaucetId(e.target.value)}
                   className={cn(
                     'rounded-xl bg-background border font-mono text-sm',
-                    quoteFaucetId.trim() && !quoteValid && 'border-destructive',
+                    !quoteValid && 'border-destructive',
                   )}
+                  aria-invalid={!quoteValid}
+                  aria-describedby={!quoteValid && quoteValidation.error ? 'quote-faucet-error' : undefined}
                 />
-                {quoteFaucetId.trim() && !quoteValid && quoteValidation.error && (
-                  <p className="text-xs text-destructive">{quoteValidation.error}</p>
+                {!quoteValid && quoteValidation.error && (
+                  <p id="quote-faucet-error" className="text-xs text-destructive" role="alert">
+                    {quoteValidation.error}
+                  </p>
                 )}
               </div>
             </div>
+            {step1BlockReason && (
+              <p className="text-xs text-destructive mt-2" role="alert">
+                {step1BlockReason}
+              </p>
+            )}
             {canContinueStep1 && (
               <p className="text-xs text-muted-foreground mt-1">
                 You are creating a new XYK Pool. Amounts in the next step will use these faucets.
@@ -366,8 +459,8 @@ export function CreatePoolWizard({ onCreated }: { onCreated?: () => void }) {
                 className="flex-1 min-w-0 text-lg border-0 bg-transparent p-0 shadow-none focus-visible:ring-0 h-auto"
               />
               <div className="flex items-center gap-2 shrink-0">
-                <span className="flex h-8 w-8 items-center justify-center rounded-full overflow-hidden bg-muted">
-                  <AssetIcon symbol={tokenA.symbol} size={24} />
+                <span className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-background bg-muted text-xs font-semibold text-foreground shrink-0">
+                  {(tokenA.symbol || '?')[0].toUpperCase()}
                 </span>
                 <span className="font-medium text-sm">{tokenA.symbol}</span>
               </div>
@@ -395,8 +488,8 @@ export function CreatePoolWizard({ onCreated }: { onCreated?: () => void }) {
                 className="flex-1 min-w-0 text-lg border-0 bg-transparent p-0 shadow-none focus-visible:ring-0 h-auto"
               />
               <div className="flex items-center gap-2 shrink-0">
-                <span className="flex h-8 w-8 items-center justify-center rounded-full overflow-hidden bg-muted">
-                  <AssetIcon symbol={tokenB.symbol} size={24} />
+                <span className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-background bg-muted text-xs font-semibold text-foreground shrink-0">
+                  {(tokenB.symbol || '?')[0].toUpperCase()}
                 </span>
                 <span className="font-medium text-sm">{tokenB.symbol}</span>
               </div>
@@ -414,6 +507,9 @@ export function CreatePoolWizard({ onCreated }: { onCreated?: () => void }) {
               </Button>
             </div>
           </div>
+          <p className="text-xs text-muted-foreground mt-2">
+            Pair: <XykPairIcon symbolA={tokenA.symbol} symbolB={tokenB.symbol} size={20} /> {tokenA.symbol} / {tokenB.symbol}
+          </p>
         </div>
       )}
 
