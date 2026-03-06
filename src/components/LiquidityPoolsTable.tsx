@@ -71,7 +71,7 @@ const LiquidityPoolsTable = ({
             variant='outline'
             size='sm'
             className={`rounded-lg ${poolFilter === 'hot' ? 'bg-primary/10 border-primary text-primary' : 'bg-muted/50 border-muted-foreground/20'}`}
-            onClick={() => setPoolFilter('hot')}
+            onClick={() => setPoolFilter((f) => (f === 'hot' ? 'all' : 'hot'))}
           >
             <Flame className='h-4 w-4 mr-1' />
             Hot
@@ -80,7 +80,7 @@ const LiquidityPoolsTable = ({
             variant='outline'
             size='sm'
             className={`rounded-lg ${poolFilter === 'new' ? 'bg-primary/10 border-primary text-primary' : 'bg-muted/50 border-muted-foreground/20'}`}
-            onClick={() => setPoolFilter('new')}
+            onClick={() => setPoolFilter((f) => (f === 'new' ? 'all' : 'new'))}
           >
             <Clock className='h-4 w-4 mr-1' />
             New
@@ -89,7 +89,7 @@ const LiquidityPoolsTable = ({
             variant='outline'
             size='sm'
             className={`rounded-lg ${poolFilter === 'stables' ? 'bg-primary/10 border-primary text-primary' : 'bg-muted/50 border-muted-foreground/20'}`}
-            onClick={() => setPoolFilter('stables')}
+            onClick={() => setPoolFilter((f) => (f === 'stables' ? 'all' : 'stables'))}
           >
             <Star className='h-4 w-4 mr-1' />
             Stables

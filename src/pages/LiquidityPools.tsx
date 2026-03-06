@@ -157,8 +157,8 @@ function LiquidityPools() {
                   poolBalance={poolBalance}
                   lpBalance={lpBalance}
                   variant='slim'
-                  onDeposit={() => openPoolModal(pool)}
-                  onWithdraw={() => openPoolModal(pool)}
+                  onDeposit={() => openPoolModal(pool, 'Deposit')}
+                  onWithdraw={() => openPoolModal(pool, 'Withdraw')}
                 />
               ))
               : (

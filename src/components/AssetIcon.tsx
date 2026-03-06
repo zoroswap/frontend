@@ -5,6 +5,9 @@ interface AssetIconProps {
   size?: 'small' | 'normal' | number;
 }
 
+/** LP tokens (zBTC, zUSDC) use the same icon as the underlying token (BTC, USDC). */
+const iconSymbol = (s: string) => (s.startsWith('z') ? s.slice(1) : s);
+
 const AssetIcon = ({ symbol, size = 'normal' }: AssetIconProps) => {
   const iconSize = size === 'normal'
     ? 32
@@ -13,9 +16,10 @@ const AssetIcon = ({ symbol, size = 'normal' }: AssetIconProps) => {
     : typeof size === 'number'
     ? size
     : 32;
+  const symbolForIcon = iconSymbol(symbol);
   return (
     <span
-      className={`icon-any icon-${symbol} inline-block`}
+      className={`icon-any icon-${symbolForIcon} inline-block`}
       style={{ width: iconSize, height: iconSize }}
     >
     </span>

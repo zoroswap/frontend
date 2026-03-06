@@ -157,14 +157,14 @@ export function OrderStatus({
         onClick={handleClose}
       />
 
-      <div className='fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50'>
+      <div className='fixed bottom-6 right-6 z-50'>
         <div
           className={`w-80 max-w-[calc(100vw-2rem)] transition-all duration-300 ease-in-out ${
             isVisible && !isClosing
-              ? 'opacity-100 translate-y-0 scale-100'
+              ? 'opacity-100 translate-x-0 translate-y-0 scale-100'
               : isVisible && isClosing
-              ? 'opacity-0 translate-y-[-100%] scale-95'
-              : 'opacity-0 translate-y-[100%] scale-95'
+              ? 'opacity-0 translate-x-4 translate-y-4 scale-95'
+              : 'opacity-0 translate-x-4 translate-y-4 scale-95'
           }`}
         >
           <div className='bg-background border border-border rounded-2xl shadow-xl p-6'>

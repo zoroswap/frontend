@@ -122,6 +122,14 @@ const Slippage = ({ slippage, onSlippageChange }: SlippageProps) => {
                   </div>
                 )}
               </div>
+
+              <Button
+                onClick={handleClose}
+                className='w-full rounded-lg'
+                size='sm'
+              >
+                OK
+              </Button>
             </CardContent>
           </Card>
         </>

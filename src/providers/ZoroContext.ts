@@ -1,7 +1,14 @@
 import type { PoolInfo } from '@/hooks/usePoolsInfo';
-import type { Account, AccountId, ConsumableNoteRecord, Note, RpcClient, WebClient } from '@miden-sdk/miden-sdk';
+import type {
+  Account,
+  AccountId,
+  ConsumableNoteRecord,
+  Note,
+  RpcClient,
+  WebClient,
+} from '@miden-sdk/miden-sdk';
 import { createContext } from 'react';
-import type { TokenConfig } from './ZoroProvider';
+import type { FaucetParams, TokenConfig } from './ZoroProvider';
 
 type ZoroProviderState = {
   poolAccountId?: AccountId;
@@ -22,6 +29,13 @@ type ZoroProviderState = {
   isExpectingNotes: boolean;
   startExpectingNotes: () => void;
   refreshPendingNotes: () => Promise<void>;
+  // XYK pools
+  createFaucet: (params: FaucetParams) => Promise<Account | undefined>;
+  mintFromFaucet: (
+    faucetId: AccountId,
+    accountId: AccountId,
+    amount: bigint,
+  ) => Promise<string>;
 };
 
 const initialState: ZoroProviderState = {
@@ -38,6 +52,8 @@ const initialState: ZoroProviderState = {
   isExpectingNotes: false,
   startExpectingNotes: () => {},
   refreshPendingNotes: () => Promise.resolve(),
+  createFaucet: () => Promise.resolve(undefined),
+  mintFromFaucet: () => Promise.resolve(''),
 };
 
 export const ZoroContext = createContext<ZoroProviderState>(initialState);

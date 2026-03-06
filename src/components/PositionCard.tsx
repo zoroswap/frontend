@@ -1,7 +1,9 @@
 import type { PoolBalance } from '@/hooks/usePoolsBalances';
 import type { PoolInfo } from '@/hooks/usePoolsInfo';
 import { cn } from '@/lib/utils';
-import { prettyBigintFormat } from '@/utils/format';
+import { formatUsd, prettyBigintFormat } from '@/utils/format';
+import { useOraclePrices } from '@/providers/OracleContext';
+import { useMemo } from 'react';
 import AssetIcon from './AssetIcon';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
@@ -29,6 +31,15 @@ export function PositionCard({
 }: PositionCardProps) {
   const decimals = pool.decimals;
   const isHfAmm = pool.poolType === 'hfAMM';
+  const oraclePrices = useOraclePrices(pool.oracleId ? [pool.oracleId] : []);
+  const price = pool.oracleId ? oraclePrices[pool.oracleId]?.value : undefined;
+  const positionUsd = useMemo(() => {
+    if (!isHfAmm || price == null || price === 0 || poolBalance.totalLiabilities === BigInt(0))
+      return null;
+    const valueInAsset = (lpBalance * poolBalance.reserve) / poolBalance.totalLiabilities;
+    const valueHuman = Number(valueInAsset) / 10 ** decimals;
+    return valueHuman * price;
+  }, [isHfAmm, price, lpBalance, poolBalance.reserve, poolBalance.totalLiabilities, decimals]);
   const liquidityFormatted = prettyBigintFormat({
     value: lpBalance,
     expo: decimals,
@@ -60,6 +71,11 @@ export function PositionCard({
               </div>
             )}
           <span className={cn('font-semibold text-foreground', isSlim && 'text-sm')}>{pool.name}</span>
+          {isHfAmm && (
+            <span className='text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium'>
+              hfAMM
+            </span>
+          )}
           <span className='text-xs text-muted-foreground'>{feeTier}</span>
         </div>
         <div className={cn('space-y-2 text-sm', isSlim && 'space-y-1 text-xs')}>
@@ -69,6 +85,12 @@ export function PositionCard({
                 <span className='text-muted-foreground uppercase tracking-wide text-xs'>Liquidity</span>
                 <span className='font-medium'>${tvlFormatted}</span>
               </div>
+              {isHfAmm && positionUsd != null && (
+                <div className='flex justify-between'>
+                  <span className='text-muted-foreground uppercase tracking-wide text-xs'>Value</span>
+                  <span className='font-medium'>{formatUsd(positionUsd)}</span>
+                </div>
+              )}
               <div className='flex justify-between'>
                 <span className='text-muted-foreground uppercase tracking-wide text-xs'>Fees earned</span>
                 <span className='font-medium text-green-600'>$0.00</span>
@@ -84,10 +106,18 @@ export function PositionCard({
             </>
           )}
           {isSlim && (
-            <div className='flex justify-between'>
-              <span className='text-muted-foreground'>Your deposit</span>
-              <span className='font-medium'>{liquidityFormatted}</span>
-            </div>
+            <>
+              <div className='flex justify-between'>
+                <span className='text-muted-foreground'>Your deposit</span>
+                <span className='font-medium'>{liquidityFormatted}</span>
+              </div>
+              {isHfAmm && positionUsd != null && (
+                <div className='flex justify-between'>
+                  <span className='text-muted-foreground'>Value</span>
+                  <span className='font-medium'>{formatUsd(positionUsd)}</span>
+                </div>
+              )}
+            </>
           )}
         </div>
         <div className={cn('flex gap-2', isSlim ? 'mt-2' : 'mt-4')}>

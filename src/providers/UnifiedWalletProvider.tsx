@@ -1,12 +1,12 @@
 import { clientMutex } from '@/lib/clientMutex';
 import { createNetworkId, NETWORK } from '@/lib/config';
+import { TransactionType, useWallet } from '@demox-labs/miden-wallet-adapter';
+import { useAccount, useLogout } from '@getpara/react-sdk-lite';
 import {
   AccountId,
   AccountInterface,
   TransactionRequest as TxRequest,
 } from '@miden-sdk/miden-sdk';
-import { TransactionType, useWallet } from '@demox-labs/miden-wallet-adapter';
-import { useAccount, useLogout } from '@getpara/react-sdk-lite';
 import { useParaMiden } from '@miden-sdk/use-miden-para-react';
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { ParaClientContext } from './ParaClientContext';
@@ -52,7 +52,7 @@ export function UnifiedWalletProvider({ children }: UnifiedWalletProviderProps) 
     async (tx: TransactionRequest): Promise<string | undefined> => {
       if (walletType === 'miden') {
         // Delegate to Miden wallet adapter
-        if ('type' in tx && tx.type === 'Custom') {
+        if ('type' in tx && tx.type === TransactionType.Custom) {
           return midenWallet.requestTransaction?.({
             type: TransactionType.Custom,
             payload: tx.payload,
@@ -77,7 +77,10 @@ export function UnifiedWalletProvider({ children }: UnifiedWalletProviderProps) 
             const accountId = AccountId.fromHex(paraMidenAccountId);
 
             // Submit the transaction
-            const txHash = await paraMidenClient.submitNewTransaction(accountId, txRequest);
+            const txHash = await paraMidenClient.submitNewTransaction(
+              accountId,
+              txRequest,
+            );
 
             return txHash.toHex();
           }
@@ -177,7 +180,9 @@ export function UnifiedWalletProvider({ children }: UnifiedWalletProviderProps) 
   ]);
 
   // Para client for internal use by ZoroProvider (handles locking)
-  const paraClientValue = walletType === 'para' ? paraMidenClient ?? undefined : undefined;
+  const paraClientValue = walletType === 'para'
+    ? paraMidenClient ?? undefined
+    : undefined;
 
   return (
     <UnifiedWalletContext.Provider value={value}>

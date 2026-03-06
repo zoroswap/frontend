@@ -1,10 +1,12 @@
 import { type AccountId, AccountId as AccountIdClass } from '@miden-sdk/miden-sdk';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { TokenAutocomplete } from '@/components/TokenAutocomplete';
 import { ModalContext } from '@/providers/ModalContext';
 import type { TokenConfig } from '@/providers/ZoroProvider';
 import { ZoroContext } from '@/providers/ZoroContext';
 import { useBalance } from '@/hooks/useBalance';
+import { useTokensWithBalance } from '@/hooks/useTokensWithBalance';
 import { accountIdToBech32, bech32ToAccountId } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { ArrowRight, Check, ChevronLeft, X } from 'lucide-react';
@@ -48,23 +50,6 @@ function parseFaucetIdToAccountId(value: string): AccountId | null {
   } catch {
     return null;
   }
-}
-
-function validateFaucetId(value: string): { valid: boolean; error: string } {
-  const v = value?.trim();
-  if (!v) return { valid: false, error: 'Faucet ID is required' };
-  try {
-    const id = parseFaucetIdToAccountId(v);
-    if (id == null) return { valid: false, error: 'Invalid format (use bech32 or hex)' };
-    return { valid: true, error: '' };
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : 'Invalid format';
-    return { valid: false, error: msg.length > 60 ? 'Invalid format (use bech32 or hex)' : msg };
-  }
-}
-
-function isValidFaucetId(value: string): boolean {
-  return validateFaucetId(value).valid;
 }
 
 function minimalTokenFromFaucetId(
@@ -149,6 +134,7 @@ export function clearCreatedPools(): void {
 export function CreatePoolWizard({ onCreated }: { onCreated?: () => void }) {
   const { closeModal } = useContext(ModalContext);
   const { tokens: knownTokens } = useContext(ZoroContext);
+  const { tokensWithBalance, loading: tokensWithBalanceLoading } = useTokensWithBalance();
 
   const [step, setStep] = useState<Step>(1);
   const [baseFaucetId, setBaseFaucetId] = useState('');
@@ -156,6 +142,7 @@ export function CreatePoolWizard({ onCreated }: { onCreated?: () => void }) {
   const [feeBps, setFeeBps] = useState<number>(30);
   const [amountA, setAmountA] = useState('');
   const [amountB, setAmountB] = useState('');
+  const [step1Attempted, setStep1Attempted] = useState(false);
 
   const tokenA = useMemo(
     () => resolveTokenFromFaucetInput(baseFaucetId, 'Base', knownTokens ?? undefined),
@@ -184,19 +171,15 @@ export function CreatePoolWizard({ onCreated }: { onCreated?: () => void }) {
     }
   }, [step, refetchBalanceA, refetchBalanceB]);
 
-  const baseValidation = useMemo(() => validateFaucetId(baseFaucetId), [baseFaucetId]);
-  const quoteValidation = useMemo(() => validateFaucetId(quoteFaucetId), [quoteFaucetId]);
-  const baseValid = baseValidation.valid;
-  const quoteValid = quoteValidation.valid;
   const sameIds = baseFaucetId.trim() === quoteFaucetId.trim() && baseFaucetId.trim().length > 0;
   const canContinueStep1 = Boolean(
-    baseValid && quoteValid && !sameIds,
+    baseFaucetId.trim() && quoteFaucetId.trim() && !sameIds,
   );
   const step1BlockReason =
-    !baseValid && baseValidation.error
-      ? baseValidation.error
-      : !quoteValid && quoteValidation.error
-        ? quoteValidation.error
+    !baseFaucetId.trim()
+      ? 'Select base token.'
+      : !quoteFaucetId.trim()
+        ? 'Select quote token.'
         : sameIds
           ? 'Base and quote must be different.'
           : null;
@@ -207,7 +190,13 @@ export function CreatePoolWizard({ onCreated }: { onCreated?: () => void }) {
   }, [amountA, amountB]);
 
   const next = useCallback(() => {
-    if (step === 1 && !canContinueStep1) return;
+    if (step === 1) {
+      if (!canContinueStep1) {
+        setStep1Attempted(true);
+        return;
+      }
+      setStep1Attempted(false);
+    }
     if (step === 2 && !canContinueStep2) return;
     setStep((s) => (s < 4 ? (s + 1) as Step : s));
   }, [step, canContinueStep1, canContinueStep2]);
@@ -289,6 +278,7 @@ export function CreatePoolWizard({ onCreated }: { onCreated?: () => void }) {
               setQuoteFaucetId('');
               setAmountA('');
               setAmountB('');
+              setStep1Attempted(false);
             }}
           >
             Create new pool
@@ -344,65 +334,56 @@ export function CreatePoolWizard({ onCreated }: { onCreated?: () => void }) {
         </Button>
       </div>
 
-      {/* Step 1: Base & quote faucet ids + fee tier */}
+      {/* Step 1: Base & quote token selects (from assets user has) + fee tier */}
       {step === 1 && (
         <div className="space-y-6">
           <div className="space-y-2">
             <h3 className="text-sm font-semibold text-foreground">Select pair</h3>
             <p className="text-xs text-muted-foreground">
-              Enter the base and quote token faucet IDs (valid AccountId or bech32 address).
+              Choose the base and quote tokens from assets you hold.
             </p>
-            <div className="flex items-center gap-2 mt-2">
-              <div className="flex-1 space-y-1">
-                <label className="text-xs text-muted-foreground sr-only">Base faucet ID</label>
-                <Input
-                  placeholder="Base faucet id (bech32 or hex)"
-                  value={baseFaucetId}
-                  onChange={(e) => setBaseFaucetId(e.target.value)}
-                  className={cn(
-                    'rounded-xl bg-background border font-mono text-sm',
-                    !baseValid && 'border-destructive',
-                  )}
-                  aria-invalid={!baseValid}
-                  aria-describedby={!baseValid && baseValidation.error ? 'base-faucet-error' : undefined}
-                />
-                {!baseValid && baseValidation.error && (
-                  <p id="base-faucet-error" className="text-xs text-destructive" role="alert">
-                    {baseValidation.error}
-                  </p>
-                )}
+            {tokensWithBalanceLoading ? (
+              <p className="text-xs text-muted-foreground mt-2">Loading your tokens…</p>
+            ) : tokensWithBalance.length === 0 ? (
+              <p className="text-xs text-muted-foreground mt-2">
+                You have no token balance. Get tokens from the faucet first.
+              </p>
+            ) : (
+              <div className="flex items-center gap-2 mt-2">
+                <div className="flex-1 min-w-0">
+                  <label className="text-xs text-muted-foreground sr-only">Base token</label>
+                  <TokenAutocomplete
+                    tokens={tokensWithBalance}
+                    value={tokenA ?? undefined}
+                    onChange={setBaseFaucetId}
+                    placeholder="Base token"
+                    className="w-full"
+                  />
+                </div>
+                <span className="text-muted-foreground shrink-0">
+                  <ArrowRight className="h-4 w-4" />
+                </span>
+                <div className="flex-1 min-w-0">
+                  <label className="text-xs text-muted-foreground sr-only">Quote token</label>
+                  <TokenAutocomplete
+                    tokens={tokensWithBalance}
+                    value={tokenB ?? undefined}
+                    onChange={setQuoteFaucetId}
+                    excludeFaucetIdBech32={baseFaucetId || undefined}
+                    placeholder="Quote token"
+                    className="w-full"
+                  />
+                </div>
               </div>
-              <span className="text-muted-foreground shrink-0">
-                <ArrowRight className="h-4 w-4" />
-              </span>
-              <div className="flex-1 space-y-1">
-                <label className="text-xs text-muted-foreground sr-only">Quote faucet ID</label>
-                <Input
-                  placeholder="Quote faucet id (bech32 or hex)"
-                  value={quoteFaucetId}
-                  onChange={(e) => setQuoteFaucetId(e.target.value)}
-                  className={cn(
-                    'rounded-xl bg-background border font-mono text-sm',
-                    !quoteValid && 'border-destructive',
-                  )}
-                  aria-invalid={!quoteValid}
-                  aria-describedby={!quoteValid && quoteValidation.error ? 'quote-faucet-error' : undefined}
-                />
-                {!quoteValid && quoteValidation.error && (
-                  <p id="quote-faucet-error" className="text-xs text-destructive" role="alert">
-                    {quoteValidation.error}
-                  </p>
-                )}
-              </div>
-            </div>
-            {step1BlockReason && (
+            )}
+            {step1Attempted && step1BlockReason && (
               <p className="text-xs text-destructive mt-2" role="alert">
                 {step1BlockReason}
               </p>
             )}
             {canContinueStep1 && (
               <p className="text-xs text-muted-foreground mt-1">
-                You are creating a new XYK Pool. Amounts in the next step will use these faucets.
+                You are creating a new XYK Pool. Amounts in the next step will use these tokens.
               </p>
             )}
           </div>

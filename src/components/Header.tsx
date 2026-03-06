@@ -20,31 +20,34 @@ export function Header() {
           aria-label='ZoroSwap'
           className='flex items-center shrink-0 justify-self-start'
         >
-        <img
-          src='/zoro-logo-full.svg'
-          alt='Zoro'
-          title='ZoroSwap | DeFi on Miden'
+          <img
+            src='/zoro-logo-full.svg'
+            alt='Zoro'
+            title='ZoroSwap | DeFi on Miden'
             className='h-10 w-10'
-        />
-      </Link>
+          />
+        </Link>
         <nav className='flex items-center gap-1 font-cal-sans justify-self-center'>
-        <Link to='/' className={navLinkClass('/')}>
-          Swap
-        </Link>
+          <Link to='/' className={navLinkClass('/')}>
+            Swap
+          </Link>
           <Link to='/explore' className={navLinkClass('/explore')}>
-          Explore
-        </Link>
-        <Link to='/pools' className={navLinkClass('/pools')}>
-          Pools
-        </Link>
-        <Link to='/faucet' className={navLinkClass('/faucet')}>
-          Faucet
-        </Link>
-      </nav>
+            Explore
+          </Link>
+          <Link to='/pools' className={navLinkClass('/pools')}>
+            Pools
+          </Link>
+          <Link to='/faucet' className={navLinkClass('/faucet')}>
+            Faucet
+          </Link>
+          <Link to='/launchpad' className={navLinkClass('/launchpad')}>
+            Launchpad
+          </Link>
+        </nav>
         <div className='flex items-center gap-3 justify-self-end'>
-        <ModeToggle />
-        <UnifiedWalletButton className='bg-muted hover:bg-muted/80 text-foreground rounded-lg px-4 py-2 text-sm font-medium' />
-      </div>
+          <ModeToggle />
+          <UnifiedWalletButton className='bg-muted hover:bg-muted/80 text-foreground rounded-lg px-4 py-2 text-sm font-medium' />
+        </div>
       </div>
     </header>
   );
