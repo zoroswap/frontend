@@ -13,13 +13,15 @@ import { ThemeProvider } from './providers/ThemeProvider';
 import '@demox-labs/miden-wallet-adapter-reactui/styles.css';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Bounce, ToastContainer } from 'react-toastify';
+import Launchpad from './pages/Launchpad';
 import LiquidityPools from './pages/LiquidityPools';
 import PoolDetail from './pages/PoolDetail';
+import NewXykPool from './pages/NewXykPool';
 import Pools from './pages/Pools';
 import ModalProvider from './providers/ModalProvider';
-import { ZoroProvider } from './providers/ZoroProvider';
 import { ParaProviderWrapper } from './providers/ParaProviderWrapper';
 import { UnifiedWalletProvider } from './providers/UnifiedWalletProvider';
+import { ZoroProvider } from './providers/ZoroProvider';
 
 const queryClient = new QueryClient();
 
@@ -29,9 +31,11 @@ function AppRouter() {
       <Routes>
         <Route path='/' element={<SwapPage />} />
         <Route path='/faucet' element={<FaucetPage />} />
+        <Route path='/launchpad' element={<Launchpad />} />
         <Route path='/explore' element={<LiquidityPools />} />
         <Route path='/explore/pool/:poolId' element={<PoolDetail />} />
         <Route path='/pools' element={<Pools />} />
+        <Route path='/new-xyk-pool' element={<NewXykPool />} />
         <Route path='*' element={<NotFound />} />
       </Routes>
     </Router>

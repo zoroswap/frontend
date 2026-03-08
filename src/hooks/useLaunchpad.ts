@@ -1,39 +1,60 @@
+import { accountIdToBech32 } from '@/lib/utils';
 import { ZoroContext } from '@/providers/ZoroContext';
 import { useCallback, useContext, useMemo, useState } from 'react';
 
-interface FaucetParams {
+export interface FaucetParams {
   symbol: string;
   decimals: number;
   initialSupply: bigint;
 }
 
+export interface LaunchSuccess {
+  txId: string;
+  faucetIdBech32: string;
+}
+
+const MIDENSCAN_BASE = 'https://testnet.midenscan.com';
+
+export function getMidenscanTxUrl(txId: string): string {
+  return `${MIDENSCAN_BASE}/tx/${txId}`;
+}
+
+export function getMidenscanAccountUrl(accountBech32: string): string {
+  return `${MIDENSCAN_BASE}/account/${accountBech32}`;
+}
+
 const useLaunchpad = () => {
   const [error, setError] = useState<string>('');
   const { accountId, createFaucet, mintFromFaucet } = useContext(ZoroContext);
-  const launchToken = useCallback(async (params: FaucetParams) => {
+
+  const clearError = useCallback(() => setError(''), []);
+
+  const launchToken = useCallback(async (params: FaucetParams): Promise<LaunchSuccess | undefined> => {
+    setError('');
     try {
       if (!accountId) {
-        throw new Error('User must be logged in to use the launchpad');
+        throw new Error('Connect your wallet to use the launchpad');
       }
       const faucet = await createFaucet(params);
-      if (faucet && accountId) {
-        const txId = await mintFromFaucet(faucet.id(), accountId, params.initialSupply);
-        return txId;
-      } else throw new Error('Faucet failed creating');
-    } catch (e) {
-      console.log(e);
-      if (typeof e?.toString === 'function') {
-        setError(e.toString());
-      } else {
-        setError('Error on launching token, check console for more details.');
+      if (!faucet) {
+        throw new Error('Faucet creation failed');
       }
+      const faucetIdBech32 = accountIdToBech32(faucet.id());
+      const txId = await mintFromFaucet(faucet.id(), accountId, params.initialSupply);
+      return { txId, faucetIdBech32 };
+    } catch (e) {
+      const message = e instanceof Error ? e.message : typeof e === 'string' ? e : 'Launch failed. Check the console for details.';
+      setError(message);
+      console.error('Launchpad error:', e);
+      return undefined;
     }
-  }, [createFaucet, setError, mintFromFaucet, accountId]);
+  }, [accountId, createFaucet, mintFromFaucet]);
 
   const value = useMemo(() => ({
     launchToken,
     error,
-  }), [launchToken, error]);
+    clearError,
+  }), [launchToken, error, clearError]);
   return value;
 };
 

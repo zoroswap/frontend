@@ -10,6 +10,8 @@ import type {
 import { createContext } from 'react';
 import type { FaucetParams, TokenConfig } from './ZoroProvider';
 
+export type TokenConfigWithBalance = { config: TokenConfig; amount: bigint };
+
 type ZoroProviderState = {
   poolAccountId?: AccountId;
   client?: WebClient;
@@ -36,6 +38,7 @@ type ZoroProviderState = {
     accountId: AccountId,
     amount: bigint,
   ) => Promise<string>;
+  getAvailableTokens: () => Promise<TokenConfigWithBalance[]>;
 };
 
 const initialState: ZoroProviderState = {
@@ -54,6 +57,7 @@ const initialState: ZoroProviderState = {
   refreshPendingNotes: () => Promise.resolve(),
   createFaucet: () => Promise.resolve(undefined),
   mintFromFaucet: () => Promise.resolve(''),
+  getAvailableTokens: () => Promise.resolve([]),
 };
 
 export const ZoroContext = createContext<ZoroProviderState>(initialState);

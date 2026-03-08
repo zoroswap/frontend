@@ -27,66 +27,69 @@ const XykStep1 = (
   }, [form, setForm]);
 
   return (
-    <div className='space-y-6'>
-      <div className='space-y-2'>
-        <h3 className='text-sm font-semibold text-foreground'>Select pair</h3>
-        <p className='text-xs text-muted-foreground'>
-          Choose the base and quote tokens from assets you hold.
+    <div className='flex-col gap-8 flex w-full'>
+      {/* Select pair */}
+      <section className='space-y-2'>
+        <h3 className='text-xl text-foreground'>Select pair</h3>
+        <p className='text-sm text-muted-foreground'>
+          Choose the tokens you want to provide liquidity for. You can select tokens on
+          all supported networks.
         </p>
         {loading
-          ? <p className='text-xs text-muted-foreground mt-2'>Loading your tokens…</p>
+          ? <p className='text-sm text-muted-foreground mt-2'>Loading your tokens…</p>
           : tokensWithBalance.length === 0
           ? (
-            <p className='text-xs text-muted-foreground mt-2'>
+            <p className='text-sm text-muted-foreground mt-2'>
               You have no token balance. Get tokens from the faucet first.
             </p>
           )
           : (
-            <div className='flex items-center gap-2 mt-2'>
+            <div className='flex items-center gap-3 mt-3'>
               <div className='flex-1 min-w-0'>
                 <label className='text-xs text-muted-foreground sr-only'>
-                  Base token
+                  Token A
                 </label>
                 <TokenAutocomplete
                   tokens={availableTokens}
-                  value={form.tokenA
+                  value={form.tokenA && tokenMetadata
                     ? tokenMetadata[accountIdToBech32(form.tokenA)]
                     : undefined}
                   onChange={(val) => setToken('a', AccountId.fromBech32(val))}
                   excludeFaucetIdBech32={form.tokenB
                     ? accountIdToBech32(form.tokenB)
                     : undefined}
-                  placeholder='Base token'
+                  placeholder='Select a token'
                   className='w-full'
                 />
               </div>
-              <span className='text-muted-foreground shrink-0'>
-                <ArrowRight className='h-4 w-4' />
+              <span className='text-muted-foreground shrink-0' aria-hidden>
+                <ArrowRight className='h-5 w-5' />
               </span>
               <div className='flex-1 min-w-0'>
                 <label className='text-xs text-muted-foreground sr-only'>
-                  Quote token
+                  Token B
                 </label>
                 <TokenAutocomplete
                   tokens={availableTokens}
-                  value={form.tokenB
+                  value={form.tokenB && tokenMetadata
                     ? tokenMetadata[accountIdToBech32(form.tokenB)]
                     : undefined}
                   onChange={(val) => setToken('b', AccountId.fromBech32(val))}
                   excludeFaucetIdBech32={form.tokenA
                     ? accountIdToBech32(form.tokenA)
                     : undefined}
-                  placeholder='Quote token'
+                  placeholder='Select a token'
                   className='w-full'
                 />
               </div>
             </div>
           )}
-      </div>
+      </section>
 
-      <div className='space-y-2'>
-        <h3 className='text-sm font-semibold text-foreground'>Fee tier</h3>
-        <p className='text-xs text-muted-foreground'>
+      {/* Fee tier */}
+      <section>
+        <h3 className='text-foreground text-xl'>Fee tier</h3>
+        <p className='text-sm text-muted-foreground'>
           The amount earned providing liquidity. Choose an amount that suits your risk
           tolerance and strategy.
         </p>
@@ -97,7 +100,7 @@ const XykStep1 = (
               type='button'
               onClick={() => setFeeBps(bps)}
               className={cn(
-                'rounded-xl border-2 p-4 text-left transition-colors min-h-[88px] flex flex-col justify-center',
+                'rounded-xl border-2 px-4 text-left transition-colors md:min-h-[150px] flex flex-col justify-center items-center',
                 form.feeBps === bps
                   ? 'bg-primary text-primary-foreground border-primary shadow-none'
                   : 'bg-card border-border text-foreground hover:border-muted-foreground/50',
@@ -105,7 +108,7 @@ const XykStep1 = (
             >
               <span
                 className={cn(
-                  'font-bold text-lg block',
+                  'font-bold text-xl block',
                   form.feeBps === bps ? 'text-primary-foreground' : 'text-foreground',
                 )}
               >
@@ -113,7 +116,7 @@ const XykStep1 = (
               </span>
               <span
                 className={cn(
-                  'text-xs mt-1 block',
+                  'text-base mt-1 block',
                   form.feeBps === bps
                     ? 'text-primary-foreground/90'
                     : 'text-muted-foreground',
@@ -124,8 +127,7 @@ const XykStep1 = (
             </button>
           ))}
         </div>
-      </div>
-      )
+      </section>
     </div>
   );
 };

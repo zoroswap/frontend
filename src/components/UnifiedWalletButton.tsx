@@ -1,6 +1,6 @@
 import { useClaimNotes } from '@/hooks/useClaimNotes';
 import { useUnifiedWallet } from '@/hooks/useUnifiedWallet';
-import { truncateAddress } from '@/utils/format';
+import { truncateAddress } from '@/lib/format';
 import { useWalletModal } from '@demox-labs/miden-wallet-adapter';
 import { useModal } from '@getpara/react-sdk-lite';
 import { ChevronDown, Download, Loader2, LogOut, Wallet } from 'lucide-react';

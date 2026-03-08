@@ -1,16 +1,15 @@
-import { CreatePoolWizard, readCreatedPools, clearCreatedPools } from '@/components/CreatePoolWizard';
+import { AllDropdown } from '@/components/AllDropdown';
 import { Footer } from '@/components/Footer';
 import { Header } from '@/components/Header';
-import { AllDropdown } from '@/components/AllDropdown';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { ModalContext } from '@/providers/ModalContext';
-import { useCallback, useContext, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { clearCreatedPools, readCreatedPools } from '@/lib/poolUtils';
+import { emptyFn } from '@/lib/shared';
 import { Trash2 } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 
 export default function Pools() {
-  const modalContext = useContext(ModalContext);
   const navigate = useNavigate();
   const [createdPools, setCreatedPools] = useState(() => readCreatedPools());
   const refreshCreated = useCallback(() => setCreatedPools(readCreatedPools()), []);
@@ -23,12 +22,12 @@ export default function Pools() {
     return () => window.removeEventListener('storage', onStorage);
   }, [refreshCreated]);
 
-  const openCreateWizard = useCallback(() => {
-    modalContext.openModal(<CreatePoolWizard onCreated={refreshCreated} />);
-  }, [modalContext, refreshCreated]);
-
   const handleDeleteDrafts = useCallback(() => {
-    if (window.confirm('Are you sure you want to delete all draft pools? This cannot be undone.')) {
+    if (
+      window.confirm(
+        'Are you sure you want to delete all draft pools? This cannot be undone.',
+      )
+    ) {
       clearCreatedPools();
       refreshCreated();
     }
@@ -58,13 +57,15 @@ export default function Pools() {
                   Delete drafts
                 </Button>
               )}
-              <Button
-                size='sm'
-                className='rounded-lg bg-primary text-primary-foreground'
-                onClick={openCreateWizard}
-              >
-                Create pool
-              </Button>
+              <Link to='/new-xyk-pool'>
+                <Button
+                  size='sm'
+                  className='rounded-lg bg-primary text-primary-foreground'
+                  onClick={emptyFn}
+                >
+                  Create pool
+                </Button>
+              </Link>
             </div>
           </div>
 
@@ -77,7 +78,8 @@ export default function Pools() {
                     No pools yet
                   </h3>
                   <p className='text-sm text-muted-foreground max-w-sm mb-6'>
-                    Start earning by providing liquidity to pools. Create a pool or browse existing pools to add liquidity.
+                    Start earning by providing liquidity to pools. Create a pool or browse
+                    existing pools to add liquidity.
                   </p>
                   <div className='flex flex-wrap items-center justify-center gap-3'>
                     <Button
@@ -87,12 +89,15 @@ export default function Pools() {
                     >
                       Browse Pools
                     </Button>
-                    <Button
-                      className='rounded-lg bg-primary text-primary-foreground'
-                      onClick={openCreateWizard}
-                    >
-                      Create Pool
-                    </Button>
+                    <Link to='/new-xyk-pool'>
+                      <Button
+                        size='sm'
+                        className='rounded-lg bg-primary text-primary-foreground'
+                        onClick={emptyFn}
+                      >
+                        Create pool
+                      </Button>
+                    </Link>
                   </div>
                 </div>
               </Card>

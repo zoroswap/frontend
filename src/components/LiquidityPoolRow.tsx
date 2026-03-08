@@ -1,9 +1,9 @@
 import type { PoolBalance } from '@/hooks/usePoolsBalances';
 import type { PoolInfo } from '@/hooks/usePoolsInfo';
 import { useUnifiedWallet } from '@/hooks/useUnifiedWallet';
-import type { TokenConfig } from '@/providers/ZoroProvider';
+import { prettyBigintFormat } from '@/lib/format';
 import { cn } from '@/lib/utils';
-import { prettyBigintFormat } from '@/utils/format';
+import type { TokenConfig } from '@/providers/ZoroProvider';
 import AssetIcon from './AssetIcon';
 import { Button } from './ui/button';
 
@@ -49,25 +49,27 @@ const LiquidityPoolRow = ({
   const isRowClickable = variant === 'addLiquidity' && onRowClick;
 
   const saturationPercent = getSaturationPercent(poolBalances);
-  const saturationColor = saturationPercent != null ? getSaturationColorClass(saturationPercent) : '';
+  const saturationColor = saturationPercent != null
+    ? getSaturationColorClass(saturationPercent)
+    : '';
 
   if (variant === 'addLiquidity') {
     return (
       <tr
-        className={`border-b border-border ${className ?? ''} ${isRowClickable ? 'cursor-pointer hover:bg-muted/30' : ''}`}
+        className={`border-b border-border ${className ?? ''} ${
+          isRowClickable ? 'cursor-pointer hover:bg-muted/30' : ''
+        }`}
         role={isRowClickable ? 'button' : undefined}
         tabIndex={isRowClickable ? 0 : undefined}
         onClick={isRowClickable ? () => onRowClick?.(pool) : undefined}
-        onKeyDown={
-          isRowClickable
-            ? (e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  onRowClick?.(pool);
-                }
-              }
-            : undefined
-        }
+        onKeyDown={isRowClickable
+          ? (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              onRowClick?.(pool);
+            }
+          }
+          : undefined}
       >
         <td className='py-3 px-4'>
           <div className='flex items-center gap-2'>
@@ -172,7 +174,9 @@ export default LiquidityPoolRow;
 
 function getSaturationColorClass(pct: number) {
   if (pct < 15 || pct > 185) return 'text-red-600 border-red-600/30 bg-red-500/10';
-  if ((pct >= 15 && pct < 30) || (pct >= 170 && pct <= 185)) return 'text-yellow-600 border-yellow-600/30 bg-yellow-500/10';
+  if ((pct >= 15 && pct < 30) || (pct >= 170 && pct <= 185)) {
+    return 'text-yellow-600 border-yellow-600/30 bg-yellow-500/10';
+  }
   if (pct >= 30 && pct < 170) return 'text-green-600 border-green-600/30 bg-green-500/10';
   return 'text-muted-foreground border-border bg-muted/30';
 }

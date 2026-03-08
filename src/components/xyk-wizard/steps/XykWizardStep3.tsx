@@ -26,8 +26,8 @@ const XykStep3 = ({ tokenMetadata, form }: XykStepProps) => {
   }, [form.amountB, tokenB]);
 
   return (
-    <div className='space-y-3'>
-      <div className='rounded-xl border border-border bg-background p-4 space-y-3 text-sm'>
+    <div className='w-full flex items-center justify-center'>
+      <div className='rounded-xl border border-border bg-background p-4 space-y-3 text-sm max-w-[780px] w-full'>
         <div className='flex justify-between'>
           <span className='text-muted-foreground'>Pair</span>
           <span className='font-medium text-foreground'>

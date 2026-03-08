@@ -1,7 +1,7 @@
 import type { PoolBalance } from '@/hooks/usePoolsBalances';
 import type { PoolInfo } from '@/hooks/usePoolsInfo';
+import { formatUsd, prettyBigintFormat } from '@/lib/format';
 import { cn } from '@/lib/utils';
-import { formatUsd, prettyBigintFormat } from '@/utils/format';
 import { useOraclePrices } from '@/providers/OracleContext';
 import { useMemo } from 'react';
 import AssetIcon from './AssetIcon';
@@ -34,12 +34,23 @@ export function PositionCard({
   const oraclePrices = useOraclePrices(pool.oracleId ? [pool.oracleId] : []);
   const price = pool.oracleId ? oraclePrices[pool.oracleId]?.value : undefined;
   const positionUsd = useMemo(() => {
-    if (!isHfAmm || price == null || price === 0 || poolBalance.totalLiabilities === BigInt(0))
+    if (
+      !isHfAmm || price == null || price === 0
+      || poolBalance.totalLiabilities === BigInt(0)
+    ) {
       return null;
+    }
     const valueInAsset = (lpBalance * poolBalance.reserve) / poolBalance.totalLiabilities;
     const valueHuman = Number(valueInAsset) / 10 ** decimals;
     return valueHuman * price;
-  }, [isHfAmm, price, lpBalance, poolBalance.reserve, poolBalance.totalLiabilities, decimals]);
+  }, [
+    isHfAmm,
+    price,
+    lpBalance,
+    poolBalance.reserve,
+    poolBalance.totalLiabilities,
+    decimals,
+  ]);
   const liquidityFormatted = prettyBigintFormat({
     value: lpBalance,
     expo: decimals,
@@ -51,7 +62,11 @@ export function PositionCard({
   const isSlim = variant === 'slim';
 
   return (
-    <Card className={isSlim ? 'rounded-lg border bg-card overflow-hidden' : 'rounded-xl border bg-card overflow-hidden'}>
+    <Card
+      className={isSlim
+        ? 'rounded-lg border bg-card overflow-hidden'
+        : 'rounded-xl border bg-card overflow-hidden'}
+    >
       <CardContent className={isSlim ? 'p-3' : 'p-5'}>
         <div className={cn('flex items-center gap-2', isSlim ? 'mb-2' : 'mb-4')}>
           {isHfAmm
@@ -70,7 +85,9 @@ export function PositionCard({
                 </span>
               </div>
             )}
-          <span className={cn('font-semibold text-foreground', isSlim && 'text-sm')}>{pool.name}</span>
+          <span className={cn('font-semibold text-foreground', isSlim && 'text-sm')}>
+            {pool.name}
+          </span>
           {isHfAmm && (
             <span className='text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium'>
               hfAMM
@@ -82,17 +99,23 @@ export function PositionCard({
           {!isSlim && (
             <>
               <div className='flex justify-between'>
-                <span className='text-muted-foreground uppercase tracking-wide text-xs'>Liquidity</span>
+                <span className='text-muted-foreground uppercase tracking-wide text-xs'>
+                  Liquidity
+                </span>
                 <span className='font-medium'>${tvlFormatted}</span>
               </div>
               {isHfAmm && positionUsd != null && (
                 <div className='flex justify-between'>
-                  <span className='text-muted-foreground uppercase tracking-wide text-xs'>Value</span>
+                  <span className='text-muted-foreground uppercase tracking-wide text-xs'>
+                    Value
+                  </span>
                   <span className='font-medium'>{formatUsd(positionUsd)}</span>
                 </div>
               )}
               <div className='flex justify-between'>
-                <span className='text-muted-foreground uppercase tracking-wide text-xs'>Fees earned</span>
+                <span className='text-muted-foreground uppercase tracking-wide text-xs'>
+                  Fees earned
+                </span>
                 <span className='font-medium text-green-600'>$0.00</span>
               </div>
               <div className='flex justify-between'>
@@ -123,7 +146,10 @@ export function PositionCard({
         <div className={cn('flex gap-2', isSlim ? 'mt-2' : 'mt-4')}>
           <Button
             size='sm'
-            className={cn('flex-1 rounded-lg bg-primary text-primary-foreground', isSlim && 'h-8 text-xs')}
+            className={cn(
+              'flex-1 rounded-lg bg-primary text-primary-foreground',
+              isSlim && 'h-8 text-xs',
+            )}
             onClick={onDeposit}
             disabled={disabled}
           >
@@ -132,7 +158,10 @@ export function PositionCard({
           <Button
             size='sm'
             variant='secondary'
-            className={cn('flex-1 rounded-lg bg-foreground text-background hover:bg-foreground/90', isSlim && 'h-8 text-xs')}
+            className={cn(
+              'flex-1 rounded-lg bg-foreground text-background hover:bg-foreground/90',
+              isSlim && 'h-8 text-xs',
+            )}
             onClick={onWithdraw}
             disabled={disabled}
           >

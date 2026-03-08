@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@demox-labs/miden-wallet-adapter": "^0.10.0",
-    "@getpara/react-sdk-lite": "^2.13.0",
+    "@getpara/react-sdk-lite": "^2.15.0",
     "@miden-sdk/miden-para": "^0.13.3",
     "@miden-sdk/miden-sdk": "^0.13.2",
     "@miden-sdk/react": "^0.13.3",
@@ -36,7 +36,7 @@
     "wagmi": "^3.1.0"
   },
   "overrides": {
-    "@getpara/web-sdk": "2.13.0"
+    "@getpara/web-sdk": "2.15.0"
   },
   "devDependencies": {
     "@eslint/css": "^0.14.1",

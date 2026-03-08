@@ -1,6 +1,6 @@
+import { formalBigIntFormat, prettyBigintFormat } from '@/lib/format';
 import { ZoroContext } from '@/providers/ZoroContext';
 import { type TokenConfig } from '@/providers/ZoroProvider';
-import { formalBigIntFormat, prettyBigintFormat } from '@/utils/format';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 interface BalanceParams {

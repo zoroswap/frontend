@@ -1,10 +1,11 @@
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { prettyBigintFormat } from '@/lib/format';
+import { fullNumberBigintFormat } from '@/lib/format';
 import { accountIdToBech32 } from '@/lib/utils';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { formatUnits, parseUnits } from 'viem';
-import { XykPairIcon, type XykStepProps } from '../XykWizard';
+import { TokenInput } from '../TokenInput';
+import { type XykStepProps } from '../XykWizard';
+
+const PERCENTAGES = [25, 50, 75, 100] as const;
 
 const XykStep2 = (
   { tokensWithBalance, tokenMetadata, form, setForm }: XykStepProps,
@@ -16,139 +17,210 @@ const XykStep2 = (
     return tokenMetadata[form.tokenB ? accountIdToBech32(form.tokenB) : ''];
   }, [form.tokenB, tokenMetadata]);
 
-  const setAmountA = useCallback((amount: string) => {
+  const [amountAStr, setAmountAStr] = useState('');
+  const [amountBStr, setAmountBStr] = useState('');
+
+  useEffect(() => {
     if (tokenA) {
-      const metadata = tokenMetadata[tokenA.faucetIdBech32];
-      const val = parseUnits(amount, metadata.decimals);
-      setForm({ ...form, amountA: val });
+      setAmountAStr(
+        form.amountA != null ? formatUnits(form.amountA, tokenA.decimals) : '',
+      );
     }
-  }, [form, setForm, tokenMetadata, tokenA]);
-  const setAmountB = useCallback((amount: string) => {
+  }, [tokenA, form.amountA]);
+  useEffect(() => {
     if (tokenB) {
-      const metadata = tokenMetadata[tokenB.faucetIdBech32];
-      const val = parseUnits(amount, metadata.decimals);
-      setForm({ ...form, amountB: val });
+      setAmountBStr(
+        form.amountB != null ? formatUnits(form.amountB, tokenB.decimals) : '',
+      );
     }
-  }, [form, setForm, tokenMetadata, tokenB]);
+  }, [tokenB, form.amountB]);
+
+  const setAmountA = useCallback(
+    (raw: string) => {
+      setAmountAStr(raw);
+      if (raw === '') {
+        setForm({ ...form, amountA: undefined });
+        return;
+      }
+      if (tokenA) {
+        try {
+          const val = parseUnits(raw, tokenA.decimals);
+          setForm({ ...form, amountA: val });
+        } catch {
+          setForm({ ...form, amountA: undefined });
+        }
+      }
+    },
+    [form, setForm, tokenA],
+  );
+  const setAmountB = useCallback(
+    (raw: string) => {
+      setAmountBStr(raw);
+      if (raw === '') {
+        setForm({ ...form, amountB: undefined });
+        return;
+      }
+      if (tokenB) {
+        try {
+          const val = parseUnits(raw, tokenB.decimals);
+          setForm({ ...form, amountB: val });
+        } catch {
+          setForm({ ...form, amountB: undefined });
+        }
+      }
+    },
+    [form, setForm, tokenB],
+  );
+
   const setMaxA = useCallback(() => {
     if (tokenA) {
-      const token = tokensWithBalance.find(({ config }) => {
-        return tokenA != null && config.faucetIdBech32 === tokenA.faucetIdBech32;
-      });
-      setForm({ ...form, amountA: token?.amount ?? BigInt(0) });
+      const token = tokensWithBalance.find(
+        ({ config }) => tokenA != null && config.faucetIdBech32 === tokenA.faucetIdBech32,
+      );
+      const amount = token?.amount ?? BigInt(0);
+      setForm({ ...form, amountA: amount });
+      setAmountAStr(formatUnits(amount, tokenA.decimals));
     }
   }, [form, setForm, tokenA, tokensWithBalance]);
 
   const setMaxB = useCallback(() => {
     if (tokenB) {
-      const token = tokensWithBalance.find(({ config }) => {
-        return tokenB != null && config.faucetIdBech32 === tokenB.faucetIdBech32;
-      });
-      setForm({ ...form, amountB: token?.amount ?? BigInt(0) });
+      const token = tokensWithBalance.find(
+        ({ config }) => tokenB != null && config.faucetIdBech32 === tokenB.faucetIdBech32,
+      );
+      const amount = token?.amount ?? BigInt(0);
+      setForm({ ...form, amountB: amount });
+      setAmountBStr(formatUnits(amount, tokenB.decimals));
     }
   }, [form, setForm, tokenB, tokensWithBalance]);
 
-  const formattedAmountA = useMemo(() => {
-    if (tokenA) {
-      return parseFloat(formatUnits(form.amountA ?? BigInt(0), tokenA.decimals));
-    } else {
-      return 0;
-    }
-  }, [form.amountA, tokenA]);
-  const formattedAmountB = useMemo(() => {
-    if (tokenB) {
-      return parseFloat(formatUnits(form.amountB ?? BigInt(0), tokenB.decimals));
-    } else {
-      return 0;
-    }
-  }, [form.amountB, tokenB]);
+  const balanceABigint = useMemo(() => {
+    const token = tokensWithBalance.find(
+      ({ config }) => tokenA != null && config.faucetIdBech32 === tokenA.faucetIdBech32,
+    );
+    return token?.amount ?? BigInt(0);
+  }, [tokenA, tokensWithBalance]);
+  const balanceBBigint = useMemo(() => {
+    const token = tokensWithBalance.find(
+      ({ config }) => tokenB != null && config.faucetIdBech32 === tokenB.faucetIdBech32,
+    );
+    return token?.amount ?? BigInt(0);
+  }, [tokenB, tokensWithBalance]);
+
+  const setPercentA = useCallback(
+    (pct: number) => {
+      if (!tokenA) return;
+      const amount = (balanceABigint * BigInt(pct)) / BigInt(100);
+      setForm({ ...form, amountA: amount });
+      setAmountAStr(formatUnits(amount, tokenA.decimals));
+    },
+    [form, setForm, tokenA, balanceABigint],
+  );
+  const setPercentB = useCallback(
+    (pct: number) => {
+      if (!tokenB) return;
+      const amount = (balanceBBigint * BigInt(pct)) / BigInt(100);
+      setForm({ ...form, amountB: amount });
+      setAmountBStr(formatUnits(amount, tokenB.decimals));
+    },
+    [form, setForm, tokenB, balanceBBigint],
+  );
 
   const formattedBalanceA = useMemo(() => {
-    const token = tokensWithBalance.find(({ config }) => {
-      return tokenA != null && config.faucetIdBech32 === tokenA.faucetIdBech32;
-    });
-    return prettyBigintFormat({
+    const token = tokensWithBalance.find(
+      ({ config }) => tokenA != null && config.faucetIdBech32 === tokenA.faucetIdBech32,
+    );
+    return fullNumberBigintFormat({
       value: token?.amount || BigInt(0),
-      expo: tokenA.decimals,
+      expo: tokenA?.decimals,
     });
   }, [tokenA, tokensWithBalance]);
   const formattedBalanceB = useMemo(() => {
-    const token = tokensWithBalance.find(({ config }) => {
-      return tokenB != null && config.faucetIdBech32 === tokenB.faucetIdBech32;
-    });
-    return prettyBigintFormat({
+    const token = tokensWithBalance.find(
+      ({ config }) => tokenB != null && config.faucetIdBech32 === tokenB.faucetIdBech32,
+    );
+    return fullNumberBigintFormat({
       value: token?.amount || BigInt(0),
-      expo: tokenB.decimals,
+      expo: tokenB?.decimals,
     });
   }, [tokenB, tokensWithBalance]);
 
+  const balanceAText = `${formattedBalanceA ?? '0.00'} ${tokenA?.symbol ?? ''}`.trim();
+  const balanceBText = `${formattedBalanceB ?? '0.00'} ${tokenB?.symbol ?? ''}`.trim();
+
+  const errorA =
+    amountAStr !== '' && form.amountA != null && form.amountA > balanceABigint
+      ? 'Exceeds your balance'
+      : amountAStr !== ''
+          && form.amountA != null
+          && form.amountA < BigInt(0)
+      ? 'Must be at least 0'
+      : undefined;
+  const errorB =
+    amountBStr !== '' && form.amountB != null && form.amountB > balanceBBigint
+      ? 'Exceeds your balance'
+      : amountBStr !== ''
+          && form.amountB != null
+          && form.amountB < BigInt(0)
+      ? 'Must be at least 0'
+      : undefined;
+
   return (
-    <div className='space-y-0'>
-      <h3 className='text-sm font-medium text-foreground mb-3'>Select your tokens</h3>
-      <div className='rounded-xl border border-border bg-background overflow-hidden'>
-        <div className='p-4 flex items-start justify-between gap-3'>
-          <Input
-            type='number'
-            inputMode='decimal'
-            placeholder='0'
-            value={formattedAmountA}
-            onChange={(e) => setAmountA(e.target.value)}
-            className='flex-1 min-w-0 text-lg border-0 bg-transparent p-0 shadow-none focus-visible:ring-0 h-auto'
-          />
-          <div className='flex items-center gap-2 shrink-0'>
-            <span className='flex h-8 w-8 items-center justify-center rounded-full border-2 border-background bg-muted text-xs font-semibold text-foreground shrink-0'>
-              {(tokenA?.symbol ?? '?')[0].toUpperCase()}
-            </span>
-            <span className='font-medium text-sm'>{tokenA.symbol}</span>
-          </div>
-        </div>
-        <div className='px-4 pb-3 flex items-center gap-2 text-xs text-muted-foreground'>
-          <span>Balance: {formattedBalanceA ?? '0.00'} {tokenA.symbol}</span>
-          <Button
-            type='button'
-            variant='ghost'
-            size='sm'
-            className='h-6 px-2 text-primary text-xs'
-            onClick={setMaxA}
-          >
-            Max
-          </Button>
-        </div>
-        <div className='border-t border-border' />
-        <div className='p-4 flex items-start justify-between gap-3'>
-          <Input
-            type='number'
-            inputMode='decimal'
-            placeholder='0'
-            value={formattedAmountB}
-            onChange={(e) => setAmountB(e.target.value)}
-            className='flex-1 min-w-0 text-lg border-0 bg-transparent p-0 shadow-none focus-visible:ring-0 h-auto'
-          />
-          <div className='flex items-center gap-2 shrink-0'>
-            <span className='flex h-8 w-8 items-center justify-center rounded-full border-2 border-background bg-muted text-xs font-semibold text-foreground shrink-0'>
-              {(tokenB.symbol || '?')[0].toUpperCase()}
-            </span>
-            <span className='font-medium text-sm'>{tokenB.symbol}</span>
-          </div>
-        </div>
-        <div className='px-4 pb-3 flex items-center gap-2 text-xs text-muted-foreground'>
-          <span>Balance: {formattedBalanceB ?? '0.00'} {tokenB.symbol}</span>
-          <Button
-            type='button'
-            variant='ghost'
-            size='sm'
-            className='h-6 px-2 text-primary text-xs'
-            onClick={setMaxB}
-          >
-            Max
-          </Button>
-        </div>
+    <div className='flex flex-col gap-4 w-full'>
+      <div>
+        <h3 className='text-xl font-cal-sans text-foreground'>
+          Deposit tokens
+        </h3>
+        <p className='text-foreground/50'>
+          Specify the token amounts for your liquidity contribution.
+        </p>
       </div>
-      <p className='text-xs text-muted-foreground mt-2'>
-        Pair: <XykPairIcon symbolA={tokenA.symbol} symbolB={tokenB.symbol} size={20} />
-        {' '}
-        {tokenA.symbol} / {tokenB.symbol}
-      </p>
+      <TokenInput
+        value={amountAStr}
+        onChange={setAmountA}
+        symbol={tokenA?.symbol ?? '?'}
+        balanceText={balanceAText}
+        onMaxClick={setMaxA}
+        placeholder='0'
+        error={errorA}
+        bottomLeft={
+          <div className='flex flex-wrap gap-1.5'>
+            {PERCENTAGES.map((pct) => (
+              <button
+                key={pct}
+                type='button'
+                onClick={() => setPercentA(pct)}
+                className='px-2 py-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted/60 text-xs transition-colors'
+              >
+                {pct}%
+              </button>
+            ))}
+          </div>
+        }
+      />
+      <TokenInput
+        value={amountBStr}
+        onChange={setAmountB}
+        symbol={tokenB?.symbol ?? '?'}
+        balanceText={balanceBText}
+        onMaxClick={setMaxB}
+        placeholder='0'
+        error={errorB}
+        bottomLeft={
+          <div className='flex flex-wrap gap-1.5'>
+            {PERCENTAGES.map((pct) => (
+              <button
+                key={pct}
+                type='button'
+                onClick={() => setPercentB(pct)}
+                className='px-2 py-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted/60 text-xs transition-colors'
+              >
+                {pct}%
+              </button>
+            ))}
+          </div>
+        }
+      />
     </div>
   );
 };

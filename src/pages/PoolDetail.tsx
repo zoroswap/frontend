@@ -1,37 +1,32 @@
+import AssetIcon from '@/components/AssetIcon';
 import { Footer } from '@/components/Footer';
 import { Header } from '@/components/Header';
-import { OrderStatus, type LpDetails, type TxResult } from '@/components/OrderStatus';
+import { type LpDetails, OrderStatus, type TxResult } from '@/components/OrderStatus';
 import PoolModal from '@/components/PoolModal';
 import type { LpActionType } from '@/components/PoolModal';
+import { TradingViewCandlesChart } from '@/components/TradingViewCandlesChart';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useLPBalances } from '@/hooks/useLPBalances';
 import { usePoolsBalances } from '@/hooks/usePoolsBalances';
 import { type PoolInfo, usePoolsInfo } from '@/hooks/usePoolsInfo';
 import { useOrderUpdates } from '@/hooks/useWebSocket';
-import { ModalContext } from '@/providers/ModalContext';
-import { ZoroContext } from '@/providers/ZoroContext';
-import { fullNumberBigintFormat, prettyBigintFormat, truncateId } from '@/utils/format';
-import { AlertTriangle, ExternalLink, ArrowLeft } from 'lucide-react';
-import {
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
-import { Link, useParams } from 'react-router-dom';
-import AssetIcon from '@/components/AssetIcon';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { TradingViewCandlesChart } from '@/components/TradingViewCandlesChart';
+import { fullNumberBigintFormat, prettyBigintFormat, truncateId } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { getMockPoolCandles, getMockRecentTransactions } from '@/mocks/poolDetailMocks';
+import { ModalContext } from '@/providers/ModalContext';
+import { ZoroContext } from '@/providers/ZoroContext';
+import { AlertTriangle, ArrowLeft, ExternalLink } from 'lucide-react';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
 
 const feeTierForSymbol = (symbol: string) =>
   /USDC|USDT|DAI|BUSD/i.test(symbol) ? '0.01%' : '0.30%';
 
 /** Saturation = (reserve / total_liabilities) as percentage (can exceed 100). hfAMM only. */
-function getSaturationPercent(poolBalance: { reserve: bigint; totalLiabilities: bigint }): number | null {
+function getSaturationPercent(
+  poolBalance: { reserve: bigint; totalLiabilities: bigint },
+): number | null {
   const { reserve, totalLiabilities } = poolBalance;
   if (totalLiabilities === BigInt(0)) return null;
   return (Number(reserve) / Number(totalLiabilities)) * 100;
@@ -39,7 +34,9 @@ function getSaturationPercent(poolBalance: { reserve: bigint; totalLiabilities: 
 
 function getSaturationColorClass(pct: number): string {
   if (pct < 15 || pct > 185) return 'text-red-600 border-red-600/30 bg-red-500/10';
-  if ((pct >= 15 && pct < 30) || (pct >= 170 && pct <= 185)) return 'text-yellow-600 border-yellow-600/30 bg-yellow-500/10';
+  if ((pct >= 15 && pct < 30) || (pct >= 170 && pct <= 185)) {
+    return 'text-yellow-600 border-yellow-600/30 bg-yellow-500/10';
+  }
   if (pct >= 30 && pct < 170) return 'text-green-600 border-green-600/30 bg-green-500/10';
   return 'text-muted-foreground border-border bg-muted/30';
 }
@@ -157,7 +154,9 @@ export default function PoolDetail() {
   });
   const isHfAmm = pool.poolType === 'hfAMM';
   const saturationPercent = isHfAmm ? getSaturationPercent(poolBalance) : null;
-  const saturationColor = saturationPercent != null ? getSaturationColorClass(saturationPercent) : '';
+  const saturationColor = saturationPercent != null
+    ? getSaturationColorClass(saturationPercent)
+    : '';
   const pairLabel = isHfAmm ? `${pool.symbol}` : `${pool.symbol} / USDC`;
 
   return (
@@ -286,8 +285,10 @@ export default function PoolDetail() {
         <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
           <div className='lg:col-span-1 space-y-6'>
             <Card className='rounded-xl'>
-                <CardHeader className='pb-2'>
-                <CardTitle className='text-base font-semibold'>Pool Composition</CardTitle>
+              <CardHeader className='pb-2'>
+                <CardTitle className='text-base font-semibold'>
+                  Pool Composition
+                </CardTitle>
               </CardHeader>
               <CardContent className='space-y-3'>
                 {isHfAmm
@@ -316,7 +317,12 @@ export default function PoolDetail() {
                           <span>{pool.symbol}</span>
                         </div>
                         <div className='text-right'>
-                          <p className='font-medium'>{prettyBigintFormat({ value: poolBalance.reserve, expo: decimals })}</p>
+                          <p className='font-medium'>
+                            {prettyBigintFormat({
+                              value: poolBalance.reserve,
+                              expo: decimals,
+                            })}
+                          </p>
                           <p className='text-xs text-muted-foreground'>—</p>
                         </div>
                       </div>
@@ -326,14 +332,23 @@ export default function PoolDetail() {
                           <span>USDC</span>
                         </div>
                         <div className='text-right'>
-                          <p className='font-medium'>{prettyBigintFormat({ value: poolBalance.totalLiabilities, expo: decimals })}</p>
+                          <p className='font-medium'>
+                            {prettyBigintFormat({
+                              value: poolBalance.totalLiabilities,
+                              expo: decimals,
+                            })}
+                          </p>
                           <p className='text-xs text-muted-foreground'>—</p>
                         </div>
                       </div>
                       {(() => {
                         const total = poolBalance.reserve + poolBalance.totalLiabilities;
-                        const reservePct = total > 0n ? Number((poolBalance.reserve * 100n) / total) : 50;
-                        const liabPct = total > 0n ? Number((poolBalance.totalLiabilities * 100n) / total) : 50;
+                        const reservePct = total > 0n
+                          ? Number((poolBalance.reserve * 100n) / total)
+                          : 50;
+                        const liabPct = total > 0n
+                          ? Number((poolBalance.totalLiabilities * 100n) / total)
+                          : 50;
                         return (
                           <>
                             <div className='h-2 rounded-full bg-muted overflow-hidden flex'>
@@ -347,7 +362,9 @@ export default function PoolDetail() {
                               />
                             </div>
                             <p className='text-xs text-muted-foreground'>
-                              {total > 0n ? `${pool.symbol} ${reservePct}% · USDC ${liabPct}%` : '—'}
+                              {total > 0n
+                                ? `${pool.symbol} ${reservePct}% · USDC ${liabPct}%`
+                                : '—'}
                             </p>
                           </>
                         );
@@ -382,11 +399,21 @@ export default function PoolDetail() {
                   <>
                     <div className='flex justify-between'>
                       <span className='text-muted-foreground'>Total Liabilities</span>
-                      <span>{fullNumberBigintFormat({ value: poolBalance.totalLiabilities, expo: decimals })}</span>
+                      <span>
+                        {fullNumberBigintFormat({
+                          value: poolBalance.totalLiabilities,
+                          expo: decimals,
+                        })}
+                      </span>
                     </div>
                     <div className='flex justify-between'>
                       <span className='text-muted-foreground'>Reserve</span>
-                      <span>{fullNumberBigintFormat({ value: poolBalance.reserve, expo: decimals })}</span>
+                      <span>
+                        {fullNumberBigintFormat({
+                          value: poolBalance.reserve,
+                          expo: decimals,
+                        })}
+                      </span>
                     </div>
                   </>
                 )}
@@ -403,9 +430,8 @@ export default function PoolDetail() {
                 </CardHeader>
                 <CardContent>
                   <p className='text-sm text-muted-foreground'>
-                    This pool&apos;s tokens may have price correlation. Impermanent
-                    loss is possible when prices move. Consider concentrated ranges
-                    carefully.
+                    This pool&apos;s tokens may have price correlation. Impermanent loss
+                    is possible when prices move. Consider concentrated ranges carefully.
                   </p>
                 </CardContent>
               </Card>
@@ -416,7 +442,9 @@ export default function PoolDetail() {
             {!isHfAmm && (
               <Card className='rounded-xl'>
                 <CardHeader className='pb-2'>
-                  <CardTitle className='text-base font-semibold'>Recent Transactions</CardTitle>
+                  <CardTitle className='text-base font-semibold'>
+                    Recent Transactions
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className='p-0'>
                   <div className='overflow-x-auto'>
@@ -433,13 +461,21 @@ export default function PoolDetail() {
                       <tbody>
                         {mockRecentTxs.map((tx, i) => (
                           <tr key={i} className='border-b border-border/50'>
-                            <td className={`py-3 px-4 font-medium ${TYPE_COLORS[tx.type] ?? ''}`}>
+                            <td
+                              className={`py-3 px-4 font-medium ${
+                                TYPE_COLORS[tx.type] ?? ''
+                              }`}
+                            >
                               {tx.type}
                             </td>
                             <td className='py-3 px-4'>{tx.amountIn}</td>
                             <td className='py-3 px-4'>{tx.amountOut}</td>
-                            <td className='py-3 px-4 font-mono text-muted-foreground'>{tx.account}</td>
-                            <td className='py-3 px-4 text-right text-muted-foreground'>{tx.timeAgo}</td>
+                            <td className='py-3 px-4 font-mono text-muted-foreground'>
+                              {tx.account}
+                            </td>
+                            <td className='py-3 px-4 text-right text-muted-foreground'>
+                              {tx.timeAgo}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -486,12 +522,11 @@ export default function PoolDetail() {
           onClose={() => setIsSuccessModalOpen(false)}
           swapResult={txResult}
           lpDetails={lpDetails}
-          orderStatus={
-            txResult?.noteId ? orderStatus[txResult.noteId]?.status : undefined
-          }
+          orderStatus={txResult?.noteId
+            ? orderStatus[txResult.noteId]?.status
+            : undefined}
         />
       )}
     </div>
   );
 }
-

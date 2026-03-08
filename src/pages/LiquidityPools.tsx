@@ -1,34 +1,31 @@
+import { AllDropdown } from '@/components/AllDropdown';
 import { Footer } from '@/components/Footer';
 import { Header } from '@/components/Header';
 import LiquidityPoolsTable from '@/components/LiquidityPoolsTable';
+import { type LpDetails, OrderStatus, type TxResult } from '@/components/OrderStatus';
+import PoolModal from '@/components/PoolModal';
+import type { LpActionType } from '@/components/PoolModal';
 import { PositionCard } from '@/components/PositionCard';
-import { AllDropdown } from '@/components/AllDropdown';
+import { SelectPoolModal } from '@/components/SelectPoolModal';
+import { Button } from '@/components/ui/button';
 import { useLPBalances } from '@/hooks/useLPBalances';
 import { usePoolsBalances } from '@/hooks/usePoolsBalances';
 import { type PoolInfo, usePoolsInfo } from '@/hooks/usePoolsInfo';
 import { useOrderUpdates } from '@/hooks/useWebSocket';
 import { ModalContext } from '@/providers/ModalContext';
 import { ZoroContext } from '@/providers/ZoroContext';
-import {
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { OrderStatus, type LpDetails, type TxResult } from '@/components/OrderStatus';
-import PoolModal from '@/components/PoolModal';
-import type { LpActionType } from '@/components/PoolModal';
-import { CreatePoolWizard } from '@/components/CreatePoolWizard';
-import { SelectPoolModal } from '@/components/SelectPoolModal';
-import { Button } from '@/components/ui/button';
 
 function LiquidityPools() {
   const navigate = useNavigate();
-  const { data: poolsInfo, refetch: refetchPoolsInfo, isLoading: isLoadingPools } = usePoolsInfo();
-  const { data: poolBalances, refetch: refetchPoolBalances, isLoading: isLoadingBalances } = usePoolsBalances();
+  const { data: poolsInfo, refetch: refetchPoolsInfo, isLoading: isLoadingPools } =
+    usePoolsInfo();
+  const {
+    data: poolBalances,
+    refetch: refetchPoolBalances,
+    isLoading: isLoadingBalances,
+  } = usePoolsBalances();
   const modalContext = useContext(ModalContext);
   const { tokens } = useContext(ZoroContext);
   const { orderStatus, registerCallback } = useOrderUpdates();
@@ -91,10 +88,6 @@ function LiquidityPools() {
     [navigate],
   );
 
-  const openCreatePoolWizard = useCallback(() => {
-    modalContext.openModal(<CreatePoolWizard onCreated={refetchPoolsInfo} />);
-  }, [modalContext, refetchPoolsInfo]);
-
   const openNewPositionModal = useCallback(() => {
     const pools = poolsInfo?.liquidityPools ?? [];
     modalContext.openModal(
@@ -114,7 +107,9 @@ function LiquidityPools() {
     return liquidityPools
       .filter((pool) => pool.poolType === 'hfAMM')
       .map((pool) => {
-        const balance = poolBalances.find((b) => b.faucetIdBech32 === pool.faucetIdBech32);
+        const balance = poolBalances.find((b) =>
+          b.faucetIdBech32 === pool.faucetIdBech32
+        );
         const lp = lpBalances[pool.faucetIdBech32] ?? BigInt(0);
         if (!balance || lp <= BigInt(0)) return null;
         return { pool, poolBalance: balance, lpBalance: lp };
@@ -180,7 +175,6 @@ function LiquidityPools() {
             tokenConfigs={tokenConfigs}
             openPoolModal={openPoolModal}
             onPoolRowClick={onPoolRowClick}
-            onCreatePool={openCreatePoolWizard}
             isLoading={isLoadingPools || isLoadingBalances}
           />
         </section>
@@ -192,9 +186,9 @@ function LiquidityPools() {
           onClose={() => setIsSuccessModalOpen(false)}
           swapResult={txResult}
           lpDetails={lpDetails}
-          orderStatus={
-            txResult?.noteId ? orderStatus[txResult.noteId]?.status : undefined
-          }
+          orderStatus={txResult?.noteId
+            ? orderStatus[txResult.noteId]?.status
+            : undefined}
         />
       )}
     </div>

@@ -1,7 +1,6 @@
 import { CustomTransaction } from '@demox-labs/miden-wallet-adapter';
 import {
   AccountId,
-  Felt,
   FeltArray,
   FungibleAsset,
   MidenArrays,
@@ -18,18 +17,18 @@ import {
 } from '@miden-sdk/miden-sdk';
 
 import zoropool from '@/masm/accounts/zoropool.masm?raw';
-import WITHDRAW_SCRIPT from '@/masm/notes/WITHDRAW.masm?raw';
+import DEPOSIT_SCRIPT from '@/masm/notes/xyk_deposit.masm?raw';
 import type { TokenConfig } from '@/providers/ZoroProvider';
 import { accountIdToBech32, generateRandomSerialNumber } from './utils';
 
-export interface WithdrawParams {
-  poolAccountId: AccountId;
-  token: TokenConfig;
-  amount: bigint;
-  minAmountOut: bigint;
+export interface DepositParams {
+  token0: TokenConfig;
+  token1: TokenConfig;
+  amount0: bigint;
+  amount1: bigint;
   userAccountId: AccountId;
+  poolAccountId: AccountId;
   client: WebClient;
-  noteType: NoteType;
 }
 
 export interface SwapResult {
@@ -37,55 +36,41 @@ export interface SwapResult {
   readonly noteId: string;
 }
 
-export async function compileWithdrawTransaction({
+export async function compileXykDepositTransaction({
   poolAccountId,
-  token,
-  amount,
-  minAmountOut,
   userAccountId,
+  token0,
+  token1,
+  amount0,
+  amount1,
   client,
-  noteType,
-}: WithdrawParams) {
+}: DepositParams) {
   const builder = client.createCodeBuilder();
   const pool_script = builder.buildLibrary('zoroswap::zoropool', zoropool);
   builder.linkDynamicLibrary(pool_script);
   const script = builder.compileNoteScript(
-    WITHDRAW_SCRIPT,
+    DEPOSIT_SCRIPT,
   );
-  const requestedAsset = new FungibleAsset(token.faucetId, minAmountOut).intoWord()
-    .toFelts();
 
   // Note should only contain the offered asset
-  const noteAssets = new NoteAssets([]);
-  const noteTag = noteType === NoteType.Private
-    ? new NoteTag(0)
-    : NoteTag.withAccountTarget(poolAccountId);
+  const noteTag = NoteTag.withAccountTarget(poolAccountId);
 
   const metadata = new NoteMetadata(
     userAccountId,
-    noteType,
+    NoteType.Public,
     noteTag,
   );
 
-  const deadline = Date.now() + 120_000; // 2 min from now
-
-  // Use the AccountId for p2id tag
-  const p2idTag = NoteTag.withAccountTarget(userAccountId).asU32();
-
-  // Following the pattern: [asset_id_prefix, asset_id_suffix, 0, min_amount_out]
   const inputs = new NoteInputs(
     new FeltArray([
-      ...requestedAsset,
-      new Felt(BigInt(0)),
-      new Felt(amount),
-      new Felt(BigInt(deadline)),
-      new Felt(BigInt(p2idTag)),
-      new Felt(BigInt(0)),
-      new Felt(BigInt(0)),
-      userAccountId.suffix(),
       userAccountId.prefix(),
+      userAccountId.suffix(),
     ]),
   );
+
+  const asset0 = new FungibleAsset(token0.faucetId, amount0);
+  const asset1 = new FungibleAsset(token1.faucetId, amount1);
+  const noteAssets = new NoteAssets([asset0, asset1]);
 
   const note = new Note(
     noteAssets,

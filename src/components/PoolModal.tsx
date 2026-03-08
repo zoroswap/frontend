@@ -1,20 +1,20 @@
 import { useDeposit } from '@/hooks/useDeposit';
-import { useWithdraw } from '@/hooks/useWithdraw';
 import { usePoolsBalances } from '@/hooks/usePoolsBalances';
+import { useWithdraw } from '@/hooks/useWithdraw';
 import { DEFAULT_SLIPPAGE } from '@/lib/config';
+import { formatTokenAmount, formatUsd } from '@/lib/format';
+import { useOraclePrices } from '@/providers/OracleContext';
 import { ZoroContext } from '@/providers/ZoroContext';
 import type { TokenConfig } from '@/providers/ZoroProvider';
-import { useOraclePrices } from '@/providers/OracleContext';
 import { NoteType } from '@miden-sdk/miden-sdk';
-import { ChevronDown, Info, Loader, AlertTriangle, X } from 'lucide-react';
+import { AlertTriangle, Info, Loader, X } from 'lucide-react';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { parseUnits } from 'viem';
 import { useBalance } from '../hooks/useBalance';
 import { type PoolInfo } from '../hooks/usePoolsInfo';
 import { ModalContext } from '../providers/ModalContext';
-import { formatTokenAmount, formatUsd } from '../utils/format';
-import type { LpDetails, TxResult } from './OrderStatus';
 import AssetIcon from './AssetIcon';
+import type { LpDetails, TxResult } from './OrderStatus';
 import Slippage from './Slippage';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -58,14 +58,13 @@ export default function PoolModal({
   const { data: poolBalancesData } = usePoolsBalances();
   const poolBalance = useMemo(
     () =>
-      poolBalancesData?.find((b) => b.faucetIdBech32 === pool.faucetIdBech32) ??
-      null,
+      poolBalancesData?.find((b) => b.faucetIdBech32 === pool.faucetIdBech32)
+        ?? null,
     [poolBalancesData, pool.faucetIdBech32],
   );
 
   const token = useMemo(
-    () =>
-      Object.values(tokens).find((t) => t.faucetIdBech32 === pool.faucetIdBech32),
+    () => Object.values(tokens).find((t) => t.faucetIdBech32 === pool.faucetIdBech32),
     [tokens, pool.faucetIdBech32],
   );
   const quoteToken = useMemo(
@@ -73,9 +72,13 @@ export default function PoolModal({
     [tokens],
   );
   /** For hfAMM: LP symbol is "z" + underlying (e.g. zETH → ETH). Use underlying token for deposit/withdraw. */
-  const underlyingSymbol = pool.symbol.startsWith('z') ? pool.symbol.slice(1) : pool.symbol;
+  const underlyingSymbol = pool.symbol.startsWith('z')
+    ? pool.symbol.slice(1)
+    : pool.symbol;
   const underlyingToken = useMemo(
-    () => Object.values(tokens).find((t) => t.symbol === underlyingSymbol) ?? quoteToken ?? null,
+    () =>
+      Object.values(tokens).find((t) => t.symbol === underlyingSymbol) ?? quoteToken
+        ?? null,
     [tokens, underlyingSymbol, quoteToken],
   );
   const oracleIds = useMemo(
@@ -90,18 +93,18 @@ export default function PoolModal({
     token,
   });
   const { balance: balanceQuote } = useBalance({ token: quoteToken ?? undefined });
-  const { balance: balanceUnderlying } = useBalance({ token: underlyingToken ?? undefined });
+  const { balance: balanceUnderlying } = useBalance({
+    token: underlyingToken ?? undefined,
+  });
   const isHfAmm = pool.poolType === 'hfAMM';
-  const balance =
-    mode === 'Withdraw'
-      ? lpBalance ?? BigInt(0)
-      : isHfAmm
-        ? (balanceUnderlying ?? balanceQuote ?? BigInt(0))
-        : (balanceToken ?? BigInt(0));
-  const decimals =
-    mode === 'Deposit' && isHfAmm
-      ? (underlyingToken?.decimals ?? quoteToken?.decimals ?? 6)
-      : pool.decimals;
+  const balance = mode === 'Withdraw'
+    ? lpBalance ?? BigInt(0)
+    : isHfAmm
+    ? (balanceUnderlying ?? balanceQuote ?? BigInt(0))
+    : (balanceToken ?? BigInt(0));
+  const decimals = mode === 'Deposit' && isHfAmm
+    ? (underlyingToken?.decimals ?? quoteToken?.decimals ?? 6)
+    : pool.decimals;
   const depositWithdrawToken = isHfAmm ? (underlyingToken ?? quoteToken ?? token) : token;
 
   const clearForm = useCallback(() => {
@@ -135,10 +138,9 @@ export default function PoolModal({
         amount: rawValue,
         actionType: mode,
       });
-      const txResult =
-        mode === 'Deposit'
-          ? { txId: depositTxId, noteId: depositNoteId }
-          : { txId: withdrawTxId, noteId: withdrawNoteId };
+      const txResult = mode === 'Deposit'
+        ? { txId: depositTxId, noteId: depositNoteId }
+        : { txId: withdrawTxId, noteId: withdrawNoteId };
       setTxResult(txResult);
       clearForm();
       onSuccess(txResult.noteId as string);
@@ -230,12 +232,15 @@ export default function PoolModal({
   });
   // Withdraw: (lp_token / lp_total_supply) * total_liabilities = asset amount out (use totalLiabilities)
   const withdrawAssetOut = useMemo(() => {
-    if (!poolBalance || poolBalance.totalLiabilities === BigInt(0))
+    if (!poolBalance || poolBalance.totalLiabilities === BigInt(0)) {
       return BigInt(0);
+    }
     const lpTotalSupply = poolBalance.totalLiabilities;
     return (rawValue * lpTotalSupply) / lpTotalSupply;
   }, [poolBalance, rawValue]);
-  const assetDecimals = isHfAmm ? (underlyingToken?.decimals ?? quoteToken?.decimals ?? 6) : decimals;
+  const assetDecimals = isHfAmm
+    ? (underlyingToken?.decimals ?? quoteToken?.decimals ?? 6)
+    : decimals;
   const withdrawAssetOutFormatted =
     formatTokenAmount({ value: withdrawAssetOut, expo: assetDecimals }) ?? '0';
   const totalValueUsd = useMemo(() => {
@@ -243,18 +248,29 @@ export default function PoolModal({
     const oracleId = underlyingToken?.oracleId ?? quoteToken?.oracleId ?? pool.oracleId;
     const price = oracleId ? oraclePrices[oracleId]?.value : undefined;
     if (price == null || price === 0) return null;
-    const amount =
-      mode === 'Deposit' ? rawValue : withdrawAssetOut;
+    const amount = mode === 'Deposit' ? rawValue : withdrawAssetOut;
     const expo = underlyingToken?.decimals ?? quoteToken?.decimals ?? 6;
     const value = Number(amount) / 10 ** expo;
     const usd = value * price;
     return usd;
-  }, [isHfAmm, mode, underlyingToken, quoteToken, pool.oracleId, oraclePrices, rawValue, withdrawAssetOut]);
+  }, [
+    isHfAmm,
+    mode,
+    underlyingToken,
+    quoteToken,
+    pool.oracleId,
+    oraclePrices,
+    rawValue,
+    withdrawAssetOut,
+  ]);
 
   // Deposit: LP amount uses total_liabilities (not reserve)
   const expectedLp = useMemo(() => {
-    if (!poolBalance || poolBalance.totalLiabilities === BigInt(0) || rawValue === BigInt(0))
+    if (
+      !poolBalance || poolBalance.totalLiabilities === BigInt(0) || rawValue === BigInt(0)
+    ) {
       return BigInt(0);
+    }
     return (rawValue * poolBalance.totalLiabilities) / poolBalance.totalLiabilities;
   }, [poolBalance, rawValue]);
 
@@ -272,12 +288,11 @@ export default function PoolModal({
     const pct = (Number(expectedLp) / Number(newTotalLp)) * 100;
     return pct;
   }, [poolBalance, rawValue, expectedLp]);
-  const poolShareDisplay =
-    poolSharePct != null
-      ? poolSharePct < 0.01
-        ? `${poolSharePct.toFixed(6)}%`
-        : `${poolSharePct.toFixed(2)}%`
-      : '—';
+  const poolShareDisplay = poolSharePct != null
+    ? poolSharePct < 0.01
+      ? `${poolSharePct.toFixed(6)}%`
+      : `${poolSharePct.toFixed(2)}%`
+    : '—';
 
   /** After withdraw: your new share = (your LP - withdrawn) / (total LP supply - withdrawn). */
   const withdrawPoolSharePct = useMemo(() => {
@@ -290,12 +305,11 @@ export default function PoolModal({
     const clamped = Math.min(100, Math.max(0, pct));
     return clamped;
   }, [poolBalance, rawValue, lpBalance]);
-  const withdrawPoolShareDisplay =
-    withdrawPoolSharePct != null
-      ? withdrawPoolSharePct < 0.01
-        ? `${withdrawPoolSharePct.toFixed(6)}%`
-        : `${withdrawPoolSharePct.toFixed(2)}%`
-      : '—';
+  const withdrawPoolShareDisplay = withdrawPoolSharePct != null
+    ? withdrawPoolSharePct < 0.01
+      ? `${withdrawPoolSharePct.toFixed(6)}%`
+      : `${withdrawPoolSharePct.toFixed(2)}%`
+    : '—';
 
   const minAmountOutDeposit = useMemo(() => {
     if (expectedLp === BigInt(0)) return BigInt(1);
@@ -305,10 +319,13 @@ export default function PoolModal({
   }, [expectedLp, slippage]);
 
   const minAmountOutWithdraw = useMemo(() => {
-    if (!poolBalance || poolBalance.totalLiabilities === BigInt(0) || rawValue === BigInt(0))
+    if (
+      !poolBalance || poolBalance.totalLiabilities === BigInt(0) || rawValue === BigInt(0)
+    ) {
       return BigInt(1);
-    const estimatedAssetOut =
-      (rawValue * poolBalance.totalLiabilities) / poolBalance.totalLiabilities;
+    }
+    const estimatedAssetOut = (rawValue * poolBalance.totalLiabilities)
+      / poolBalance.totalLiabilities;
     if (estimatedAssetOut === BigInt(0)) return BigInt(1);
     const slippageMultiplier = BigInt(Math.round((100 - slippage) * 1e6));
     const min = (estimatedAssetOut * slippageMultiplier) / BigInt(1e8);
@@ -427,16 +444,19 @@ export default function PoolModal({
                 />
                 <div className='flex items-center gap-2 text-sm text-muted-foreground shrink-0'>
                   <span>
-                    Balance:{' '}
-                    {formatTokenAmount({
+                    Balance: {formatTokenAmount({
                       value: balance,
                       expo: decimals,
                     })}{' '}
-                    {isHfAmm ? (underlyingToken?.symbol ?? underlyingSymbol) : pool.symbol}
+                    {isHfAmm
+                      ? (underlyingToken?.symbol ?? underlyingSymbol)
+                      : pool.symbol}
                   </span>
                   <span className='rounded-full overflow-hidden'>
                     <AssetIcon
-                      symbol={isHfAmm ? (underlyingToken?.symbol ?? underlyingSymbol) : pool.symbol}
+                      symbol={isHfAmm
+                        ? (underlyingToken?.symbol ?? underlyingSymbol)
+                        : pool.symbol}
                       size={24}
                     />
                   </span>
@@ -474,11 +494,15 @@ export default function PoolModal({
             <div className='flex items-center justify-between text-sm'>
               <div className='flex items-center gap-2'>
                 <AssetIcon
-                  symbol={isHfAmm ? (pool.symbol.startsWith('z') ? pool.symbol : `z${pool.symbol}`) : pool.symbol}
+                  symbol={isHfAmm
+                    ? (pool.symbol.startsWith('z') ? pool.symbol : `z${pool.symbol}`)
+                    : pool.symbol}
                   size={20}
                 />
                 <span>
-                  {isHfAmm ? (pool.symbol.startsWith('z') ? pool.symbol : `z${pool.symbol}`) : pool.symbol}
+                  {isHfAmm
+                    ? (pool.symbol.startsWith('z') ? pool.symbol : `z${pool.symbol}`)
+                    : pool.symbol}
                 </span>
               </div>
               <span>{minLpFormatted ?? '0.00'}</span>
@@ -490,9 +514,7 @@ export default function PoolModal({
               </div>
             )}
           </div>
-          {inputError && (
-            <p className='text-sm text-destructive'>{inputError}</p>
-          )}
+          {inputError && <p className='text-sm text-destructive'>{inputError}</p>}
           <div className='rounded-lg border border-border bg-muted/20 p-3 flex items-center gap-2'>
             <Info className='h-4 w-4 text-muted-foreground shrink-0' />
             <div className='flex justify-between w-full text-sm'>
@@ -506,9 +528,7 @@ export default function PoolModal({
             className='w-full rounded-lg h-12 text-base'
             size='lg'
           >
-            {isDepositLoading ? (
-              <Loader className='h-5 w-5 animate-spin' />
-            ) : (
+            {isDepositLoading ? <Loader className='h-5 w-5 animate-spin' /> : (
               'Deposit'
             )}
           </Button>
@@ -535,12 +555,12 @@ export default function PoolModal({
                 />
                 <div className='flex items-center gap-2 text-sm text-muted-foreground shrink-0'>
                   <span>
-                    Balance:{' '}
-                    {formatTokenAmount({
+                    Balance: {formatTokenAmount({
                       value: lpBalance,
                       expo: decimals,
-                    })}{' '}
-                    {isHfAmm ? (pool.symbol.startsWith('z') ? pool.symbol : `z${pool.symbol}`) : 'LP'}
+                    })} {isHfAmm
+                      ? (pool.symbol.startsWith('z') ? pool.symbol : `z${pool.symbol}`)
+                      : 'LP'}
                   </span>
                   <span className='rounded-full overflow-hidden'>
                     <AssetIcon symbol={pool.symbol} size={24} />
@@ -578,32 +598,35 @@ export default function PoolModal({
             </p>
             {isHfAmm
               ? (
+                <div className='flex items-center justify-between text-sm'>
+                  <div className='flex items-center gap-2'>
+                    <AssetIcon
+                      symbol={underlyingToken?.symbol ?? underlyingSymbol}
+                      size={20}
+                    />
+                    <span>{underlyingToken?.symbol ?? underlyingSymbol}</span>
+                  </div>
+                  <span>{minWithdrawAssetFormatted}</span>
+                </div>
+              )
+              : (
+                <>
                   <div className='flex items-center justify-between text-sm'>
                     <div className='flex items-center gap-2'>
-                      <AssetIcon symbol={underlyingToken?.symbol ?? underlyingSymbol} size={20} />
-                      <span>{underlyingToken?.symbol ?? underlyingSymbol}</span>
+                      <AssetIcon symbol={pool.symbol} size={20} />
+                      <span>{pool.symbol}</span>
                     </div>
                     <span>{minWithdrawAssetFormatted}</span>
                   </div>
-                )
-              : (
-                  <>
-                    <div className='flex items-center justify-between text-sm'>
-                      <div className='flex items-center gap-2'>
-                        <AssetIcon symbol={pool.symbol} size={20} />
-                        <span>{pool.symbol}</span>
-                      </div>
-                      <span>{minWithdrawAssetFormatted}</span>
+                  <div className='flex items-center justify-between text-sm'>
+                    <div className='flex items-center gap-2'>
+                      <AssetIcon symbol='USDC' size={20} />
+                      <span>USDC</span>
                     </div>
-                    <div className='flex items-center justify-between text-sm'>
-                      <div className='flex items-center gap-2'>
-                        <AssetIcon symbol='USDC' size={20} />
-                        <span>USDC</span>
-                      </div>
-                      <span>—</span>
-                    </div>
-                  </>
-                )}
+                    <span>—</span>
+                  </div>
+                </>
+              )}
             {isHfAmm && (
               <div className='flex justify-between text-sm pt-1 border-t border-border'>
                 <span className='text-muted-foreground'>Total Value</span>
@@ -626,10 +649,9 @@ export default function PoolModal({
                   Impermanent Loss Notice
                 </p>
                 <p className='text-muted-foreground'>
-                  Withdrawing now realizes any impermanent loss. Your position may
-                  have experienced IL since deposit. If you deposited at a
-                  different price ratio, you may receive fewer tokens than
-                  expected.
+                  Withdrawing now realizes any impermanent loss. Your position may have
+                  experienced IL since deposit. If you deposited at a different price
+                  ratio, you may receive fewer tokens than expected.
                 </p>
               </div>
             </div>
@@ -640,9 +662,7 @@ export default function PoolModal({
             className='w-full rounded-lg h-12 text-base'
             size='lg'
           >
-            {isWithdrawLoading ? (
-              <Loader className='h-5 w-5 animate-spin' />
-            ) : (
+            {isWithdrawLoading ? <Loader className='h-5 w-5 animate-spin' /> : (
               'Confirm Withdraw'
             )}
           </Button>

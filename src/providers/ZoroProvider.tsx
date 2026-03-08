@@ -2,18 +2,20 @@ import { type PoolInfo, usePoolsInfo } from '@/hooks/usePoolsInfo';
 import { useUnifiedWallet } from '@/hooks/useUnifiedWallet';
 import { clientMutex } from '@/lib/clientMutex';
 import { NETWORK } from '@/lib/config';
-import { bech32ToAccountId, instantiateClient } from '@/lib/utils';
+import { accountIdToBech32, bech32ToAccountId, instantiateClient } from '@/lib/utils';
 import {
   AccountId,
   AccountStorageMode,
   Address,
   AuthScheme,
+  BasicFungibleFaucetComponent,
   Endpoint,
   Note,
   NoteType,
   RpcClient,
   WebClient,
 } from '@miden-sdk/miden-sdk';
+import { useAssetMetadata } from '@miden-sdk/react';
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParaClient } from './ParaClientContext';
 import { ZoroContext } from './ZoroContext';
@@ -183,6 +185,7 @@ export function ZoroProvider({
       throw new Error('Client not initialized');
     }
     return withClientLock(async () => {
+      console.log('Creating a new faucet.');
       const { symbol, decimals, initialSupply } = params;
       const faucet = await client.newFaucet(
         AccountStorageMode.public(),
@@ -192,6 +195,7 @@ export function ZoroProvider({
         initialSupply,
         AuthScheme.AuthRpoFalcon512,
       );
+      console.log('Created faucet ', faucet.bech32id());
       return faucet;
     });
   }, [client, withClientLock]);
@@ -203,6 +207,11 @@ export function ZoroProvider({
         throw new Error('Client not initialized');
       }
       return withClientLock(async () => {
+        console.log(
+          `Minting ${amount} from faucet ${accountIdToBech32(faucet_id)} to account ${
+            accountIdToBech32(account_id)
+          }.`,
+        );
         const mintTxRequest = client.newMintTransactionRequest(
           account_id,
           faucet_id,
@@ -219,6 +228,38 @@ export function ZoroProvider({
     },
     [client, withClientLock],
   );
+
+  const getAvailableTokens = useCallback(async () => {
+    if (!client || !accountId) {
+      return [];
+    }
+    return withClientLock(async () => {
+      const acc = await client.getAccount(accountId);
+      const tokens: { config: TokenConfig; amount: bigint }[] = [];
+      for (const t of acc?.vault().fungibleAssets() ?? []) {
+        const f = t.faucetId();
+        const amount = t.amount();
+        const faucet = await rpcClient.getAccountDetails(f);
+        const account = faucet.account();
+        if (account) {
+          const faucet = BasicFungibleFaucetComponent.fromAccount(account);
+          const symbol = faucet.symbol().toString();
+          tokens.push({
+            config: {
+              symbol,
+              decimals: faucet.decimals(),
+              name: symbol,
+              faucetId: f,
+              faucetIdBech32: accountIdToBech32(f),
+              oracleId: '0x',
+            } as TokenConfig,
+            amount,
+          });
+        }
+      }
+      return tokens;
+    });
+  }, [client, withClientLock, accountId, rpcClient]);
 
   // Periodic refresh for Para wallet users
   useEffect(() => {
@@ -257,6 +298,7 @@ export function ZoroProvider({
       refreshPendingNotes,
       createFaucet,
       mintFromFaucet,
+      getAvailableTokens,
     };
   }, [
     accountId,
@@ -275,6 +317,7 @@ export function ZoroProvider({
     refreshPendingNotes,
     createFaucet,
     mintFromFaucet,
+    getAvailableTokens,
   ]);
 
   return (

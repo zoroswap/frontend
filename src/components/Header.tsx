@@ -13,7 +13,7 @@ export function Header() {
     }`;
 
   return (
-    <header className='px-6 py-4 border-b border-border bg-background'>
+    <header className='px-6 py-6 border-b border-border bg-background'>
       <div className='grid grid-cols-[1fr_auto_1fr] items-center gap-4'>
         <Link
           to='/'

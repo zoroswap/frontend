@@ -1,6 +1,6 @@
 import type { PoolBalance } from '@/hooks/usePoolsBalances';
 import type { PoolInfo } from '@/hooks/usePoolsInfo';
-import { prettyBigintFormat } from '@/utils/format';
+import { prettyBigintFormat } from '@/lib/format';
 import { X } from 'lucide-react';
 import AssetIcon from './AssetIcon';
 import { Button } from './ui/button';

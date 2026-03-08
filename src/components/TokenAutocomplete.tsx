@@ -1,14 +1,14 @@
 import AssetIcon from '@/components/AssetIcon';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { cn } from '@/lib/utils';
-import type { TokenConfig } from '@/providers/ZoroProvider';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
+import type { TokenConfig } from '@/providers/ZoroProvider';
 import { ChevronDown, Search } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
@@ -39,7 +39,7 @@ export function TokenAutocomplete({
     const list = tokens.filter(t => t.faucetIdBech32 !== excludeFaucetIdBech32);
     if (!q) return list;
     return list.filter(t =>
-      t.symbol.toLowerCase().includes(q) || t.name.toLowerCase().includes(q),
+      t.symbol.toLowerCase().includes(q) || t.name.toLowerCase().includes(q)
     );
   }, [excludeFaucetIdBech32, query, tokens]);
 
@@ -47,7 +47,6 @@ export function TokenAutocomplete({
     if (!open) return;
     setQuery('');
     setActiveIndex(0);
-    // Let Radix mount content first
     const t = window.setTimeout(() => inputRef.current?.focus(), 0);
     return () => window.clearTimeout(t);
   }, [open]);
@@ -64,7 +63,7 @@ export function TokenAutocomplete({
           variant='outline'
           disabled={disabled}
           className={cn(
-            'h-auto rounded-xl pl-10 pr-2 py-2 text-xs sm:text-sm bg-background hover:bg-background border-border/60 font-normal gap-2 min-w-[110px] justify-between',
+            'h-auto relative rounded-xl pl-10 pr-2 py-2 text-xs sm:text-sm bg-background hover:bg-background border-border/60 font-normal gap-2 min-w-[110px] justify-between',
             className,
           )}
         >
@@ -143,4 +142,3 @@ export function TokenAutocomplete({
     </DropdownMenu>
   );
 }
-
