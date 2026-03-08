@@ -15,7 +15,6 @@ import {
   RpcClient,
   WebClient,
 } from '@miden-sdk/miden-sdk';
-import { useAssetMetadata } from '@miden-sdk/react';
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParaClient } from './ParaClientContext';
 import { ZoroContext } from './ZoroContext';

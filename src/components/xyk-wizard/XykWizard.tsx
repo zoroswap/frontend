@@ -3,17 +3,20 @@ import { Card, CardContent } from '@/components/ui/card';
 import { UnifiedWalletButton } from '@/components/UnifiedWalletButton';
 import useTokensWithBalance from '@/hooks/useTokensWithBalance';
 import { useUnifiedWallet } from '@/hooks/useUnifiedWallet';
+import { deployNewPool } from '@/lib/DeployXykPool';
 import {
   type CreatedPoolDraft,
   readCreatedPools,
   writeCreatedPools,
 } from '@/lib/poolUtils';
 import { accountIdToBech32 } from '@/lib/utils';
-import { type TokenConfigWithBalance } from '@/providers/ZoroContext';
-import type { TokenConfig } from '@/providers/ZoroProvider';
+import { compileXykDepositTransaction } from '@/lib/XykDepositNote';
+import { type TokenConfigWithBalance, ZoroContext } from '@/providers/ZoroContext';
+import { type TokenConfig, ZoroProvider } from '@/providers/ZoroProvider';
+import { TransactionType } from '@demox-labs/miden-wallet-adapter';
 import { AccountId } from '@miden-sdk/miden-sdk';
 import { ChevronLeft } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import XykStep1 from './steps/XykWizardStep1';
 import XykStep2 from './steps/XykWizardStep2';
@@ -155,7 +158,8 @@ export interface XykStepProps {
 }
 
 const XykWizard = () => {
-  const { connected } = useUnifiedWallet();
+  const { connected, requestTransaction } = useUnifiedWallet();
+  const { client, accountId } = useContext(ZoroContext);
   const [form, setForm] = useState<XykWizardForm>(() => readPersistedWizard().form);
   const [step, setStep] = useState<number>(() => readPersistedWizard().step);
   const tokensWithBalance = useTokensWithBalance();
@@ -195,6 +199,45 @@ const XykWizard = () => {
     }
   }, [canGoBackInWizard, step]);
 
+  const launchXykPool = useCallback(
+    async (
+      { token0, token1, amount0, amount1 }: {
+        token0: AccountId;
+        token1: AccountId;
+        amount0: bigint;
+        amount1: bigint;
+      },
+    ) => {
+      try {
+        if (!client) {
+          throw new Error('Client not initialized');
+        }
+        if (!accountId) {
+          throw new Error('User not logged in');
+        }
+
+        const { newPoolId } = await deployNewPool({ client, token0, token1 });
+        const { tx } = await compileXykDepositTransaction({
+          token0,
+          token1,
+          amount0,
+          amount1,
+          userAccountId: accountId,
+          poolAccountId: newPoolId,
+          client,
+        });
+        const txId = await requestTransaction({
+          type: TransactionType.Custom,
+          payload: tx,
+        });
+        await client.syncState();
+      } catch (e) {
+        console.error(e);
+      }
+    },
+    [client, requestTransaction, accountId],
+  );
+
   const onCreate = useCallback(async () => {
     if (
       form.amountA == null || form.amountB == null || form.tokenA == null
@@ -224,8 +267,16 @@ const XykWizard = () => {
     };
     const existing = readCreatedPools();
     writeCreatedPools([draft, ...existing]);
+
+    await launchXykPool({
+      token0: form.tokenA,
+      token1: form.tokenB,
+      amount0: form.amountA,
+      amount1: form.amountB,
+    });
+
     next();
-  }, [form, tokensWithBalance, next]);
+  }, [form, tokensWithBalance, next, launchXykPool]);
 
   const stepTitle = step === 0
     ? 'Create a new Liquidity Pool'

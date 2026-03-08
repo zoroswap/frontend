@@ -18,12 +18,11 @@ import {
 
 import zoropool from '@/masm/accounts/zoropool.masm?raw';
 import DEPOSIT_SCRIPT from '@/masm/notes/xyk_deposit.masm?raw';
-import type { TokenConfig } from '@/providers/ZoroProvider';
 import { accountIdToBech32, generateRandomSerialNumber } from './utils';
 
 export interface DepositParams {
-  token0: TokenConfig;
-  token1: TokenConfig;
+  token0: AccountId;
+  token1: AccountId;
   amount0: bigint;
   amount1: bigint;
   userAccountId: AccountId;
@@ -68,8 +67,8 @@ export async function compileXykDepositTransaction({
     ]),
   );
 
-  const asset0 = new FungibleAsset(token0.faucetId, amount0);
-  const asset1 = new FungibleAsset(token1.faucetId, amount1);
+  const asset0 = new FungibleAsset(token0, amount0);
+  const asset1 = new FungibleAsset(token1, amount1);
   const noteAssets = new NoteAssets([asset0, asset1]);
 
   const note = new Note(

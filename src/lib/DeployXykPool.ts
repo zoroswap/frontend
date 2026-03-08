@@ -2,7 +2,6 @@ import {
   AccountId,
   AccountType,
   Felt,
-  NoteType,
   StorageSlot,
   WebClient,
   Word,
@@ -13,7 +12,6 @@ import lp_local from '@/masm/accounts/lp_local.masm?raw';
 import math from '@/masm/accounts/math.masm?raw';
 import storage_utils from '@/masm/accounts/storage_utils.masm?raw';
 
-import type { TokenConfig } from '@/providers/ZoroProvider';
 import { StorageMap } from '@miden-sdk/miden-sdk';
 import { AccountComponent } from '@miden-sdk/miden-sdk';
 import { AuthSecretKey } from '@miden-sdk/miden-sdk';
@@ -21,13 +19,9 @@ import { AccountBuilder } from '@miden-sdk/miden-sdk';
 import { AccountStorageMode } from '@miden-sdk/miden-sdk';
 
 export interface DeployNewPoolParams {
-  token0: TokenConfig;
-  token1: TokenConfig;
-  amount0: bigint;
-  amount1: bigint;
-  userAccountId: AccountId;
+  token0: AccountId;
+  token1: AccountId;
   client: WebClient;
-  noteType: NoteType;
 }
 
 export interface DeployResult {
@@ -39,10 +33,10 @@ export interface DeployResult {
 const build_lp_local_component = (client: WebClient) => {
   const builder = client.createCodeBuilder();
   const math_lib = builder.buildLibrary('zoro::math', math);
-  // const storage_utils_lib = builder.buildLibrary('zoro::storage_utils', storage_utils);
+  const storage_utils_lib = builder.buildLibrary('zoro::storage_utils', storage_utils);
   builder.linkStaticLibrary(math_lib);
-  // builder.linkStaticLibrary(storage_utils_lib)
-  const c_prod_component = builder.buildLibrary('zoro::c_prod', c_prod);
+  builder.linkStaticLibrary(storage_utils_lib);
+  const c_prod_component = builder.buildLibrary('zoro::lp_local', c_prod);
   return c_prod_component;
 };
 const build_c_prod_component = (client: WebClient) => {
@@ -51,7 +45,7 @@ const build_c_prod_component = (client: WebClient) => {
   const storage_utils_lib = builder.buildLibrary('zoro::storage_utils', storage_utils);
   builder.linkStaticLibrary(math_lib);
   builder.linkStaticLibrary(storage_utils_lib);
-  const lp_local_component = builder.buildLibrary('zoro::c_prod', lp_local);
+  const lp_local_component = builder.buildLibrary('zoro::c_prod_pool', lp_local);
   return lp_local_component;
 };
 
@@ -72,10 +66,10 @@ export async function deployNewPool({
       new Felt(BigInt(0)),
     ]),
     Word.newFromFelts([
-      token1.faucetId.suffix(),
-      token1.faucetId.prefix(),
-      token0.faucetId.suffix(),
-      token0.faucetId.prefix(),
+      token1.suffix(),
+      token1.prefix(),
+      token0.suffix(),
+      token0.prefix(),
     ]),
   );
 
@@ -136,6 +130,6 @@ export async function deployNewPool({
   await client.syncState();
 
   return {
-    accountId: contract.account.id(),
+    newPoolId: contract.account.id(),
   };
 }
