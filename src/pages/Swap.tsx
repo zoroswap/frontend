@@ -251,7 +251,7 @@ function Swap() {
       <meta property='og:title' content='Swap - ZoroSwap | DeFi on Miden' />
       <meta name='twitter:title' content='Swap - ZoroSwap | DeFi on Miden' />
       <Header />
-      <main className='flex-1 flex items-center justify-center p-4 sm:p-6'>
+      <main className='flex-1 flex items-center justify-center px-3 py-4 sm:p-6'>
         <div className='w-full max-w-[580px]'>
           <h1 className='sr-only'>Swap Tokens</h1>
 
@@ -261,16 +261,16 @@ function Swap() {
           </div>
 
           {/* Sell Card — white bg, border, no shadow */}
-          <Card className='border border-border/60 rounded-2xl bg-white shadow-none'>
-            <CardContent className='p-6 sm:p-8'>
-              <div className='text-sm text-primary font-semibold mb-4'>Sell</div>
-              <div className='flex items-center justify-between gap-4 mb-4'>
+          <Card className='border border-border/60 rounded-xl sm:rounded-2xl bg-white shadow-none'>
+            <CardContent className='p-4 py-6 sm:p-8'>
+              <div className='text-xs sm:text-sm text-primary font-semibold mb-3 sm:mb-4'>Sell</div>
+              <div className='flex items-center justify-between gap-3 sm:gap-4 mb-3 sm:mb-4'>
                 <Input
                   value={stringSell ?? ''}
                   onChange={(e) => onInputChange(e.target.value)}
                   placeholder='0'
                   aria-errormessage={sellInputError}
-                  className={`border-none bg-transparent text-5xl sm:text-6xl font-semibold text-foreground outline-none flex-1 p-0 h-auto focus-visible:ring-0 no-spinner placeholder:text-foreground/70 ${
+                  className={`border-none bg-transparent text-4xl sm:text-6xl font-semibold text-foreground outline-none flex-1 p-0 h-auto focus-visible:ring-0 no-spinner placeholder:text-foreground/70 ${
                     sellInputError
                       ? 'text-orange-600 placeholder:text-destructive/50'
                       : ''
@@ -328,10 +328,10 @@ function Swap() {
           </div>
 
           {/* Buy Card — gray bg, no border, no shadow */}
-          <Card className='border-0 rounded-2xl bg-[hsl(0,0%,95%)] shadow-none'>
-            <CardContent className='p-6 sm:p-8 pb-10 sm:pb-12'>
-              <div className='text-sm text-primary font-semibold mb-4'>Sell</div>
-              <div className='flex items-center justify-between gap-4'>
+          <Card className='border-0 rounded-xl sm:rounded-2xl bg-[hsl(0,0%,95%)] shadow-none'>
+            <CardContent className='p-4 py-6 sm:p-8 pb-10 sm:pb-12'>
+              <div className='text-xs sm:text-sm text-primary font-semibold mb-3 sm:mb-4'>Sell</div>
+              <div className='flex items-center justify-between gap-3 sm:gap-4'>
                 <SwapInputBuy
                   amountSell={rawSell}
                   assetBuy={selectedAssetBuy}

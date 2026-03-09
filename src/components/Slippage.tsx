@@ -48,7 +48,7 @@ const Slippage = ({ slippage, onSlippageChange }: SlippageProps) => {
         }`}
         aria-label='Slippage settings'
       >
-        <Settings className='h-16 w-16' strokeWidth={1} />
+        <Settings className='h-8 w-8 sm:h-16 sm:w-16' strokeWidth={1} />
       </Button>
 
       {isOpen && (

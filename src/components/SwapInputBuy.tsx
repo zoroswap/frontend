@@ -51,7 +51,7 @@ const SwapInputBuy = (
         value={stringBuy}
         disabled
         placeholder='0'
-        className='border-none text-5xl sm:text-6xl font-semibold text-muted-foreground outline-none flex-1 p-0 h-auto focus-visible:ring-0 no-spinner bg-transparent placeholder:text-muted-foreground'
+        className='border-none text-4xl sm:text-6xl font-semibold text-muted-foreground outline-none flex-1 p-0 h-auto focus-visible:ring-0 no-spinner bg-transparent placeholder:text-muted-foreground'
       />
     );
   }, [stringBuy]);
