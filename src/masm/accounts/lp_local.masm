@@ -256,8 +256,12 @@ proc sub_from_reserves#(amount_0: felt, amount_1: felt)
 end
 
 pub proc add_to_reserve_by_asset_id#(amount: felt, asset_id_prefix: felt, asset_id_suffix: felt)
+    drop drop drop
+    exec.sys::truncate_stack
 end
 proc sub_from_reserve_by_asset_id#(amount: felt, asset_id_prefix: felt, asset_id_suffix: felt)
+    drop drop drop
+    exec.sys::truncate_stack
 end
 
 @locals(3)

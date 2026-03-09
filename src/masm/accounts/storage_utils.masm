@@ -131,4 +131,3 @@ pub proc set_map_item #(slot_id_prefix: felt, slot_id_suffix: felt, key: Word, v
     dropw
     loc_load.8
 end
-

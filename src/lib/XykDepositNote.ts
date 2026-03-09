@@ -18,6 +18,7 @@ import {
 
 import zoropool from '@/masm/accounts/zoropool.masm?raw';
 import DEPOSIT_SCRIPT from '@/masm/notes/xyk_deposit.masm?raw';
+import { build_lp_local_lib } from './DeployXykPool';
 import { accountIdToBech32, generateRandomSerialNumber } from './utils';
 
 export interface DepositParams {
@@ -44,9 +45,9 @@ export async function compileXykDepositTransaction({
   amount1,
   client,
 }: DepositParams) {
+  const lp_local_lib = build_lp_local_lib(client);
   const builder = client.createCodeBuilder();
-  const pool_script = builder.buildLibrary('zoroswap::zoropool', zoropool);
-  builder.linkDynamicLibrary(pool_script);
+  builder.linkStaticLibrary(lp_local_lib);
   const script = builder.compileNoteScript(
     DEPOSIT_SCRIPT,
   );

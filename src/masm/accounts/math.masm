@@ -174,4 +174,3 @@ end
 #        # => [lp_amount_variant_1_high, lp_amount_variant_1_low, lp_amount_variant_0_high, lp_amount_variant_0_low]
 #    end
 #end
-

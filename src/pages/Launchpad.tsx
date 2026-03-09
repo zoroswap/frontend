@@ -19,7 +19,8 @@ import { parseUnits } from 'viem';
 const SYMBOL_MIN = 3;
 const SYMBOL_MAX = 6;
 const DECIMALS_MIN = 0;
-const DECIMALS_MAX = 12;
+const DECIMALS_MAX = 4;
+const TOTAL_SUPPLY_MAX = 1_000_000;
 
 function validateSymbol(s: string): string | null {
   const trimmed = s.trim().toUpperCase();
@@ -50,6 +51,9 @@ function validateInitialSupply(raw: string, decimals: number): string | null {
     return 'Invalid amount';
   }
   if (amount <= 0n) return 'Initial supply must be greater than 0';
+  if (amount > TOTAL_SUPPLY_MAX) {
+    return `Initial supply should be lower than ${TOTAL_SUPPLY_MAX}`;
+  }
   return null;
 }
 
@@ -262,7 +266,7 @@ export default function Launchpad() {
                     </label>
                     <Input
                       id='launchpad-symbol'
-                      placeholder='e.g. ZoR0'
+                      placeholder='e.g. ZORO'
                       value={symbol}
                       onChange={(e) => {
                         setSymbol(e.target.value.toUpperCase().slice(0, SYMBOL_MAX));

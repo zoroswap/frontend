@@ -46,7 +46,9 @@ export const safeAccountImport = async (client: WebClient, accountId: AccountId)
 export const accountIdToBech32 = (
   accountId: AccountId,
 ) => {
-  return accountId.toBech32(createNetworkId(), AccountInterface.BasicWallet).split('_')[0];
+  return accountId.toBech32(createNetworkId(), AccountInterface.BasicWallet).split(
+    '_',
+  )[0];
 };
 
 export const bech32ToAccountId = (bech32str?: string) => {
