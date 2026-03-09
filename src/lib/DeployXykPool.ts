@@ -66,6 +66,19 @@ const build_c_prod_lib = (client: WebClient) => {
   return builder.buildLibrary('zoro::c_prod_pool', c_prod);
 };
 
+const init_script = (client: WebClient) => {
+  const scriptCode = `
+    use zoro::lp_local
+    begin
+      exec.lp_local::init
+    end
+  `;
+  const lp_local = build_lp_local_lib(client);
+  const builder = client.createCodeBuilder();
+  builder.linkStaticLibrary(lp_local);
+  return builder.compileTxScript(scriptCode);
+};
+
 export async function deployNewPool({
   client,
   token0,
@@ -89,6 +102,15 @@ export async function deployNewPool({
 
   const assets_mapping_slot = StorageSlot.map('zoro::lp_local::assets_mapping', assets);
   const reserve_slot = StorageSlot.emptyValue('zoro::lp_local::reserve');
+  const init_slot = StorageSlot.fromValue(
+    'zoro::lp_local::is_init',
+    Word.newFromFelts([
+      new Felt(BigInt(0)),
+      new Felt(BigInt(0)),
+      new Felt(BigInt(0)),
+      new Felt(BigInt(0)),
+    ]),
+  );
   const total_supply_slot = StorageSlot.emptyValue('zoro::lp_local::total_supply');
   const user_deposits_mapping = new StorageMap();
   user_deposits_mapping.insert(
@@ -127,6 +149,7 @@ export async function deployNewPool({
       reserve_slot,
       total_supply_slot,
       user_deposits_slot,
+      init_slot,
     ],
   ).withSupportsAllTypes();
 
@@ -140,9 +163,9 @@ export async function deployNewPool({
   const contract = new AccountBuilder(walletSeed)
     .accountType(AccountType.RegularAccountImmutableCode)
     .storageMode(AccountStorageMode.network())
-    .withNoAuthComponent()
+    // .withNoAuthComponent()
     .withComponent(lp_local_component)
-    // .withAuthComponent(authComponent)
+    .withAuthComponent(authComponent)
     // .withComponent(c_prod_pool_component)
     .withBasicWalletComponent()
     .build();
@@ -151,8 +174,18 @@ export async function deployNewPool({
     contract.account.id(),
     secretKey,
   );
+
+  await client.importAccountById(contract.account.id());
+
   await client.syncState();
   console.log('Deployed new XYK pool at: ', accountIdToBech32(contract.account.id()));
+
+  const tx_script = init_script(client);
+  const initTx = new TransactionRequestBuilder()
+    .withCustomScript(tx_script)
+    .build();
+  await client.submitNewTransaction(contract.account.id(), initTx);
+  await client.syncState();
 
   return {
     newPoolId: contract.account.id(),
