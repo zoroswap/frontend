@@ -138,10 +138,11 @@ export async function deployNewPool({
   const authComponent = AccountComponent.createAuthComponentFromSecretKey(secretKey);
 
   const contract = new AccountBuilder(walletSeed)
-    .accountType(AccountType.RegularAccountUpdatableCode)
+    .accountType(AccountType.RegularAccountImmutableCode)
     .storageMode(AccountStorageMode.network())
+    .withNoAuthComponent()
     .withComponent(lp_local_component)
-    .withAuthComponent(authComponent)
+    // .withAuthComponent(authComponent)
     // .withComponent(c_prod_pool_component)
     .withBasicWalletComponent()
     .build();
