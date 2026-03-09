@@ -3,6 +3,7 @@ import {
   AccountType,
   Felt,
   StorageSlot,
+  TransactionRequestBuilder,
   WebClient,
   Word,
 } from '@miden-sdk/miden-sdk';
@@ -17,6 +18,7 @@ import { AccountComponent } from '@miden-sdk/miden-sdk';
 import { AuthSecretKey } from '@miden-sdk/miden-sdk';
 import { AccountBuilder } from '@miden-sdk/miden-sdk';
 import { AccountStorageMode } from '@miden-sdk/miden-sdk';
+import { accountIdToBech32 } from './utils';
 
 export interface DeployNewPoolParams {
   token0: AccountId;
@@ -149,6 +151,7 @@ export async function deployNewPool({
     secretKey,
   );
   await client.syncState();
+  console.log('Deployed new XYK pool at: ', accountIdToBech32(contract.account.id()));
 
   return {
     newPoolId: contract.account.id(),

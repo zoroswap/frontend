@@ -9,7 +9,9 @@ export interface CreatedPoolDraft {
   tokenB: Pick<TokenConfig, 'symbol' | 'name' | 'faucetIdBech32'>;
   feeBps: number;
   createdAt: number;
-  status: 'draft';
+  status: 'draft' | 'deployed';
+  /** Set when status is 'deployed'; used for linking to pool detail (account id bech32). */
+  poolIdBech32?: string;
 }
 
 export function readCreatedPools() {
@@ -29,4 +31,19 @@ export function writeCreatedPools(pools: CreatedPoolDraft[]) {
 
 export function clearCreatedPools() {
   writeCreatedPools([]);
+}
+
+export function removeCreatedPool(id: string) {
+  const pools = readCreatedPools().filter((p) => p.id !== id);
+  writeCreatedPools(pools);
+}
+
+export function updateCreatedPool(
+  id: string,
+  update: Partial<Pick<CreatedPoolDraft, 'status' | 'poolIdBech32'>>,
+) {
+  const pools = readCreatedPools().map((p) =>
+    p.id === id ? { ...p, ...update } : p,
+  );
+  writeCreatedPools(pools);
 }

@@ -7,15 +7,16 @@ import { deployNewPool } from '@/lib/DeployXykPool';
 import {
   type CreatedPoolDraft,
   readCreatedPools,
+  updateCreatedPool,
   writeCreatedPools,
 } from '@/lib/poolUtils';
 import { accountIdToBech32 } from '@/lib/utils';
 import { compileXykDepositTransaction } from '@/lib/XykDepositNote';
 import { type TokenConfigWithBalance, ZoroContext } from '@/providers/ZoroContext';
-import { type TokenConfig, ZoroProvider } from '@/providers/ZoroProvider';
+import { type TokenConfig } from '@/providers/ZoroProvider';
 import { TransactionType } from '@demox-labs/miden-wallet-adapter';
 import { AccountId } from '@miden-sdk/miden-sdk';
-import { ChevronLeft } from 'lucide-react';
+import { AlertCircle, ChevronLeft, Loader2 } from 'lucide-react';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import XykStep1 from './steps/XykWizardStep1';
@@ -117,28 +118,7 @@ function clearPersistedWizard() {
 
 const wizardSteps = [XykStep1, XykStep2, XykStep3, XykStep4];
 
-export const XykPairIcon = (
-  { symbolA, symbolB, size = 24 }: { symbolA: string; symbolB: string; size?: number },
-) => {
-  const letterA = (symbolA || '?')[0].toUpperCase();
-  const letterB = (symbolB || '?')[0].toUpperCase();
-  return (
-    <span className='flex items-center'>
-      <span
-        className='inline-flex h-8 w-8 items-center justify-center rounded-full border-2 border-background bg-muted text-xs font-semibold text-foreground'
-        style={{ width: size, height: size, marginRight: -size / 4, zIndex: 1 }}
-      >
-        {letterA}
-      </span>
-      <span
-        className='inline-flex h-8 w-8 items-center justify-center rounded-full border-2 border-background bg-muted/80 text-xs font-semibold text-foreground'
-        style={{ width: size, height: size, zIndex: 0 }}
-      >
-        {letterB}
-      </span>
-    </span>
-  );
-};
+export { XykPairIcon } from '@/components/XykPairIcon';
 
 export interface XykWizardForm {
   tokenA?: AccountId;
@@ -155,6 +135,8 @@ export interface XykStepProps {
   form: XykWizardForm;
   setForm: (newForm: XykWizardForm) => void;
   restart: () => void;
+  /** Set after successful deploy; used by step 4 for "View pool" link. */
+  lastDeployedPoolIdBech32?: string;
 }
 
 const XykWizard = () => {
@@ -162,11 +144,25 @@ const XykWizard = () => {
   const { client, accountId } = useContext(ZoroContext);
   const [form, setForm] = useState<XykWizardForm>(() => readPersistedWizard().form);
   const [step, setStep] = useState<number>(() => readPersistedWizard().step);
+  const [lastDeployedPoolIdBech32, setLastDeployedPoolIdBech32] = useState<
+    string | undefined
+  >(undefined);
   const tokensWithBalance = useTokensWithBalance();
 
   useEffect(() => {
     writePersistedWizard(step, form);
   }, [step, form]);
+
+  useEffect(() => {
+    if (step !== 2) setCreateError(null);
+  }, [step]);
+
+  // Never show step 4 (success) unless we have a deployed pool id (e.g. after refresh we might have step 3 but no pool id).
+  useEffect(() => {
+    if (step === 3 && !lastDeployedPoolIdBech32) {
+      setStep(2);
+    }
+  }, [step, lastDeployedPoolIdBech32]);
 
   const canContinueWizard = useMemo(() => {
     switch (step) {
@@ -199,6 +195,9 @@ const XykWizard = () => {
     }
   }, [canGoBackInWizard, step]);
 
+  const [isCreating, setIsCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+
   const launchXykPool = useCallback(
     async (
       { token0, token1, amount0, amount1 }: {
@@ -207,7 +206,7 @@ const XykWizard = () => {
         amount0: bigint;
         amount1: bigint;
       },
-    ) => {
+    ): Promise<AccountId | undefined> => {
       try {
         if (!client) {
           throw new Error('Client not initialized');
@@ -231,8 +230,11 @@ const XykWizard = () => {
           payload: tx,
         });
         await client.syncState();
+        console.log('Deposited, tx of deposit: ', txId);
+        return newPoolId;
       } catch (e) {
         console.error(e);
+        throw e;
       }
     },
     [client, requestTransaction, accountId],
@@ -268,15 +270,36 @@ const XykWizard = () => {
     const existing = readCreatedPools();
     writeCreatedPools([draft, ...existing]);
 
-    await launchXykPool({
-      token0: form.tokenA,
-      token1: form.tokenB,
-      amount0: form.amountA,
-      amount1: form.amountB,
-    });
+    setCreateError(null);
+    setIsCreating(true);
+    try {
+      const newPoolId = await launchXykPool({
+        token0: form.tokenA,
+        token1: form.tokenB,
+        amount0: form.amountA,
+        amount1: form.amountB,
+      });
 
-    next();
-  }, [form, tokensWithBalance, next, launchXykPool]);
+      if (newPoolId == null) {
+        setCreateError('Pool creation failed. Please try again.');
+        return;
+      }
+      const poolIdBech32 = accountIdToBech32(newPoolId);
+      setLastDeployedPoolIdBech32(poolIdBech32);
+      updateCreatedPool(draft.id, {
+        status: 'deployed',
+        poolIdBech32,
+      });
+      setStep(3);
+    } catch (err) {
+      const message = err instanceof Error
+        ? err.message
+        : 'Pool creation failed. Please try again.';
+      setCreateError(message);
+    } finally {
+      setIsCreating(false);
+    }
+  }, [form, tokensWithBalance, launchXykPool]);
 
   const stepTitle = step === 0
     ? 'Create a new Liquidity Pool'
@@ -302,9 +325,10 @@ const XykWizard = () => {
         tokenMetadata={tokensWithBalance.metadata}
         loading={tokensWithBalance.loading}
         restart={restart}
+        lastDeployedPoolIdBech32={lastDeployedPoolIdBech32}
       />
     );
-  }, [step, form, tokensWithBalance, restart]);
+  }, [step, form, tokensWithBalance, restart, lastDeployedPoolIdBech32]);
 
   if (!connected) {
     return (
@@ -405,13 +429,28 @@ const XykWizard = () => {
             </Button>
           )}
         {step === 2 && (
-          <Button
-            className='w-full rounded-lg bg-primary text-primary-foreground h-16'
-            onClick={() => onCreate()}
-            disabled={!canContinueWizard}
-          >
-            Create pool
-          </Button>
+          <>
+            <Button
+              className='w-full rounded-lg bg-primary text-primary-foreground h-16'
+              onClick={() => onCreate()}
+              disabled={!canContinueWizard || isCreating}
+            >
+              {isCreating
+                ? (
+                  <>
+                    <Loader2 className='h-5 w-5 animate-spin mr-2' />
+                    Creating pool…
+                  </>
+                )
+                : 'Create pool'}
+            </Button>
+            {createError && (
+              <div className='flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive'>
+                <AlertCircle className='h-4 w-4 shrink-0' />
+                <span>{createError}</span>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

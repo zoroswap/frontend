@@ -53,15 +53,14 @@ export function UnifiedWalletProvider({ children }: UnifiedWalletProviderProps) 
       if (walletType === 'miden') {
         // Delegate to Miden wallet adapter
         if ('type' in tx && tx.type === TransactionType.Custom) {
-          return midenWallet.requestTransaction?.({
+          const txId = await midenWallet.requestTransaction?.({
             type: TransactionType.Custom,
             payload: tx.payload,
           });
-        }
-        return midenWallet.requestTransaction?.(tx);
+          return txId;
+        } else throw new Error('Unsupported transaction type for Miden wallet');
       } else if (walletType === 'para' && paraMidenClient && paraMidenAccountId) {
         // For Para users, execute transactions via the Miden client.
-        // Use mutex to prevent concurrent access to the client.
         return clientMutex.runExclusive(async () => {
           if ('type' in tx && tx.type === TransactionType.Custom) {
             const customTx = tx.payload as { transactionRequest: string };

@@ -80,6 +80,8 @@ export async function compileXykDepositTransaction({
 
   const noteId = note.id().toString();
 
+  console.log('Deposit note: ', noteId);
+
   const transactionRequest = new TransactionRequestBuilder()
     .withOwnOutputNotes(new MidenArrays.OutputNoteArray([OutputNote.full(note)]))
     .build();

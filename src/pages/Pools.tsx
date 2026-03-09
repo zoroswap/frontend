@@ -3,7 +3,12 @@ import { Footer } from '@/components/Footer';
 import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { clearCreatedPools, readCreatedPools } from '@/lib/poolUtils';
+import { XykPairIcon } from '@/components/XykPairIcon';
+import {
+  clearCreatedPools,
+  readCreatedPools,
+  removeCreatedPool,
+} from '@/lib/poolUtils';
 import { emptyFn } from '@/lib/shared';
 import { Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
@@ -33,6 +38,18 @@ export default function Pools() {
     }
   }, [refreshCreated]);
 
+  const handleDeleteDraft = useCallback(
+    (id: string, e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (window.confirm('Delete this draft pool? This cannot be undone.')) {
+        removeCreatedPool(id);
+        refreshCreated();
+      }
+    },
+    [refreshCreated],
+  );
+
   return (
     <div className='min-h-screen bg-background text-foreground flex flex-col dotted-bg'>
       <title>Pools - ZoroSwap | DeFi on Miden</title>
@@ -46,7 +63,7 @@ export default function Pools() {
             <div className='flex items-center gap-3'>
               <AllDropdown />
               <AllDropdown />
-              {createdPools.length > 0 && (
+              {createdPools.some((p) => p.status !== 'deployed') && (
                 <Button
                   size='sm'
                   variant='outline'
@@ -104,21 +121,41 @@ export default function Pools() {
             )
             : (
               <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-                {createdPools.map(p => (
-                  <Card key={p.id} className='rounded-xl border bg-card overflow-hidden'>
+                {createdPools.map(p => {
+                  const isDeployed = p.status === 'deployed' && p.poolIdBech32;
+                  const cardContent = (
                     <CardContent className='p-5 space-y-2'>
                       <div className='flex items-center justify-between gap-3'>
-                        <div className='min-w-0'>
-                          <div className='font-semibold truncate'>
-                            {p.tokenA.symbol} / {p.tokenB.symbol}
-                          </div>
-                          <div className='text-xs text-muted-foreground truncate'>
-                            {(p.feeBps / 100).toFixed(2)}%
+                        <div className='min-w-0 flex items-center gap-2'>
+                          <XykPairIcon
+                            symbolA={p.tokenA.symbol}
+                            symbolB={p.tokenB.symbol}
+                            size={32}
+                          />
+                          <div className='min-w-0'>
+                            <div className='font-semibold truncate'>
+                              {p.tokenA.symbol} / {p.tokenB.symbol}
+                            </div>
+                            <div className='text-xs text-muted-foreground truncate'>
+                              {(p.feeBps / 100).toFixed(2)}%
+                            </div>
                           </div>
                         </div>
-                        <span className='text-xs px-2 py-1 rounded-md bg-muted/40 text-muted-foreground border border-border/60 shrink-0'>
-                          Draft
-                        </span>
+                        <div className='flex items-center gap-2 shrink-0'>
+                          {p.status !== 'deployed' && (
+                            <button
+                              type='button'
+                              onClick={(e) => handleDeleteDraft(p.id, e)}
+                              className='p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors'
+                              aria-label='Delete draft'
+                            >
+                              <Trash2 className='h-4 w-4' />
+                            </button>
+                          )}
+                          <span className='text-xs px-2 py-1 rounded-md bg-muted/40 text-muted-foreground border border-border/60'>
+                            {isDeployed ? 'Pool' : 'Draft'}
+                          </span>
+                        </div>
                       </div>
                       <div className='text-xs text-muted-foreground'>
                         {p.tokenA.name} · {p.tokenB.name}
@@ -127,8 +164,25 @@ export default function Pools() {
                         {new Date(p.createdAt).toLocaleString()}
                       </div>
                     </CardContent>
-                  </Card>
-                ))}
+                  );
+                  return (
+                    <Card
+                      key={p.id}
+                      className='rounded-xl border bg-card overflow-hidden'
+                    >
+                      {isDeployed
+                        ? (
+                          <Link
+                            to={`/explore/pool/${encodeURIComponent(p.poolIdBech32!)}`}
+                            className='block hover:bg-muted/30 transition-colors'
+                          >
+                            {cardContent}
+                          </Link>
+                        )
+                        : cardContent}
+                    </Card>
+                  );
+                })}
               </div>
             )}
         </section>

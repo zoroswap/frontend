@@ -1,7 +1,8 @@
 import { Button } from '@/components/ui/button';
 import { emptyFn } from '@/lib/shared';
 import { accountIdToBech32 } from '@/lib/utils';
-import { Check } from 'lucide-react';
+import { getMidenscanAccountUrl } from '@/hooks/useLaunchpad';
+import { Check, ExternalLink } from 'lucide-react';
 import { useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { XYK_WIZARD_STORAGE_KEY, type XykStepProps } from '../XykWizard';
@@ -14,7 +15,12 @@ function clearPersistedWizard() {
   }
 }
 
-const XykStep4 = ({ form, tokenMetadata, restart }: XykStepProps) => {
+const XykStep4 = ({
+  form,
+  tokenMetadata,
+  restart,
+  lastDeployedPoolIdBech32,
+}: XykStepProps) => {
   const tokenA = useMemo(() => {
     return tokenMetadata[form.tokenA ? accountIdToBech32(form.tokenA) : ''];
   }, [form.tokenA, tokenMetadata]);
@@ -38,19 +44,46 @@ const XykStep4 = ({ form, tokenMetadata, restart }: XykStepProps) => {
         <p className='text-lg font-medium text-foreground'>
           Pool {poolName} created successfully!
         </p>
-        <p className='text-sm text-muted-foreground'>
-          View your Pool at Address: (saved to Your pools)
-        </p>
+        {lastDeployedPoolIdBech32 && (
+          <div className='flex flex-col items-center gap-1 text-sm'>
+            <span className='text-muted-foreground'>Pool address</span>
+            <code className='text-xs font-mono text-foreground bg-muted px-2 py-1 rounded break-all max-w-full text-center'>
+              {lastDeployedPoolIdBech32}
+            </code>
+            <a
+              href={getMidenscanAccountUrl(lastDeployedPoolIdBech32)}
+              target='_blank'
+              rel='noopener noreferrer'
+              className='inline-flex items-center gap-1 text-primary hover:underline'
+            >
+              View on MidenScan
+              <ExternalLink className='h-3.5 w-3.5' />
+            </a>
+          </div>
+        )}
       </div>
       <div className='flex flex-col gap-4'>
-        <Link to={'/pools'}>
-          <Button
-            className='w-full rounded-lg bg-primary text-primary-foreground h-11 font-normal'
-            onClick={emptyFn}
-          >
-            View {poolName} pool
-          </Button>
-        </Link>
+        {lastDeployedPoolIdBech32
+          ? (
+            <Link to={`/explore/pool/${encodeURIComponent(lastDeployedPoolIdBech32)}`}>
+              <Button
+                className='w-full rounded-lg bg-primary text-primary-foreground h-11 font-normal'
+                onClick={emptyFn}
+              >
+                View pool
+              </Button>
+            </Link>
+          )
+          : (
+            <Link to='/pools'>
+              <Button
+                className='w-full rounded-lg bg-primary text-primary-foreground h-11 font-normal'
+                onClick={emptyFn}
+              >
+                Your pools
+              </Button>
+            </Link>
+          )}
         <Button
           className='w-full rounded-lg bg-card hover:bg-gray-100 dark:hover:bg-gray-500/10 text-foreground h-11 font-normal'
           onClick={restart}
