@@ -94,39 +94,47 @@ const XykStep1 = (
           tolerance and strategy.
         </p>
         <div className='grid grid-cols-2 gap-3 mt-3'>
-          {FEE_TIERS.map(({ bps, label, hint }) => (
-            <button
-              key={bps}
-              type='button'
-              onClick={() => setFeeBps(bps)}
-              className={cn(
-                'rounded-xl border-2 px-4 text-left transition-colors md:min-h-[150px] flex flex-col justify-center items-center',
-                form.feeBps === bps
-                  ? 'bg-primary text-primary-foreground border-primary shadow-none'
-                  : 'bg-card border-border text-foreground hover:border-muted-foreground/50',
-              )}
-            >
-              <span
+          {FEE_TIERS.map(({ bps, label, hint }) => {
+            const is30 = bps === 30;
+            return (
+              <button
+                key={bps}
+                type='button'
+                disabled={!is30}
+                onClick={() => is30 && setFeeBps(bps)}
                 className={cn(
-                  'font-bold text-xl block',
-                  form.feeBps === bps ? 'text-primary-foreground' : 'text-foreground',
-                )}
-              >
-                {label}
-              </span>
-              <span
-                className={cn(
-                  'text-base mt-1 block',
+                  'rounded-xl border-2 px-4 text-left transition-colors md:min-h-[150px] flex flex-col justify-center items-center',
                   form.feeBps === bps
-                    ? 'text-primary-foreground/90'
-                    : 'text-muted-foreground',
+                    ? 'bg-primary text-primary-foreground border-primary shadow-none'
+                    : 'bg-card border-border text-foreground hover:border-muted-foreground/50',
+                  !is30 && 'opacity-60 cursor-not-allowed',
                 )}
               >
-                {hint}
-              </span>
-            </button>
-          ))}
+                <span
+                  className={cn(
+                    'font-bold text-xl block',
+                    form.feeBps === bps ? 'text-primary-foreground' : 'text-foreground',
+                  )}
+                >
+                  {label}
+                </span>
+                <span
+                  className={cn(
+                    'text-base mt-1 block',
+                    form.feeBps === bps
+                      ? 'text-primary-foreground/90'
+                      : 'text-muted-foreground',
+                  )}
+                >
+                  {hint}
+                </span>
+              </button>
+            );
+          })}
         </div>
+        <p className='text-muted-foreground text-sm mt-3'>
+          Constant product pools are fixed to 30BP fee for the time being.
+        </p>
       </section>
     </div>
   );

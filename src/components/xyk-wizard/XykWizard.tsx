@@ -15,12 +15,7 @@ import { compileXykDepositTransaction } from '@/lib/XykDepositNote';
 import { type TokenConfigWithBalance, ZoroContext } from '@/providers/ZoroContext';
 import { type TokenConfig } from '@/providers/ZoroProvider';
 import { TransactionType } from '@demox-labs/miden-wallet-adapter';
-import {
-  AccountId,
-  NoteAndArgs,
-  NoteAndArgsArray,
-  TransactionRequestBuilder,
-} from '@miden-sdk/miden-sdk';
+import { AccountId } from '@miden-sdk/miden-sdk';
 import { AlertCircle, ChevronLeft, Loader2 } from 'lucide-react';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -46,6 +41,7 @@ function readPersistedWizard(): {
   const defaultForm: XykWizardForm = {
     amountA: BigInt(0),
     amountB: BigInt(0),
+    feeBps: 30,
   };
   try {
     const raw = localStorage.getItem(XYK_WIZARD_STORAGE_KEY);
@@ -87,9 +83,7 @@ function readPersistedWizard(): {
         // ignore
       }
     }
-    if (typeof f.feeBps === 'number' && f.feeBps > 0) {
-      form.feeBps = f.feeBps;
-    }
+    form.feeBps = 30;
     return { step, form };
   } catch {
     return { step: 0, form: defaultForm };

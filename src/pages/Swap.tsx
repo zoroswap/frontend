@@ -21,7 +21,6 @@ import { bech32ToAccountId } from '@/lib/utils';
 import { OracleContext, useOraclePrices } from '@/providers/OracleContext';
 import { ZoroContext } from '@/providers/ZoroContext';
 import { type TokenConfig } from '@/providers/ZoroProvider.tsx';
-import type { AccountId } from '@miden-sdk/miden-sdk';
 import { Loader2 } from 'lucide-react';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
@@ -64,10 +63,7 @@ function Swap() {
   } = useBalance({
     token: selectedAssetSell,
   });
-  const {
-    balance: balancebuy,
-    formattedLong: balanceBuyFmt,
-  } = useBalance({
+  useBalance({
     token: selectedAssetBuy,
   });
 
@@ -261,9 +257,11 @@ function Swap() {
           </div>
 
           {/* Sell Card — white bg, border, no shadow */}
-          <Card className='border border-border/60 rounded-xl sm:rounded-2xl bg-white shadow-none'>
+          <Card className='border border-border/60 rounded-xl sm:rounded-2xl bg-card shadow-none'>
             <CardContent className='p-4 py-6 sm:p-8'>
-              <div className='text-xs sm:text-sm text-primary font-semibold mb-3 sm:mb-4'>Sell</div>
+              <div className='text-xs sm:text-sm text-primary font-semibold mb-3 sm:mb-4'>
+                Sell
+              </div>
               <div className='flex items-center justify-between gap-3 sm:gap-4 mb-3 sm:mb-4'>
                 <Input
                   value={stringSell ?? ''}
@@ -322,15 +320,17 @@ function Swap() {
 
           {/* Swap Pairs */}
           <div className='flex justify-center -my-7 relative z-10'>
-            <div className='bg-white rounded-xl p-1'>
+            <div className='bg-card rounded-xl p-1'>
               <SwapPairs swapPairs={swapPairs} disabled={isLoadingSwap} />
             </div>
           </div>
 
           {/* Buy Card — gray bg, no border, no shadow */}
-          <Card className='border-0 rounded-xl sm:rounded-2xl bg-[hsl(0,0%,95%)] shadow-none'>
+          <Card className='border-0 rounded-xl sm:rounded-2xl bg-muted shadow-none'>
             <CardContent className='p-4 py-6 sm:p-8 pb-10 sm:pb-12'>
-              <div className='text-xs sm:text-sm text-primary font-semibold mb-3 sm:mb-4'>Sell</div>
+              <div className='text-xs sm:text-sm text-primary font-semibold mb-3 sm:mb-4'>
+                Buy
+              </div>
               <div className='flex items-center justify-between gap-3 sm:gap-4'>
                 <SwapInputBuy
                   amountSell={rawSell}
@@ -466,12 +466,15 @@ const getLocalStoredToken = (side: 'buy' | 'sell'): TokenConfig | undefined => {
 };
 const setLocalStoredToken = (side: 'buy' | 'sell', token?: TokenConfig) => {
   if (token) {
-    localStorage.setItem('swap-' + side, JSON.stringify({
-      symbol: token.symbol,
-      name: token.name,
-      decimals: token.decimals,
-      faucetIdBech32: token.faucetIdBech32,
-      oracleId: token.oracleId,
-    }));
+    localStorage.setItem(
+      'swap-' + side,
+      JSON.stringify({
+        symbol: token.symbol,
+        name: token.name,
+        decimals: token.decimals,
+        faucetIdBech32: token.faucetIdBech32,
+        oracleId: token.oracleId,
+      }),
+    );
   }
 };

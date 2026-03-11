@@ -1,6 +1,7 @@
 import { CustomTransaction } from '@demox-labs/miden-wallet-adapter';
 import {
   AccountId,
+  Felt,
   FeltArray,
   FungibleAsset,
   MidenArrays,
@@ -18,15 +19,14 @@ import {
   WebClient,
 } from '@miden-sdk/miden-sdk';
 
-import DEPOSIT_SCRIPT from '@/masm/notes/xyk_deposit.masm?raw';
+import SCRIPT from '@/masm/notes/xyk_withdraw.masm?raw';
 import { build_lp_local_lib } from './DeployXykPool';
 import { accountIdToBech32, generateRandomSerialNumber } from './utils';
 
-export interface DepositParams {
+export interface WithdrawParams {
   token0: AccountId;
   token1: AccountId;
-  amount0: bigint;
-  amount1: bigint;
+  lpAmount: bigint;
   userAccountId: AccountId;
   poolAccountId: AccountId;
   client: WebClient;
@@ -37,20 +37,19 @@ export interface SwapResult {
   readonly noteId: string;
 }
 
-export async function compileXykDepositTransaction({
+export async function compileXykWithdrawTransaction({
   poolAccountId,
   userAccountId,
   token0,
   token1,
-  amount0,
-  amount1,
+  lpAmount,
   client,
-}: DepositParams) {
+}: WithdrawParams) {
   const lp_local_lib = build_lp_local_lib(client);
   const builder = client.createCodeBuilder();
   builder.linkStaticLibrary(lp_local_lib);
   const script = builder.compileNoteScript(
-    DEPOSIT_SCRIPT,
+    SCRIPT,
   );
 
   const noteTag = NoteTag.withAccountTarget(poolAccountId);
@@ -66,16 +65,37 @@ export async function compileXykDepositTransaction({
     noteTag,
   ).withAttachment(attachment);
 
+  const returnNoteTag = NoteTag.withAccountTarget(userAccountId);
+  const returnNoteType = NoteType.Public;
+  const noteAssets = new NoteAssets([
+    new FungibleAsset(token0, BigInt(1)),
+    new FungibleAsset(token1, BigInt(1)),
+  ]);
+  const returnNote = Note.createP2IDNote(
+    poolAccountId,
+    userAccountId,
+    noteAssets,
+    returnNoteType,
+    new NoteAttachment(),
+  );
+  const returnRecipientDigest = returnNote.recipient().digest().toFelts();
+
   const inputs = new NoteInputs(
     new FeltArray([
-      userAccountId.prefix(),
-      userAccountId.suffix(),
+      new Felt(BigInt(0)),
+      new Felt(BigInt(0)),
+      new Felt(BigInt(0)),
+      new Felt(lpAmount),
+      new Felt(BigInt(returnNoteTag.asU32())),
+      new Felt(BigInt(returnNoteType)),
+      new Felt(BigInt(0)),
+      new Felt(BigInt(0)),
+      returnRecipientDigest[0],
+      returnRecipientDigest[1],
+      returnRecipientDigest[2],
+      returnRecipientDigest[3],
     ]),
   );
-
-  const asset0 = new FungibleAsset(token0, amount0);
-  const asset1 = new FungibleAsset(token1, amount1);
-  const noteAssets = new NoteAssets([asset0, asset1]);
 
   const note = new Note(
     noteAssets,
@@ -85,7 +105,7 @@ export async function compileXykDepositTransaction({
 
   const noteId = note.id().toString();
 
-  console.log('Deposit note: ', noteId);
+  console.log('Withdraw note: ', noteId);
 
   const transactionRequest = new TransactionRequestBuilder()
     .withOwnOutputNotes(new MidenArrays.OutputNoteArray([OutputNote.full(note)]))

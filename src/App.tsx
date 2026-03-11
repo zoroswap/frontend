@@ -5,7 +5,7 @@ import {
   WalletProvider,
 } from '@demox-labs/miden-wallet-adapter';
 import { useMemo } from 'react';
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Navigate, Route, Routes } from 'react-router-dom';
 import NotFound from './pages/404';
 import FaucetPage from './pages/Faucet';
 import SwapPage from './pages/Swap';
@@ -15,7 +15,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Bounce, ToastContainer } from 'react-toastify';
 import Launchpad from './pages/Launchpad';
 import LiquidityPools from './pages/LiquidityPools';
-import PoolDetail from './pages/PoolDetail';
+import HfPoolDetail from './pages/HfPoolDetail';
+import XykPoolDetail from './pages/XykPoolDetail';
 import NewXykPool from './pages/NewXykPool';
 import Pools from './pages/Pools';
 import ModalProvider from './providers/ModalProvider';
@@ -33,7 +34,9 @@ function AppRouter() {
         <Route path='/faucet' element={<FaucetPage />} />
         <Route path='/launchpad' element={<Launchpad />} />
         <Route path='/explore' element={<LiquidityPools />} />
-        <Route path='/explore/pool/:poolId' element={<PoolDetail />} />
+        <Route path='/pools/hf/:poolId' element={<HfPoolDetail />} />
+        <Route path='/pools/xyk/:poolId' element={<XykPoolDetail />} />
+        <Route path='/explore/pool/:poolId' element={<Navigate to='/explore' replace />} />
         <Route path='/pools' element={<Pools />} />
         <Route path='/new-xyk-pool' element={<NewXykPool />} />
         <Route path='*' element={<NotFound />} />

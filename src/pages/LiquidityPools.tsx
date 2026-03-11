@@ -83,7 +83,7 @@ function LiquidityPools() {
 
   const onPoolRowClick = useCallback(
     (pool: PoolInfo) => {
-      navigate(`/explore/pool/${encodeURIComponent(pool.faucetIdBech32)}`);
+      navigate(`/pools/hf/${encodeURIComponent(pool.faucetIdBech32)}`);
     },
     [navigate],
   );

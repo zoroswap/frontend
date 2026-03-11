@@ -5,7 +5,7 @@ export const SwapPairs = (
     <button
       onClick={swapPairs}
       disabled={disabled}
-      className='p-3 bg-[hsl(0,0%,96%)] border border-border/40 rounded-xl cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[hsl(0,0%,93%)] transition-colors'
+      className='p-3 bg-muted border border-border/40 rounded-xl cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted/80 transition-colors'
     >
       <svg
         width='36'

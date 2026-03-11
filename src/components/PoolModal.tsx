@@ -507,6 +507,9 @@ export default function PoolModal({
               </div>
               <span>{minLpFormatted ?? '0.00'}</span>
             </div>
+            {expectedLpFormatted != null && expectedLpFormatted !== (minLpFormatted ?? '0.00') && (
+              <p className='text-xs text-muted-foreground'>Expected: {expectedLpFormatted}</p>
+            )}
             {isHfAmm && (
               <div className='flex justify-between text-sm pt-1 border-t border-border'>
                 <span className='text-muted-foreground'>Total Value</span>
@@ -611,12 +614,13 @@ export default function PoolModal({
               )
               : (
                 <>
+                  <p className='text-xs text-muted-foreground'>LP: {withdrawReceiveFormatted ?? '0'}</p>
                   <div className='flex items-center justify-between text-sm'>
                     <div className='flex items-center gap-2'>
                       <AssetIcon symbol={pool.symbol} size={20} />
                       <span>{pool.symbol}</span>
                     </div>
-                    <span>{minWithdrawAssetFormatted}</span>
+                    <span>{withdrawAssetOutFormatted} (min: {minWithdrawAssetFormatted})</span>
                   </div>
                   <div className='flex items-center justify-between text-sm'>
                     <div className='flex items-center gap-2'>

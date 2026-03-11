@@ -8,10 +8,10 @@ import {
   Word,
 } from '@miden-sdk/miden-sdk';
 
-import c_prod from '@/masm/accounts/c_prod_pool.masm?raw';
 import lp_local from '@/masm/accounts/lp_local.masm?raw';
 import math from '@/masm/accounts/math.masm?raw';
 import storage_utils from '@/masm/accounts/storage_utils.masm?raw';
+import xyk_pool from '@/masm/accounts/xyk_pool.masm?raw';
 
 import { StorageMap } from '@miden-sdk/miden-sdk';
 import { AccountComponent } from '@miden-sdk/miden-sdk';
@@ -51,7 +51,7 @@ export const build_lp_local_lib = (client: WebClient) => {
   builder.linkStaticLibrary(storage_utils);
   return builder.buildLibrary('zoro::lp_local', lp_local);
 };
-const build_c_prod_lib = (client: WebClient) => {
+export const build_xyk_pool_lib = (client: WebClient) => {
   console.log('math');
   const math_lib = build_math_lib(client);
   console.log('storage_utils');
@@ -63,7 +63,7 @@ const build_c_prod_lib = (client: WebClient) => {
   // builder.linkStaticLibrary(storage_utils);
   builder.linkStaticLibrary(lp_local);
   console.log('c_prod');
-  return builder.buildLibrary('zoro::c_prod_pool', c_prod);
+  return builder.buildLibrary('zoro::xyk_pool', xyk_pool);
 };
 
 export async function deployNewPool({

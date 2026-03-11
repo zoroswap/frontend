@@ -173,7 +173,7 @@ export default function Pools() {
                       {isDeployed
                         ? (
                           <Link
-                            to={`/explore/pool/${encodeURIComponent(p.poolIdBech32!)}`}
+                            to={`/pools/xyk/${encodeURIComponent(p.poolIdBech32!)}`}
                             className='block hover:bg-muted/30 transition-colors'
                           >
                             {cardContent}
