@@ -6,6 +6,8 @@ import {
   MidenArrays,
   Note,
   NoteAssets,
+  NoteAttachment,
+  NoteExecutionHint,
   NoteInputs,
   NoteMetadata,
   NoteRecipient,
@@ -52,14 +54,18 @@ export async function compileXykDepositTransaction({
     DEPOSIT_SCRIPT,
   );
 
-  // Note should only contain the offered asset
   const noteTag = NoteTag.withAccountTarget(poolAccountId);
+
+  const attachment = NoteAttachment.newNetworkAccountTarget(
+    poolAccountId,
+    NoteExecutionHint.always(),
+  );
 
   const metadata = new NoteMetadata(
     userAccountId,
     NoteType.Public,
     noteTag,
-  );
+  ).withAttachment(attachment);
 
   const inputs = new NoteInputs(
     new FeltArray([

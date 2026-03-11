@@ -608,9 +608,3 @@ end
 #
 #    # => [pad(16)]
 #end
-
-pub proc init
-    push.1
-    push.IS_INIT[0..2]
-    exec.native_account::set_map_item 
-end    

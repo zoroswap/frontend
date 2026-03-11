@@ -15,7 +15,12 @@ import { compileXykDepositTransaction } from '@/lib/XykDepositNote';
 import { type TokenConfigWithBalance, ZoroContext } from '@/providers/ZoroContext';
 import { type TokenConfig } from '@/providers/ZoroProvider';
 import { TransactionType } from '@demox-labs/miden-wallet-adapter';
-import { AccountId } from '@miden-sdk/miden-sdk';
+import {
+  AccountId,
+  NoteAndArgs,
+  NoteAndArgsArray,
+  TransactionRequestBuilder,
+} from '@miden-sdk/miden-sdk';
 import { AlertCircle, ChevronLeft, Loader2 } from 'lucide-react';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -216,6 +221,7 @@ const XykWizard = () => {
         }
 
         const { newPoolId } = await deployNewPool({ client, token0, token1 });
+
         const { tx } = await compileXykDepositTransaction({
           token0,
           token1,
@@ -230,6 +236,11 @@ const XykWizard = () => {
           payload: tx,
         });
         await client.syncState();
+        // const consumeTx = new TransactionRequestBuilder().withInputNotes(
+        //   new NoteAndArgsArray([new NoteAndArgs(note, null)]),
+        // ).build();
+        // await client.submitNewTransaction(newPoolId, consumeTx);
+        // await client.syncState();
         console.log('Deposited, tx of deposit: ', txId);
         return newPoolId;
       } catch (e) {
