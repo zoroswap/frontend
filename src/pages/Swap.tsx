@@ -251,121 +251,106 @@ function Swap() {
       <meta property='og:title' content='Swap - ZoroSwap | DeFi on Miden' />
       <meta name='twitter:title' content='Swap - ZoroSwap | DeFi on Miden' />
       <Header />
-      <main className='flex-1 flex items-center justify-center p-3 sm:p-4 -mt-4'>
-        <div className='w-full max-w-[495px] space-y-4 sm:space-y-6'>
-          {/* Sell Card */}
-          <Card className='border rounded-sm sm:rounded-md'>
-            <CardContent className='p-3 sm:p-4 space-y-3 sm:space-y-4'>
-              <h1 className='sr-only'>Swap Tokens</h1>
-              <div className='space-y-2'>
-                <div className='flex gap-1 sm:gap-2 justify-between items-center'>
-                  <div className='text-xs sm:text-sm text-primary font-medium'>Sell</div>
-                  <Slippage slippage={slippage} onSlippageChange={setSlippage} />
+      <main className='flex-1 flex items-center justify-center px-3 py-4 sm:p-6'>
+        <div className='w-full max-w-[580px]'>
+          <h1 className='sr-only'>Swap Tokens</h1>
+
+          {/* Settings gear - top right, relative so dropdown aligns to full width */}
+          <div className='relative flex justify-end mb-1'>
+            <Slippage slippage={slippage} onSlippageChange={setSlippage} />
+          </div>
+
+          {/* Sell Card — white bg, border, no shadow */}
+          <Card className='border border-border/60 rounded-xl sm:rounded-2xl bg-white shadow-none'>
+            <CardContent className='p-4 py-6 sm:p-8'>
+              <div className='text-xs sm:text-sm text-primary font-semibold mb-3 sm:mb-4'>Sell</div>
+              <div className='flex items-center justify-between gap-3 sm:gap-4 mb-3 sm:mb-4'>
+                <Input
+                  value={stringSell ?? ''}
+                  onChange={(e) => onInputChange(e.target.value)}
+                  placeholder='0'
+                  aria-errormessage={sellInputError}
+                  className={`border-none bg-transparent text-4xl sm:text-6xl font-semibold text-foreground outline-none flex-1 p-0 h-auto focus-visible:ring-0 no-spinner placeholder:text-foreground/70 ${
+                    sellInputError
+                      ? 'text-orange-600 placeholder:text-destructive/50'
+                      : ''
+                  }`}
+                />
+                <div className='relative'>
+                  <TokenAutocomplete
+                    tokens={Object.values(tokens)}
+                    value={selectedAssetSell}
+                    onChange={(id) => setAsset('sell', id)}
+                    excludeFaucetIdBech32={selectedAssetBuy?.faucetIdBech32}
+                  />
                 </div>
-                <Card className='border-none'>
-                  <CardContent className='!sm:px-0 !px-0 p-3 sm:p-4 space-y-2 sm:space-y-3'>
-                    <div className='flex items-center justify-between gap-2'>
-                      <Input
-                        value={stringSell ?? ''}
-                        onChange={(e) => onInputChange(e.target.value)}
-                        placeholder='0'
-                        aria-errormessage={sellInputError}
-                        className={`border-none text-3xl sm:text-4xl font-light outline-none flex-1 p-0 h-auto focus-visible:ring-0 no-spinner ${
+              </div>
+              {sellInputError && (
+                <p className='text-xs text-orange-600 mb-2'>
+                  {sellInputError}
+                </p>
+              )}
+              <div>
+                <div className='flex items-center justify-between text-sm'>
+                  <div className='text-muted-foreground font-medium'>
+                    {rawSell > BigInt(0) && selectedAssetSell
+                      ? (
+                        <>
+                          $<Price amount={rawSell} tokenConfig={selectedAssetSell} />
+                        </>
+                      )
+                      : '$0'}
+                  </div>
+                  {accountId && balanceSell !== null && balanceSell !== undefined
+                    && (
+                      <button
+                        onClick={handleMaxClick}
+                        disabled={balanceSell === BigInt(0)}
+                        className={`hover:text-foreground transition-colors cursor-pointer ${
                           sellInputError
-                            ? 'text-orange-600 placeholder:text-destructive/50'
-                            : ''
+                            ? 'text-orange-600 hover:text-destructive'
+                            : 'text-muted-foreground hover:text-foreground'
                         }`}
-                      />
-                      <div className='relative'>
-                        <TokenAutocomplete
-                          tokens={Object.values(tokens)}
-                          value={selectedAssetSell}
-                          onChange={(id) => setAsset('sell', id)}
-                          excludeFaucetIdBech32={selectedAssetBuy?.faucetIdBech32}
-                        />
-                      </div>
-                    </div>
-                    {sellInputError && (
-                      <div className='flex items-center justify-between text-xs h-5'>
-                        <p className='text-xs text-orange-600'>
-                          {sellInputError}
-                        </p>
-                      </div>
+                      >
+                        {balanceSellFmt} {selectedAssetSell?.symbol ?? ''}
+                      </button>
                     )}
-                    <div className='flex items-center justify-between text-xs h-5'>
-                      <div className='text-muted-foreground'>
-                        {rawSell > BigInt(0) && selectedAssetSell && (
-                          <>
-                            = $
-                            <Price amount={rawSell} tokenConfig={selectedAssetSell} />
-                          </>
-                        )}
-                      </div>
-                      {accountId && balanceSell !== null && balanceSell !== undefined
-                        && (
-                          <div className='flex items-center gap-1'>
-                            <button
-                              onClick={handleMaxClick}
-                              disabled={balanceSell === BigInt(0)}
-                              className={`hover:text-foreground transition-colors cursor-pointer mr-1 ${
-                                sellInputError
-                                  ? 'text-orange-600 hover:text-destructive'
-                                  : 'text-muted-foreground hover:text-foreground'
-                              }`}
-                            >
-                              {balanceSellFmt} {selectedAssetSell?.symbol ?? ''}
-                            </button>
-                          </div>
-                        )}
-                    </div>
-                  </CardContent>
-                </Card>
+                </div>
               </div>
             </CardContent>
           </Card>
 
           {/* Swap Pairs */}
-          <div className='flex justify-center -my-1'>
-            <SwapPairs swapPairs={swapPairs} disabled={isLoadingSwap} />
+          <div className='flex justify-center -my-7 relative z-10'>
+            <div className='bg-white rounded-xl p-1'>
+              <SwapPairs swapPairs={swapPairs} disabled={isLoadingSwap} />
+            </div>
           </div>
 
-          {/* Buy Card */}
-          <Card className='border rounded-sm sm:rounded-md'>
-            <CardContent className='p-3 sm:p-4 space-y-3 sm:space-y-4'>
-              <div className='space-y-2'>
-                <div className='text-xs sm:text-sm text-primary font-medium'>Buy</div>
-                <Card className='border-none'>
-                  <CardContent className='!sm:px-0 !px-0 p-3 sm:p-4 space-y-2 sm:space-y-3'>
-                    <div className='flex items-center justify-between gap-2'>
-                      <SwapInputBuy
-                        amountSell={rawSell}
-                        assetBuy={selectedAssetBuy}
-                        assetSell={selectedAssetSell}
-                      />
-                      <div className='relative'>
-                        <TokenAutocomplete
-                          tokens={Object.values(tokens)}
-                          value={selectedAssetBuy}
-                          onChange={(id) => setAsset('buy', id)}
-                          excludeFaucetIdBech32={selectedAssetSell?.faucetIdBech32}
-                        />
-                      </div>
-                    </div>
-                    <div className='flex items-center justify-end text-xs h-5'>
-                      {balancebuy !== null && balancebuy !== undefined && (
-                        <div className='text-muted-foreground mr-1'>
-                          {balanceBuyFmt} {selectedAssetBuy?.symbol ?? ''}
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
+          {/* Buy Card — gray bg, no border, no shadow */}
+          <Card className='border-0 rounded-xl sm:rounded-2xl bg-[hsl(0,0%,95%)] shadow-none'>
+            <CardContent className='p-4 py-6 sm:p-8 pb-10 sm:pb-12'>
+              <div className='text-xs sm:text-sm text-primary font-semibold mb-3 sm:mb-4'>Sell</div>
+              <div className='flex items-center justify-between gap-3 sm:gap-4'>
+                <SwapInputBuy
+                  amountSell={rawSell}
+                  assetBuy={selectedAssetBuy}
+                  assetSell={selectedAssetSell}
+                />
+                <div className='relative'>
+                  <TokenAutocomplete
+                    tokens={Object.values(tokens)}
+                    value={selectedAssetBuy}
+                    onChange={(id) => setAsset('buy', id)}
+                    excludeFaucetIdBech32={selectedAssetSell?.faucetIdBech32}
+                  />
+                </div>
               </div>
             </CardContent>
           </Card>
 
           {/* Main Action Button */}
-          <div className='w-full h-8 sm:h-12 mt-4 sm:mt-6'>
+          <div className='w-full mt-4 sm:mt-5'>
             {connected
               ? (
                 <Button
@@ -373,7 +358,7 @@ function Swap() {
                   disabled={connecting || isLoadingSwap || !client
                     || stringSell === '' || !!sellInputError}
                   variant='outline'
-                  className={`w-full h-full rounded-xl font-bold text-sm sm:text-lg transition-colors disabled:pointer-events-none disabled:opacity-50 ${
+                  className={`w-full h-14 sm:h-16 rounded-2xl font-bold text-base sm:text-xl transition-colors disabled:pointer-events-none disabled:opacity-50 ${
                     buttonText === 'Swap'
                       ? 'bg-primary text-primary-foreground hover:bg-primary/90 border-primary'
                       : 'hover:border-orange-200/20 hover:bg-accent hover:text-accent-foreground'
@@ -382,45 +367,45 @@ function Swap() {
                   {connecting
                     ? (
                       <>
-                        <Loader2 className='w-4 h-4 mr-2 animate-spin' />
+                        <Loader2 className='w-5 h-5 mr-2 animate-spin' />
                         Connecting...
                       </>
                     )
                     : isLoadingSwap
                     ? (
                       <>
-                        <Loader2 className='w-4 h-4 mr-2 animate-spin' />
+                        <Loader2 className='w-5 h-5 mr-2 animate-spin' />
                         Creating Note...
                       </>
                     )
                     : !client
                     ? (
                       <>
-                        <Loader2 className='w-4 h-4 mr-2 animate-spin' />
+                        <Loader2 className='w-5 h-5 mr-2 animate-spin' />
                       </>
                     )
                     : buttonText}
                 </Button>
               )
               : (
-                <div className='relative w-full h-full'>
+                <div className='relative w-full'>
                   {connecting && (
                     <Button
                       disabled
                       variant='outline'
-                      className='w-full h-full rounded-xl font-semibold text-sm sm:text-lg transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50'
+                      className='w-full h-14 sm:h-16 rounded-2xl font-semibold text-base sm:text-xl transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50'
                     >
                       <Loader2 className='w-10 h-10 animate-spin' />
                     </Button>
                   )}
 
                   <div className={connecting ? 'invisible' : 'visible'}>
-                    <UnifiedWalletButton className='!p-5 w-full h-full !font-sans !rounded-xl !font-semibold !text-sm sm:!text-lg !bg-primary !text-primary-foreground hover:!bg-primary/90 !border-none !text-center !flex !items-center !justify-center' />
+                    <UnifiedWalletButton className='!p-5 w-full !h-14 sm:!h-16 !font-sans !rounded-2xl !font-bold !text-base sm:!text-xl !bg-primary !text-primary-foreground hover:!bg-primary/90 !border-none !text-center !flex !items-center !justify-center' />
                   </div>
                 </div>
               )}
           </div>
-          <p className='text-xs text-center opacity-40 min-h-6'>
+          <p className='text-xs text-center opacity-40 mt-3'>
             {selectedAssetBuy && selectedAssetSell
               ? (
                 <span>
@@ -432,12 +417,11 @@ function Swap() {
               )
               : null}
           </p>
-          {/* Powered by MIDEN */}
-          <div className='flex items-center justify-center'>
-            {poweredByMiden}
-          </div>
         </div>
       </main>
+      <div className='flex items-center justify-center py-6'>
+        {poweredByMiden}
+      </div>
       <Footer />
       {isSuccessModalOpen && (
         <OrderStatus

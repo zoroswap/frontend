@@ -61,25 +61,25 @@ export function UnifiedWalletButton({ className }: UnifiedWalletButtonProps) {
       <div className='relative'>
         <button
           onClick={() => setShowDropdown(!showDropdown)}
-          className={`flex items-center gap-2 p-3 rounded-xl font-medium text-sm text-muted-foreground border-none hover:text-foreground hover:bg-gray-500/10 dark:bg-muted/30 dark:hover:bg-muted/70 ${className}`}
+          className={`inline-flex items-center justify-center gap-1 sm:gap-2 p-1.5 sm:p-3 rounded-md sm:rounded-xl font-medium text-[10px] sm:text-sm text-muted-foreground border-none hover:text-foreground hover:bg-gray-500/10 dark:bg-muted/30 dark:hover:bg-muted/70 ${className}`}
         >
           <div className='relative'>
-            <Wallet className='h-4 w-4' />
+            <Wallet className='h-3 w-3 sm:h-4 sm:w-4' />
             {isParaWallet && (isExpectingNotes || pendingNotesCount > 0) && (
-              <span className='absolute -top-1.5 -right-1.5 min-w-[14px] h-[14px] flex items-center justify-center text-[10px] font-bold bg-primary text-primary-foreground rounded-full px-0.5'>
+              <span className='absolute -top-1.5 -right-1.5 min-w-[12px] h-[12px] flex items-center justify-center text-[8px] sm:text-[10px] font-bold bg-primary text-primary-foreground rounded-full px-0.5'>
                 {isExpectingNotes
-                  ? <Loader2 className='h-2.5 w-2.5 animate-spin' />
+                  ? <Loader2 className='h-2 w-2 animate-spin' />
                   : pendingNotesCount}
               </span>
             )}
           </div>
-          <span>{truncateAddress(address)}</span>
+          <span className='text-[10px] sm:text-sm'>{truncateAddress(address)}</span>
           {walletType && (
-            <span className='text-xs px-1.5 py-0.5 rounded bg-primary/10 text-primary uppercase'>
+            <span className='text-[8px] sm:text-xs px-1 sm:px-1.5 py-0.5 rounded bg-primary/10 text-primary uppercase'>
               {walletType}
             </span>
           )}
-          <ChevronDown className='h-4 w-4' />
+          <ChevronDown className='h-3 w-3 sm:h-4 sm:w-4' />
         </button>
 
         {showDropdown && (
