@@ -399,6 +399,7 @@ export default function XykPoolDetail() {
         </div>
 
         <div className='lg:col-span-2 space-y-6'>
+          {/*
           <Card className='rounded-xl'>
             <CardHeader className='pb-2'>
               <CardTitle className='text-base font-semibold'>Pool notes</CardTitle>
@@ -477,6 +478,7 @@ export default function XykPoolDetail() {
             </CardContent>
           </Card>
           <RecentTransactionsCard transactions={mockRecentTxs} />
+          */}
           {
             /*
           <PriceTvlChartCard
