@@ -57,15 +57,15 @@ export async function compileXykWithdrawTransaction({
   );
 
   const noteTag = NoteTag.withAccountTarget(poolAccountId);
-  const attachment = NoteAttachment.newNetworkAccountTarget(
-    poolAccountId,
-    NoteExecutionHint.always(),
-  );
+  // const attachment = NoteAttachment.newNetworkAccountTarget(
+  //   poolAccountId,
+  //   NoteExecutionHint.always(),
+  // );
   const metadata = new NoteMetadata(
     userAccountId,
     NoteType.Public,
     noteTag,
-  ).withAttachment(attachment);
+  ); // .withAttachment(attachment);
 
   const returnNoteTag = NoteTag.withAccountTarget(userAccountId);
   const returnNoteType = NoteType.Public;
@@ -89,7 +89,7 @@ export async function compileXykWithdrawTransaction({
       new Felt(BigInt(0)),
       new Felt(lpAmount),
       new Felt(BigInt(returnNoteTag.asU32())),
-      new Felt(BigInt(returnNoteType)),
+      new Felt(BigInt(NoteType.Public)),
       new Felt(BigInt(0)),
       new Felt(BigInt(0)),
       returnNoteRecipientDigest[0],
@@ -126,5 +126,6 @@ export async function compileXykWithdrawTransaction({
     tx,
     noteId,
     note,
+    returnNote,
   };
 }

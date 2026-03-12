@@ -55,16 +55,16 @@ export async function compileXykDepositTransaction({
 
   const noteTag = NoteTag.withAccountTarget(poolAccountId);
 
-  const attachment = NoteAttachment.newNetworkAccountTarget(
-    poolAccountId,
-    NoteExecutionHint.always(),
-  );
+  // const attachment = NoteAttachment.newNetworkAccountTarget(
+  //   poolAccountId,
+  //   NoteExecutionHint.always(),
+  // );
 
   const metadata = new NoteMetadata(
     userAccountId,
     NoteType.Public,
     noteTag,
-  ).withAttachment(attachment);
+  ); // .withAttachment(attachment);
 
   const inputs = new NoteInputs(
     new FeltArray([

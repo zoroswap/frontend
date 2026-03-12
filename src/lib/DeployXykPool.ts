@@ -113,9 +113,9 @@ export async function deployNewPool({
   console.log('lp local build');
   const lp_local_lib = build_lp_local_lib(client);
   // console.log('c prod build');
-  // const c_prod_lib = build_c_prod_lib(client);
+  // const xyk_pool_lib = build_xyk_pool_lib(client);
 
-  // const c_prod_pool_component = AccountComponent.fromLibrary(c_prod_lib, [
+  // const xyk_pool_component = AccountComponent.fromLibrary(xyk_pool_lib, [
   //   reserve_slot,
   //   assets_mapping_slot,
   // ]);
@@ -139,12 +139,12 @@ export async function deployNewPool({
 
   const contract = new AccountBuilder(walletSeed)
     .accountType(AccountType.RegularAccountImmutableCode)
-    .storageMode(AccountStorageMode.network())
-    // .storageMode(AccountStorageMode.public())
+    // .storageMode(AccountStorageMode.network())
+    .storageMode(AccountStorageMode.public())
     .withNoAuthComponent()
     .withComponent(lp_local_component)
     // .withAuthComponent(authComponent)
-    // .withComponent(c_prod_pool_component)
+    // .withComponent(xyk_pool_component)
     .withBasicWalletComponent()
     .build();
 
