@@ -7,11 +7,19 @@ import { UnifiedWalletButton } from '@/components/UnifiedWalletButton';
 import useLaunchpad, {
   getMidenscanAccountUrl,
   getMidenscanTxUrl,
+  LAUNCH_STEPS,
+  type LaunchStepIndex,
   type LaunchSuccess,
 } from '@/hooks/useLaunchpad';
 import { useUnifiedWallet } from '@/hooks/useUnifiedWallet';
 import { truncateId } from '@/lib/format';
-import { ArrowLeft, CheckCircle, ExternalLink, Loader2 } from 'lucide-react';
+import {
+  ArrowLeft,
+  CheckCircle,
+  CheckCircle2,
+  ExternalLink,
+  Loader2,
+} from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { parseUnits } from 'viem';
@@ -61,7 +69,7 @@ export default function Launchpad() {
   const { connected } = useUnifiedWallet();
   const { launchToken, error, clearError } = useLaunchpad();
   const [symbol, setSymbol] = useState('');
-  const [decimals, setDecimals] = useState<string>('6');
+  const [decimals, setDecimals] = useState<string>('4');
   const [initialSupply, setInitialSupply] = useState('');
   const [touched, setTouched] = useState({
     symbol: false,
@@ -69,6 +77,7 @@ export default function Launchpad() {
     supply: false,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [launchStep, setLaunchStep] = useState<LaunchStepIndex | null>(null);
   const [successResult, setSuccessResult] = useState<LaunchSuccess | null>(null);
   const [copiedId, setCopiedId] = useState<'tx' | 'faucet' | null>(null);
 
@@ -78,7 +87,7 @@ export default function Launchpad() {
     ? validateDecimals(decimalsNum)
     : (Number.isNaN(decimalsNum) ? 'Invalid number' : null);
   const supplyError = touched.supply
-    ? validateInitialSupply(initialSupply, Number.isNaN(decimalsNum) ? 18 : decimalsNum)
+    ? validateInitialSupply(initialSupply, Number.isNaN(decimalsNum) ? 4 : decimalsNum)
     : null;
 
   const canSubmit = connected
@@ -107,17 +116,24 @@ export default function Launchpad() {
     }
     if (supplyBigint <= 0n) return;
     setIsSubmitting(true);
+    setLaunchStep(null);
     clearError();
-    const result = await launchToken({
-      symbol: sym,
-      decimals: dec,
-      initialSupply: supplyBigint,
-    });
+    const result = await launchToken(
+      {
+        symbol: sym,
+        decimals: dec,
+        initialSupply: supplyBigint,
+      },
+      {
+        onProgress: (step) => setLaunchStep(step),
+      },
+    );
     setIsSubmitting(false);
+    setLaunchStep(null);
     if (result) {
       setSuccessResult(result);
       setSymbol('');
-      setDecimals('6');
+      setDecimals('4');
       setInitialSupply('');
       setTouched({ symbol: false, decimals: false, supply: false });
       clearError();
@@ -155,6 +171,10 @@ export default function Launchpad() {
             </CardTitle>
             <p className='text-sm text-muted-foreground mt-1'>
               Create a new faucet token and mint initial supply to your wallet.
+            </p>
+            <p className='text-xs text-muted-foreground mt-2'>
+              Launching a new token can take a couple of seconds. Please wait until the
+              process completes.
             </p>
           </CardHeader>
           <CardContent className='space-y-4'>
@@ -336,6 +356,62 @@ export default function Launchpad() {
                       <p className='text-xs text-destructive'>{supplyError}</p>
                     )}
                   </div>
+
+                  {isSubmitting && launchStep !== null && (
+                    <div className='rounded-xl border border-border bg-muted/20 p-4 space-y-3'>
+                      <p className='text-sm font-medium'>Progress</p>
+                      <div className='h-2 rounded-full bg-muted overflow-hidden'>
+                        <div
+                          className='h-full bg-primary transition-all duration-300'
+                          style={{
+                            width: `${((launchStep + 1) / LAUNCH_STEPS.length) * 100}%`,
+                          }}
+                        />
+                      </div>
+                      <ul className='space-y-2' aria-label='Launch steps'>
+                        {LAUNCH_STEPS.map((label, i) => {
+                          const done = i < launchStep;
+                          const current = i === launchStep;
+                          return (
+                            <li
+                              key={label}
+                              className='flex items-center gap-2 text-sm'
+                            >
+                              {done
+                                ? (
+                                  <CheckCircle2
+                                    className='h-4 w-4 shrink-0 text-green-600 dark:text-green-400'
+                                    aria-hidden
+                                  />
+                                )
+                                : current
+                                ? (
+                                  <Loader2
+                                    className='h-4 w-4 shrink-0 animate-spin text-primary'
+                                    aria-hidden
+                                  />
+                                )
+                                : (
+                                  <span
+                                    className='h-4 w-4 shrink-0 rounded-full border-2 border-muted-foreground/40'
+                                    aria-hidden
+                                  />
+                                )}
+                              <span
+                                className={done
+                                  ? 'text-muted-foreground'
+                                  : current
+                                  ? 'font-medium text-foreground'
+                                  : 'text-muted-foreground/70'}
+                              >
+                                {label}
+                              </span>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
+                  )}
 
                   {error && (
                     <div

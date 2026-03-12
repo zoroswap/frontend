@@ -1,17 +1,17 @@
 import AssetIcon from '@/components/AssetIcon';
 import { IlRiskCard } from '@/components/IlRiskCard';
-import { fullNumberBigintFormat, prettyBigintFormat } from '@/lib/format';
 import { PoolCompositionCard } from '@/components/PoolCompositionCard';
 import { PoolDetailHeader } from '@/components/PoolDetailHeader';
 import { PoolDetailLayout } from '@/components/PoolDetailLayout';
 import { PoolDetailStats } from '@/components/PoolDetailStats';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PoolInfoCard } from '@/components/PoolInfoCard';
 import { RecentTransactionsCard } from '@/components/RecentTransactionsCard';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { XykPoolModal } from '@/components/XykPoolModal';
 import { useXykLpBalance } from '@/hooks/useXykLpBalance';
 import { useXykPool } from '@/hooks/useXykPool';
 import { useXykPoolNotes } from '@/hooks/useXykPoolNotes';
+import { fullNumberBigintFormat, prettyBigintFormat } from '@/lib/format';
 import { getMockRecentTransactions } from '@/mocks/poolDetailMocks';
 import { ModalContext } from '@/providers/ModalContext';
 import { useCallback, useContext, useMemo } from 'react';
@@ -27,10 +27,11 @@ export default function XykPoolDetail() {
     decodedPoolId,
   );
   const { lpBalance, refetch: refetchLpBalance } = useXykLpBalance(decodedPoolId);
-  const { notes: poolNotes, isLoading: notesLoading, error: notesError } = useXykPoolNotes(
-    decodedPoolId,
-    poolData ?? null,
-  );
+  const { notes: poolNotes, isLoading: notesLoading, error: notesError } =
+    useXykPoolNotes(
+      decodedPoolId,
+      poolData ?? null,
+    );
   const hasPosition = lpBalance > BigInt(0);
 
   const openXykModal = useCallback(
@@ -75,13 +76,14 @@ export default function XykPoolDetail() {
 
   const pairLabel = `${poolData.token0.symbol} / ${poolData.token1.symbol}`;
   const feeTier = feeTierForSymbol(poolData.token0.symbol);
-  const priceDisplay =
-    poolData.priceToken0InToken1 > 0
-      ? `1 ${poolData.token0.symbol} = ${poolData.priceToken0InToken1.toFixed(6)} ${poolData.token1.symbol}`
-      : '—';
+  const priceDisplay = poolData.priceToken0InToken1 > 0
+    ? `1 ${poolData.token0.symbol} = ${
+      poolData.priceToken0InToken1.toFixed(6)
+    } ${poolData.token1.symbol}`
+    : '—';
   const totalSupplyFormatted = fullNumberBigintFormat({
     value: poolData.totalSupply,
-    expo: 18,
+    expo: 0,
   });
 
   const assetSymbol = (faucetIdBech32: string) => {
@@ -90,8 +92,12 @@ export default function XykPoolDetail() {
     return null;
   };
   const assetDecimals = (faucetIdBech32: string) => {
-    if (faucetIdBech32 === poolData.token0.faucetIdBech32) return poolData.token0.decimals;
-    if (faucetIdBech32 === poolData.token1.faucetIdBech32) return poolData.token1.decimals;
+    if (faucetIdBech32 === poolData.token0.faucetIdBech32) {
+      return poolData.token0.decimals;
+    }
+    if (faucetIdBech32 === poolData.token1.faucetIdBech32) {
+      return poolData.token1.decimals;
+    }
     return 18;
   };
 
@@ -176,53 +182,76 @@ export default function XykPoolDetail() {
               <CardTitle className='text-base font-semibold'>Pool notes</CardTitle>
             </CardHeader>
             <CardContent className='p-0'>
-              {notesLoading ? (
-                <p className='py-4 px-4 text-muted-foreground text-sm'>Loading notes…</p>
-              ) : notesError ? (
-                <p className='py-4 px-4 text-destructive text-sm'>{notesError.message}</p>
-              ) : poolNotes.length === 0 ? (
-                <p className='py-4 px-4 text-muted-foreground text-sm'>No notes issued by this pool yet.</p>
-              ) : (
-                <div className='overflow-x-auto'>
-                  <table className='w-full text-sm'>
-                    <thead>
-                      <tr className='border-b border-border text-muted-foreground text-xs uppercase tracking-wide'>
-                        <th className='text-left py-3 px-4'>Note ID</th>
-                        <th className='text-left py-3 px-4'>Assets</th>
-                        <th className='text-right py-3 px-4'>Implied price</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {poolNotes.map((row) => (
-                        <tr key={row.noteId} className='border-b border-border/50'>
-                          <td className='py-3 px-4 font-mono text-muted-foreground truncate max-w-[140px]' title={row.noteId}>
-                            {row.noteId.slice(0, 10)}…{row.noteId.slice(-6)}
-                          </td>
-                          <td className='py-3 px-4'>
-                            <span className='inline-flex flex-wrap items-center gap-x-3 gap-y-1'>
-                              {row.assets.map((a) => {
-                                const sym = assetSymbol(a.faucetIdBech32);
-                                return (
-                                  <span key={a.faucetIdBech32} className='inline-flex items-center gap-1.5'>
-                                    <AssetIcon symbol={sym ?? '?'} size={18} />
-                                    {prettyBigintFormat({ value: a.amount, expo: assetDecimals(a.faucetIdBech32) })}
-                                    {sym ? ` ${sym}` : ''}
-                                  </span>
-                                );
-                              })}
-                            </span>
-                          </td>
-                          <td className='py-3 px-4 text-right text-muted-foreground'>
-                            {row.impliedPrice != null
-                              ? `1 ${poolData.token0.symbol} = ${row.impliedPrice.toFixed(6)} ${poolData.token1.symbol}`
-                              : '—'}
-                          </td>
+              {notesLoading
+                ? (
+                  <p className='py-4 px-4 text-muted-foreground text-sm'>
+                    Loading notes…
+                  </p>
+                )
+                : notesError
+                ? (
+                  <p className='py-4 px-4 text-destructive text-sm'>
+                    {notesError.message}
+                  </p>
+                )
+                : poolNotes.length === 0
+                ? (
+                  <p className='py-4 px-4 text-muted-foreground text-sm'>
+                    No notes issued by this pool yet.
+                  </p>
+                )
+                : (
+                  <div className='overflow-x-auto'>
+                    <table className='w-full text-sm'>
+                      <thead>
+                        <tr className='border-b border-border text-muted-foreground text-xs uppercase tracking-wide'>
+                          <th className='text-left py-3 px-4'>Note ID</th>
+                          <th className='text-left py-3 px-4'>Assets</th>
+                          <th className='text-right py-3 px-4'>Implied price</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+                      </thead>
+                      <tbody>
+                        {poolNotes.map((row) => (
+                          <tr key={row.noteId} className='border-b border-border/50'>
+                            <td
+                              className='py-3 px-4 font-mono text-muted-foreground truncate max-w-[140px]'
+                              title={row.noteId}
+                            >
+                              {row.noteId.slice(0, 10)}…{row.noteId.slice(-6)}
+                            </td>
+                            <td className='py-3 px-4'>
+                              <span className='inline-flex flex-wrap items-center gap-x-3 gap-y-1'>
+                                {row.assets.map((a) => {
+                                  const sym = assetSymbol(a.faucetIdBech32);
+                                  return (
+                                    <span
+                                      key={a.faucetIdBech32}
+                                      className='inline-flex items-center gap-1.5'
+                                    >
+                                      <AssetIcon symbol={sym ?? '?'} size={18} />
+                                      {prettyBigintFormat({
+                                        value: a.amount,
+                                        expo: assetDecimals(a.faucetIdBech32),
+                                      })}
+                                      {sym ? ` ${sym}` : ''}
+                                    </span>
+                                  );
+                                })}
+                              </span>
+                            </td>
+                            <td className='py-3 px-4 text-right text-muted-foreground'>
+                              {row.impliedPrice != null
+                                ? `1 ${poolData.token0.symbol} = ${
+                                  row.impliedPrice.toFixed(6)
+                                } ${poolData.token1.symbol}`
+                                : '—'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
             </CardContent>
           </Card>
           <RecentTransactionsCard transactions={mockRecentTxs} />

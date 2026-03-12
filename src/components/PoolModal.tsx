@@ -2,7 +2,7 @@ import { useDeposit } from '@/hooks/useDeposit';
 import { usePoolsBalances } from '@/hooks/usePoolsBalances';
 import { useWithdraw } from '@/hooks/useWithdraw';
 import { DEFAULT_SLIPPAGE } from '@/lib/config';
-import { formatTokenAmount, formatUsd } from '@/lib/format';
+import { formatTokenAmount, formatTokenAmountForInput, formatUsd } from '@/lib/format';
 import { useOraclePrices } from '@/providers/OracleContext';
 import { ZoroContext } from '@/providers/ZoroContext';
 import type { TokenConfig } from '@/providers/ZoroProvider';
@@ -167,7 +167,7 @@ export default function PoolModal({
       setRawValue(newValue);
       setInputError(undefined);
       setInputValue(
-        (formatTokenAmount({ value: newValue, expo: decimals }) ?? '').toString(),
+        formatTokenAmountForInput({ value: newValue, expo: decimals }),
       );
       if (mode === 'Deposit') setDepositPct(percentage);
       if (mode === 'Withdraw') setWithdrawPct(percentage);
@@ -177,15 +177,16 @@ export default function PoolModal({
 
   const onInputChange = useCallback(
     (val: string) => {
-      setInputValue(val);
-      if (val === '') {
+      const s = typeof val === 'string' ? val : '';
+      setInputValue(s);
+      if (s === '') {
         setInputError(undefined);
         setRawValue(BigInt(0));
         if (mode === 'Deposit') setDepositPct(0);
         if (mode === 'Withdraw') setWithdrawPct(0);
         return;
       }
-      const parsed = parseUnits(val, decimals);
+      const parsed = parseUnits(s, decimals);
       const validationError = validateValue(parsed, balance);
       if (validationError) setInputError(validationError);
       else {
@@ -201,26 +202,6 @@ export default function PoolModal({
     },
     [decimals, balance, mode],
   );
-
-  useEffect(() => {
-    if (mode === 'Deposit' && balance > BigInt(0)) {
-      const newValue = (BigInt(depositPct) * balance) / BigInt(100);
-      setRawValue(newValue);
-      setInputValue(
-        (formatTokenAmount({ value: newValue, expo: decimals }) ?? '').toString(),
-      );
-    }
-  }, [depositPct, mode, balance, decimals]);
-
-  useEffect(() => {
-    if (mode === 'Withdraw' && balance > BigInt(0)) {
-      const newValue = (BigInt(withdrawPct) * balance) / BigInt(100);
-      setRawValue(newValue);
-      setInputValue(
-        (formatTokenAmount({ value: newValue, expo: decimals }) ?? '').toString(),
-      );
-    }
-  }, [withdrawPct, mode, balance, decimals]);
 
   const handleClose = useCallback(() => modalContext.closeModal(), [modalContext]);
 
@@ -437,7 +418,7 @@ export default function PoolModal({
               <p className='text-xs text-muted-foreground mb-1'>Amount</p>
               <div className='flex items-center justify-between gap-2'>
                 <Input
-                  value={inputValue}
+                  value={typeof inputValue === 'string' ? inputValue : ''}
                   placeholder='0.00'
                   className='border-0 bg-transparent p-0 h-auto text-lg focus-visible:ring-0'
                   onChange={(e) => onInputChange(e.target.value)}
@@ -551,7 +532,7 @@ export default function PoolModal({
               <p className='text-xs text-muted-foreground mb-1'>Amount</p>
               <div className='flex items-center justify-between gap-2'>
                 <Input
-                  value={inputValue}
+                  value={typeof inputValue === 'string' ? inputValue : ''}
                   placeholder='0.00'
                   className='border-0 bg-transparent p-0 h-auto text-lg focus-visible:ring-0'
                   onChange={(e) => onInputChange(e.target.value)}

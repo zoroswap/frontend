@@ -1,4 +1,4 @@
-import { bech32ToAccountId, accountIdToBech32 } from '@/lib/utils';
+import { accountIdToBech32, bech32ToAccountId } from '@/lib/utils';
 import { ZoroContext } from '@/providers/ZoroContext';
 import { Felt, Word } from '@miden-sdk/miden-sdk';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
@@ -30,10 +30,10 @@ export function useXykLpBalance(poolId: string | undefined) {
       );
       const storage = fetched.account()?.storage();
       const key = Word.newFromFelts([
-        new Felt(accountId.prefix().asInt()),
+        new Felt(BigInt(0)),
+        new Felt(BigInt(0)),
         new Felt(accountId.suffix().asInt()),
-        new Felt(BigInt(0)),
-        new Felt(BigInt(0)),
+        new Felt(accountId.prefix().asInt()),
       ]);
       const value = storage?.getMapItem(
         'zoro::lp_local::user_deposits_mapping',

@@ -8,10 +8,14 @@ import {
   Note,
   NoteAssets,
   NoteAttachment,
+  NoteDetails,
+  NoteDetailsAndTag,
+  NoteDetailsAndTagArray,
   NoteExecutionHint,
   NoteInputs,
   NoteMetadata,
   NoteRecipient,
+  NoteRecipientArray,
   NoteTag,
   NoteType,
   OutputNote,
@@ -53,12 +57,10 @@ export async function compileXykWithdrawTransaction({
   );
 
   const noteTag = NoteTag.withAccountTarget(poolAccountId);
-
   const attachment = NoteAttachment.newNetworkAccountTarget(
     poolAccountId,
     NoteExecutionHint.always(),
   );
-
   const metadata = new NoteMetadata(
     userAccountId,
     NoteType.Public,
@@ -67,18 +69,18 @@ export async function compileXykWithdrawTransaction({
 
   const returnNoteTag = NoteTag.withAccountTarget(userAccountId);
   const returnNoteType = NoteType.Public;
-  const noteAssets = new NoteAssets([
+  const returnNoteAssets = new NoteAssets([
     new FungibleAsset(token0, BigInt(1)),
     new FungibleAsset(token1, BigInt(1)),
   ]);
   const returnNote = Note.createP2IDNote(
     poolAccountId,
     userAccountId,
-    noteAssets,
+    returnNoteAssets,
     returnNoteType,
     new NoteAttachment(),
   );
-  const returnRecipientDigest = returnNote.recipient().digest().toFelts();
+  const returnNoteRecipientDigest = returnNote.recipient().digest().toFelts();
 
   const inputs = new NoteInputs(
     new FeltArray([
@@ -90,13 +92,14 @@ export async function compileXykWithdrawTransaction({
       new Felt(BigInt(returnNoteType)),
       new Felt(BigInt(0)),
       new Felt(BigInt(0)),
-      returnRecipientDigest[0],
-      returnRecipientDigest[1],
-      returnRecipientDigest[2],
-      returnRecipientDigest[3],
+      returnNoteRecipientDigest[0],
+      returnNoteRecipientDigest[1],
+      returnNoteRecipientDigest[2],
+      returnNoteRecipientDigest[3],
     ]),
   );
 
+  const noteAssets = new NoteAssets([]);
   const note = new Note(
     noteAssets,
     metadata,

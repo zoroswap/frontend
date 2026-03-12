@@ -18,7 +18,7 @@ import {
   WebClient,
 } from '@miden-sdk/miden-sdk';
 
-import DEPOSIT_SCRIPT from '@/masm/notes/xyk_deposit.masm?raw';
+import SCRIPT from '@/masm/notes/xyk_deposit.masm?raw';
 import { build_lp_local_lib } from './DeployXykPool';
 import { accountIdToBech32, generateRandomSerialNumber } from './utils';
 
@@ -50,7 +50,7 @@ export async function compileXykDepositTransaction({
   const builder = client.createCodeBuilder();
   builder.linkStaticLibrary(lp_local_lib);
   const script = builder.compileNoteScript(
-    DEPOSIT_SCRIPT,
+    SCRIPT,
   );
 
   const noteTag = NoteTag.withAccountTarget(poolAccountId);

@@ -26,7 +26,6 @@ export interface XykPoolData {
   totalSupply: bigint;
   reserve0: bigint;
   reserve1: bigint;
-  /** 1 token0 = priceToken0InToken1 token1 (human units). */
   priceToken0InToken1: number;
 }
 
@@ -90,8 +89,8 @@ export function useXykPool(poolId: string | undefined) {
       );
 
       const totalSupplyWord = storage.getItem('zoro::lp_local::total_supply');
-      const totalSupply = totalSupplyWord?.toFelts()?.[0]?.asInt() ?? BigInt(0);
-      console.log(totalSupply);
+      const totalSupplyFelts = totalSupplyWord?.toFelts() ?? [];
+      const totalSupply = totalSupplyFelts[0]?.asInt() ?? BigInt(0);
 
       const reserveWord = storage.getItem('zoro::lp_local::reserve');
       const reserveFelts = reserveWord?.toFelts() ?? [];
@@ -130,10 +129,10 @@ export function useXykPool(poolId: string | undefined) {
         fetchFaucetInfo(token1Id),
       ]);
 
-      const priceToken0InToken1 =
-        reserve1 > 0n
-          ? Number(reserve1) / 10 ** token1.decimals / (Number(reserve0) / 10 ** token0.decimals)
-          : 0;
+      const priceToken0InToken1 = reserve1 > 0n
+        ? Number(reserve1) / 10 ** token1.decimals
+          / (Number(reserve0) / 10 ** token0.decimals)
+        : 0;
 
       setData({
         token0,
@@ -149,7 +148,7 @@ export function useXykPool(poolId: string | undefined) {
     } finally {
       setIsLoading(false);
     }
-  }, [poolId, rpcClient, accountId]);
+  }, [poolId, rpcClient]);
 
   useEffect(() => {
     refetch();
