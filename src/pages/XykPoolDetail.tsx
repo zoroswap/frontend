@@ -6,16 +6,25 @@ import { PoolDetailLayout } from '@/components/PoolDetailLayout';
 import { PoolDetailStats } from '@/components/PoolDetailStats';
 import { PoolInfoCard } from '@/components/PoolInfoCard';
 import { RecentTransactionsCard } from '@/components/RecentTransactionsCard';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { XykPoolModal } from '@/components/XykPoolModal';
 import { useXykLpBalance } from '@/hooks/useXykLpBalance';
 import { useXykPool } from '@/hooks/useXykPool';
 import { useXykPoolNotes } from '@/hooks/useXykPoolNotes';
-import { fullNumberBigintFormat, prettyBigintFormat } from '@/lib/format';
+import { useXykSwap } from '@/hooks/useXykSwap';
+import { useBalance } from '@/hooks/useBalance';
+import { fullNumberBigintFormat, formatTokenAmountForInput, prettyBigintFormat } from '@/lib/format';
 import { getMockRecentTransactions } from '@/mocks/poolDetailMocks';
 import { ModalContext } from '@/providers/ModalContext';
-import { useCallback, useContext, useMemo } from 'react';
+import type { XykTokenInfo } from '@/hooks/useXykPool';
+import { getAmountOut } from '@/lib/xykMath';
+import type { TokenConfig } from '@/providers/ZoroProvider';
+import { useCallback, useContext, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { ArrowDownUp, Loader2 } from 'lucide-react';
+import { parseUnits } from 'viem';
 
 const feeTierForSymbol = (_symbol: string) => '0.30%';
 
@@ -32,7 +41,110 @@ export default function XykPoolDetail() {
       decodedPoolId,
       poolData ?? null,
     );
+  const { swap, isLoading: isSwapLoading } = useXykSwap(decodedPoolId);
+  const [swapSellSide, setSwapSellSide] = useState<0 | 1>(0);
+  const [amountInStr, setAmountInStr] = useState('');
+  const [swapInputError, setSwapInputError] = useState<string | undefined>();
   const hasPosition = lpBalance > BigInt(0);
+
+  const xykTokenToConfig = useCallback((t: XykTokenInfo): TokenConfig => ({
+    symbol: t.symbol,
+    name: t.name ?? t.symbol,
+    decimals: t.decimals,
+    faucetId: t.faucetId,
+    faucetIdBech32: t.faucetIdBech32,
+    oracleId: '',
+  }), []);
+
+  const swapToken0Config = useMemo<TokenConfig | undefined>(
+    () => (poolData ? xykTokenToConfig(poolData.token0) : undefined),
+    [poolData, xykTokenToConfig],
+  );
+  const swapToken1Config = useMemo<TokenConfig | undefined>(
+    () => (poolData ? xykTokenToConfig(poolData.token1) : undefined),
+    [poolData, xykTokenToConfig],
+  );
+  const { balance: balanceToken0 } = useBalance({ token: swapToken0Config });
+  const { balance: balanceToken1 } = useBalance({ token: swapToken1Config });
+
+  const swapSellToken = useMemo(
+    () => (poolData ? (swapSellSide === 0 ? poolData.token0 : poolData.token1) : null),
+    [poolData, swapSellSide],
+  );
+  const swapBuyToken = useMemo(
+    () => (poolData ? (swapSellSide === 0 ? poolData.token1 : poolData.token0) : null),
+    [poolData, swapSellSide],
+  );
+
+  const sellBalance = swapSellSide === 0 ? balanceToken0 : balanceToken1;
+  const buyBalance = swapSellSide === 0 ? balanceToken1 : balanceToken0;
+
+  const amountInBigint = useMemo(() => {
+    if (!swapSellToken || !amountInStr.trim()) return 0n;
+    try {
+      return parseUnits(amountInStr.trim(), swapSellToken.decimals);
+    } catch {
+      return 0n;
+    }
+  }, [amountInStr, swapSellToken]);
+
+  const expectedAmountOut = useMemo(() => {
+    if (!poolData || !swapSellToken || !swapBuyToken || amountInBigint <= 0n) return 0n;
+    const [reserveIn, reserveOut] =
+      swapSellSide === 0
+        ? [poolData.reserve0, poolData.reserve1]
+        : [poolData.reserve1, poolData.reserve0];
+    return getAmountOut(amountInBigint, reserveIn, reserveOut);
+  }, [poolData, swapSellSide, swapSellToken, swapBuyToken, amountInBigint]);
+
+  const expectedAmountOutStr = useMemo(
+    () =>
+      swapBuyToken && expectedAmountOut >= 0n
+        ? formatTokenAmountForInput({
+            value: expectedAmountOut,
+            expo: swapBuyToken.decimals,
+          })
+        : '',
+    [swapBuyToken, expectedAmountOut],
+  );
+
+  const onSwapDirection = useCallback(() => {
+    setSwapSellSide((s) => (s === 0 ? 1 : 0));
+    setAmountInStr('');
+    setSwapInputError(undefined);
+  }, []);
+
+  const SWAP_PERCENTAGES = [25, 50, 75, 100] as const;
+  const setSellAmountPct = useCallback(
+    (pct: number) => {
+      if (!swapSellToken || sellBalance == null || sellBalance <= 0n) return;
+      const amount = (sellBalance * BigInt(pct)) / 100n;
+      setAmountInStr(
+        formatTokenAmountForInput({
+          value: amount,
+          expo: swapSellToken.decimals,
+        }),
+      );
+      setSwapInputError(undefined);
+    },
+    [swapSellToken, sellBalance],
+  );
+
+  const onExecuteSwap = useCallback(async () => {
+    if (!poolData || !swapSellToken || !swapBuyToken) return;
+    setSwapInputError(undefined);
+    if (amountInBigint <= 0n) {
+      setSwapInputError('Enter amount to sell');
+      return;
+    }
+    await swap(
+      swapSellToken.faucetId,
+      swapBuyToken.faucetId,
+      amountInBigint,
+      expectedAmountOut,
+    );
+    setAmountInStr('');
+  }, [poolData, swapSellToken, swapBuyToken, amountInBigint, expectedAmountOut, swap]);
 
   const openXykModal = useCallback(
     (mode: 'Deposit' | 'Withdraw') => {
@@ -142,6 +254,116 @@ export default function XykPoolDetail() {
             decimals0={poolData.token0.decimals}
             decimals1={poolData.token1.decimals}
           />
+          <Card className='rounded-xl'>
+            <CardHeader className='pb-2'>
+              <CardTitle className='text-base font-semibold'>Swap</CardTitle>
+            </CardHeader>
+            <CardContent className='space-y-3'>
+              <div className='space-y-1'>
+                <div className='flex items-center justify-between'>
+                  <span className='text-muted-foreground text-xs'>From</span>
+                  {swapSellToken && sellBalance != null && (
+                    <span className='text-muted-foreground text-xs'>
+                      Balance:{' '}
+                      {prettyBigintFormat({
+                        value: sellBalance,
+                        expo: swapSellToken.decimals,
+                      })}{' '}
+                      {swapSellToken.symbol}
+                    </span>
+                  )}
+                </div>
+                <div className='flex items-center gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2'>
+                  <AssetIcon symbol={swapSellToken?.symbol ?? '?'} size={24} />
+                  <Input
+                    type='text'
+                    inputMode='decimal'
+                    placeholder='0'
+                    value={amountInStr}
+                    onChange={(e) => {
+                      setAmountInStr(e.target.value);
+                      setSwapInputError(undefined);
+                    }}
+                    className='border-0 bg-transparent shadow-none focus-visible:ring-0'
+                  />
+                  <span className='text-muted-foreground shrink-0 text-sm'>
+                    {swapSellToken?.symbol ?? '—'}
+                  </span>
+                </div>
+                <div className='flex gap-1'>
+                  {SWAP_PERCENTAGES.map((pct) => (
+                    <Button
+                      key={pct}
+                      type='button'
+                      variant='outline'
+                      size='sm'
+                      className='flex-1'
+                      onClick={() => setSellAmountPct(pct)}
+                    >
+                      {pct}%
+                    </Button>
+                  ))}
+                </div>
+              </div>
+              <div className='flex justify-center'>
+                <Button
+                  type='button'
+                  variant='ghost'
+                  size='icon'
+                  onClick={onSwapDirection}
+                  aria-label='Switch direction'
+                >
+                  <ArrowDownUp className='h-4 w-4' />
+                </Button>
+              </div>
+              <div className='space-y-1'>
+                <div className='flex items-center justify-between'>
+                  <span className='text-muted-foreground text-xs'>To</span>
+                  {swapBuyToken && buyBalance != null && (
+                    <span className='text-muted-foreground text-xs'>
+                      Balance:{' '}
+                      {prettyBigintFormat({
+                        value: buyBalance,
+                        expo: swapBuyToken.decimals,
+                      })}{' '}
+                      {swapBuyToken.symbol}
+                    </span>
+                  )}
+                </div>
+                <div className='flex items-center gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2'>
+                  <AssetIcon symbol={swapBuyToken?.symbol ?? '?'} size={24} />
+                  <span className='min-w-0 flex-1 text-right font-medium tabular-nums'>
+                    {expectedAmountOutStr || '0'}
+                  </span>
+                  <span className='text-muted-foreground shrink-0 text-sm'>
+                    {swapBuyToken?.symbol ?? '—'}
+                  </span>
+                </div>
+              </div>
+              {swapInputError && (
+                <p className='text-destructive text-sm'>{swapInputError}</p>
+              )}
+              <Button
+                className='w-full'
+                onClick={onExecuteSwap}
+                disabled={
+                  isSwapLoading ||
+                  !amountInStr ||
+                  amountInBigint <= 0n ||
+                  expectedAmountOut < 0n
+                }
+              >
+                {isSwapLoading ? (
+                  <>
+                    <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                    Swapping…
+                  </>
+                ) : (
+                  'Swap'
+                )}
+              </Button>
+            </CardContent>
+          </Card>
           <PoolInfoCard
             tvlFormatted={totalSupplyFormatted}
             firstRowLabel='Total LP Supply'

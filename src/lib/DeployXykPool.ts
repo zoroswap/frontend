@@ -52,17 +52,13 @@ export const build_lp_local_lib = (client: WebClient) => {
   return builder.buildLibrary('zoro::lp_local', lp_local);
 };
 export const build_xyk_pool_lib = (client: WebClient) => {
-  console.log('math');
   const math_lib = build_math_lib(client);
-  console.log('storage_utils');
   // const storage_utils = build_storage_utils(client);
-  console.log('lp_local');
   const lp_local = build_lp_local_lib(client);
   const builder = client.createCodeBuilder();
   builder.linkStaticLibrary(math_lib);
   // builder.linkStaticLibrary(storage_utils);
   builder.linkStaticLibrary(lp_local);
-  console.log('c_prod');
   return builder.buildLibrary('zoro::xyk_pool', xyk_pool);
 };
 
@@ -113,12 +109,10 @@ export async function deployNewPool({
   console.log('lp local build');
   const lp_local_lib = build_lp_local_lib(client);
   // console.log('c prod build');
-  // const xyk_pool_lib = build_xyk_pool_lib(client);
+  const xyk_pool_lib = build_xyk_pool_lib(client);
 
-  // const xyk_pool_component = AccountComponent.fromLibrary(xyk_pool_lib, [
-  //   reserve_slot,
-  //   assets_mapping_slot,
-  // ]);
+  const xyk_pool_component = AccountComponent.fromLibrary(xyk_pool_lib, [])
+    .withSupportsAllTypes();
 
   const lp_local_component = AccountComponent.fromLibrary(
     lp_local_lib,
@@ -144,7 +138,7 @@ export async function deployNewPool({
     .withNoAuthComponent()
     .withComponent(lp_local_component)
     // .withAuthComponent(authComponent)
-    // .withComponent(xyk_pool_component)
+    .withComponent(xyk_pool_component)
     .withBasicWalletComponent()
     .build();
 

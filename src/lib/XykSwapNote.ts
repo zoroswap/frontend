@@ -20,69 +20,70 @@ import {
 } from '@miden-sdk/miden-sdk';
 
 import SCRIPT from '@/masm/notes/xyk_swap_exact_tokens_for_tokens.masm?raw';
+import { build_xyk_pool_lib } from './DeployXykPool';
 import { accountIdToBech32, generateRandomSerialNumber } from './utils';
 
-export interface SwapParams {
-  token0: AccountId;
-  token1: AccountId;
-  amount: bigint;
-  userAccountId: AccountId;
+export interface XykSwapParams {
   poolAccountId: AccountId;
+  userAccountId: AccountId;
+  sellToken: AccountId;
+  buyToken: AccountId;
+  amount: bigint;
+  minAmountOut: bigint;
   client: WebClient;
 }
 
-export interface SwapResult {
-  readonly txId: string;
-  readonly noteId: string;
-}
-
-export async function compileXykSwapExactTokensForTokensTransaction({
+export async function compileXykSwapTransaction({
   poolAccountId,
   userAccountId,
-  token0,
-  token1,
+  sellToken,
+  buyToken,
   amount,
+  minAmountOut,
   client,
-}: SwapParams) {
+}: XykSwapParams) {
+  const xyk_pool_lib = build_xyk_pool_lib(client);
   const builder = client.createCodeBuilder();
-  const script = builder.compileNoteScript(
-    SCRIPT,
-  );
+  builder.linkStaticLibrary(xyk_pool_lib);
+  const script = builder.compileNoteScript(SCRIPT);
 
   const noteTag = NoteTag.withAccountTarget(poolAccountId);
   const attachment = NoteAttachment.newNetworkAccountTarget(
     poolAccountId,
     NoteExecutionHint.always(),
   );
-
   const metadata = new NoteMetadata(
     userAccountId,
     NoteType.Public,
     noteTag,
   ).withAttachment(attachment);
 
+  // Return note: P2ID to user's public account (no network attachment).
   const returnNoteTag = NoteTag.withAccountTarget(userAccountId);
   const returnNoteType = NoteType.Public;
-  const noteAssets = new NoteAssets([
-    new FungibleAsset(token0, BigInt(amount)),
+  const returnNoteAssets = new NoteAssets([
+    new FungibleAsset(buyToken, BigInt(1)),
   ]);
   const returnNote = Note.createP2IDNote(
     poolAccountId,
     userAccountId,
-    noteAssets,
+    returnNoteAssets,
     returnNoteType,
     new NoteAttachment(),
   );
   const returnNoteRecipientDigest = returnNote.recipient().digest().toFelts();
 
+  const deadline = Date.now() + 120_000; // 2 min
+
   const inputs = new NoteInputs(
     new FeltArray([
-      token1.prefix(),
-      token1.suffix(),
       new Felt(BigInt(0)),
-      new Felt(BigInt(0)), // deadline ?????
+      new Felt(BigInt(0)),
+      new Felt(BigInt(0)),
+      new Felt(minAmountOut),
+      new Felt(BigInt(deadline)),
       new Felt(BigInt(returnNoteTag.asU32())),
-      new Felt(BigInt(returnNoteType)),
+      new Felt(BigInt(NoteType.Public)),
       new Felt(BigInt(0)),
       returnNoteRecipientDigest[0],
       returnNoteRecipientDigest[1],
@@ -91,6 +92,9 @@ export async function compileXykSwapExactTokensForTokensTransaction({
     ]),
   );
 
+  const noteAssets = new NoteAssets([
+    new FungibleAsset(sellToken, amount),
+  ]);
   const note = new Note(
     noteAssets,
     metadata,

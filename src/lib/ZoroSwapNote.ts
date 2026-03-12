@@ -95,6 +95,8 @@ export async function compileSwapTransaction({
 
   const noteId = note.id().toString();
 
+  console.log('Swap note: ', noteId);
+
   const transactionRequest = new TransactionRequestBuilder()
     .withOwnOutputNotes(new MidenArrays.OutputNoteArray([OutputNote.full(note)]))
     .build();
