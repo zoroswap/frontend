@@ -8,14 +8,10 @@ import {
   Note,
   NoteAssets,
   NoteAttachment,
-  NoteDetails,
-  NoteDetailsAndTag,
-  NoteDetailsAndTagArray,
   NoteExecutionHint,
   NoteInputs,
   NoteMetadata,
   NoteRecipient,
-  NoteRecipientArray,
   NoteTag,
   NoteType,
   OutputNote,
@@ -77,7 +73,6 @@ export async function compileXykSwapExactTokensForTokensTransaction({
     returnNoteType,
     new NoteAttachment(),
   );
-  const returnNoteRecipient = returnNote.recipient();
   const returnNoteRecipientDigest = returnNote.recipient().digest().toFelts();
 
   const inputs = new NoteInputs(
@@ -108,15 +103,6 @@ export async function compileXykSwapExactTokensForTokensTransaction({
 
   const transactionRequest = new TransactionRequestBuilder()
     .withOwnOutputNotes(new MidenArrays.OutputNoteArray([OutputNote.full(note)]))
-    .withExpectedOutputRecipients(new NoteRecipientArray([returnNoteRecipient]))
-    .withExpectedFutureNotes(
-      new NoteDetailsAndTagArray([
-        new NoteDetailsAndTag(
-          new NoteDetails(noteAssets, returnNoteRecipient),
-          returnNoteTag,
-        ),
-      ]),
-    )
     .build();
 
   const tx = new CustomTransaction(

@@ -54,6 +54,8 @@ export function useXykWithdraw(poolId: string | undefined) {
         setNoteId(nid);
         setTxId(txIdResult);
 
+        console.log(txIdResult, nid);
+
         // const consumeReq = new TransactionRequestBuilder()
         //   .withInputNotes(
         //     new NoteAndArgsArray([new NoteAndArgs(withdrawNote, null)]),
