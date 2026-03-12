@@ -5,12 +5,6 @@ import { bech32ToAccountId } from '@/lib/utils';
 import { compileXykWithdrawTransaction } from '@/lib/XykWithdrawNote';
 import { ZoroContext } from '@/providers/ZoroContext';
 import { TransactionType } from '@demox-labs/miden-wallet-adapter';
-import {
-  NoteAndArgs,
-  NoteAndArgsArray,
-  NoteRecipientArray,
-  TransactionRequestBuilder,
-} from '@miden-sdk/miden-sdk';
 import { useCallback, useContext, useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
 
@@ -42,7 +36,7 @@ export function useXykWithdraw(poolId: string | undefined) {
       setIsLoading(true);
       try {
         await syncState();
-        const { tx, noteId: nid, note: withdrawNote, returnNote } = await clientMutex.runExclusive(() =>
+        const { tx, noteId: nid } = await clientMutex.runExclusive(() =>
           compileXykWithdrawTransaction({
             poolAccountId,
             userAccountId: accountId,
@@ -60,16 +54,16 @@ export function useXykWithdraw(poolId: string | undefined) {
         setNoteId(nid);
         setTxId(txIdResult);
 
-        const consumeReq = new TransactionRequestBuilder()
-          .withInputNotes(
-            new NoteAndArgsArray([new NoteAndArgs(withdrawNote, null)]),
-          )
-          .withExpectedOutputRecipients(
-            new NoteRecipientArray([returnNote.recipient()]),
-          )
-          .build();
-        await client.submitNewTransaction(poolAccountId, consumeReq);
-        await syncState();
+        // const consumeReq = new TransactionRequestBuilder()
+        //   .withInputNotes(
+        //     new NoteAndArgsArray([new NoteAndArgs(withdrawNote, null)]),
+        //   )
+        //   .withExpectedOutputRecipients(
+        //     new NoteRecipientArray([returnNote.recipient()]),
+        //   )
+        //   .build();
+        // await client.submitNewTransaction(poolAccountId, consumeReq);
+        // await syncState();
 
         return { noteId: nid, txId: txIdResult };
       } catch (err) {

@@ -8,14 +8,10 @@ import {
   Note,
   NoteAssets,
   NoteAttachment,
-  NoteDetails,
-  NoteDetailsAndTag,
-  NoteDetailsAndTagArray,
   NoteExecutionHint,
   NoteInputs,
   NoteMetadata,
   NoteRecipient,
-  NoteRecipientArray,
   NoteTag,
   NoteType,
   OutputNote,
@@ -57,15 +53,15 @@ export async function compileXykWithdrawTransaction({
   );
 
   const noteTag = NoteTag.withAccountTarget(poolAccountId);
-  // const attachment = NoteAttachment.newNetworkAccountTarget(
-  //   poolAccountId,
-  //   NoteExecutionHint.always(),
-  // );
+  const attachment = NoteAttachment.newNetworkAccountTarget(
+    poolAccountId,
+    NoteExecutionHint.always(),
+  );
   const metadata = new NoteMetadata(
     userAccountId,
     NoteType.Public,
     noteTag,
-  ); // .withAttachment(attachment);
+  ).withAttachment(attachment);
 
   const returnNoteTag = NoteTag.withAccountTarget(userAccountId);
   const returnNoteType = NoteType.Public;

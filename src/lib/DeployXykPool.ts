@@ -130,7 +130,7 @@ export async function deployNewPool({
     ],
   ).withSupportsAllTypes();
 
-  console.log('account build');
+  console.log('account built');
 
   const walletSeed = new Uint8Array(32);
   crypto.getRandomValues(walletSeed);
@@ -139,8 +139,8 @@ export async function deployNewPool({
 
   const contract = new AccountBuilder(walletSeed)
     .accountType(AccountType.RegularAccountImmutableCode)
-    // .storageMode(AccountStorageMode.network())
-    .storageMode(AccountStorageMode.public())
+    .storageMode(AccountStorageMode.network())
+    // .storageMode(AccountStorageMode.public())
     .withNoAuthComponent()
     .withComponent(lp_local_component)
     // .withAuthComponent(authComponent)
