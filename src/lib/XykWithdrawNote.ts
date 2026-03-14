@@ -76,7 +76,7 @@ export async function compileXykWithdrawTransaction({
     returnNoteType,
     new NoteAttachment(),
   );
-  const returnNoteRecipientDigest = returnNote.recipient().digest().toFelts();
+  const root = returnNote.script().root().toFelts();
 
   const inputs = new NoteInputs(
     new FeltArray([
@@ -88,10 +88,10 @@ export async function compileXykWithdrawTransaction({
       new Felt(BigInt(NoteType.Public)),
       new Felt(BigInt(0)),
       new Felt(BigInt(0)),
-      returnNoteRecipientDigest[0],
-      returnNoteRecipientDigest[1],
-      returnNoteRecipientDigest[2],
-      returnNoteRecipientDigest[3],
+      root[0],
+      root[1],
+      root[2],
+      root[3],
     ]),
   );
 

@@ -71,24 +71,23 @@ export async function compileXykSwapTransaction({
     returnNoteType,
     new NoteAttachment(),
   );
-  const returnNoteRecipientDigest = returnNote.recipient().digest().toFelts();
-
+  const p2id_root = returnNote.script().root().toFelts();
   const deadline = Date.now() + 120_000; // 2 min
 
   const inputs = new NoteInputs(
     new FeltArray([
-      new Felt(BigInt(0)),
-      new Felt(BigInt(0)),
+      new Felt(buyToken.prefix().asInt()),
+      new Felt(buyToken.suffix().asInt()),
       new Felt(BigInt(0)),
       new Felt(minAmountOut),
       new Felt(BigInt(deadline)),
       new Felt(BigInt(returnNoteTag.asU32())),
       new Felt(BigInt(NoteType.Public)),
       new Felt(BigInt(0)),
-      returnNoteRecipientDigest[0],
-      returnNoteRecipientDigest[1],
-      returnNoteRecipientDigest[2],
-      returnNoteRecipientDigest[3],
+      p2id_root[0],
+      p2id_root[1],
+      p2id_root[2],
+      p2id_root[3],
     ]),
   );
 

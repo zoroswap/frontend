@@ -53,11 +53,9 @@ export const build_lp_local_lib = (client: WebClient) => {
 };
 export const build_xyk_pool_lib = (client: WebClient) => {
   const math_lib = build_math_lib(client);
-  // const storage_utils = build_storage_utils(client);
   const lp_local = build_lp_local_lib(client);
   const builder = client.createCodeBuilder();
   builder.linkStaticLibrary(math_lib);
-  // builder.linkStaticLibrary(storage_utils);
   builder.linkStaticLibrary(lp_local);
   return builder.buildLibrary('zoro::xyk_pool', xyk_pool);
 };

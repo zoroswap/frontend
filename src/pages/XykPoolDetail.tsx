@@ -5,28 +5,32 @@ import { PoolDetailHeader } from '@/components/PoolDetailHeader';
 import { PoolDetailLayout } from '@/components/PoolDetailLayout';
 import { PoolDetailStats } from '@/components/PoolDetailStats';
 import { PoolInfoCard } from '@/components/PoolInfoCard';
-import { RecentTransactionsCard } from '@/components/RecentTransactionsCard';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { XykPoolModal } from '@/components/XykPoolModal';
+import { useBalance } from '@/hooks/useBalance';
 import { useXykLpBalance } from '@/hooks/useXykLpBalance';
 import { useXykPool } from '@/hooks/useXykPool';
+import type { XykTokenInfo } from '@/hooks/useXykPool';
 import { useXykPoolNotes } from '@/hooks/useXykPoolNotes';
 import { useXykSwap } from '@/hooks/useXykSwap';
-import { useBalance } from '@/hooks/useBalance';
-import { fullNumberBigintFormat, formatTokenAmountForInput, prettyBigintFormat } from '@/lib/format';
+import {
+  formatTokenAmountForInput,
+  fullNumberBigintFormat,
+  prettyBigintFormat,
+} from '@/lib/format';
+import { getAmountOut } from '@/lib/xykMath';
 import { getMockRecentTransactions } from '@/mocks/poolDetailMocks';
 import { ModalContext } from '@/providers/ModalContext';
-import type { XykTokenInfo } from '@/hooks/useXykPool';
-import { getAmountOut } from '@/lib/xykMath';
+import { XykPoolDetailSkeleton } from '@/pages/skeletons/XykPoolDetailSkeleton';
 import type { TokenConfig } from '@/providers/ZoroProvider';
+import { ArrowDownUp, Loader2 } from 'lucide-react';
 import { useCallback, useContext, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { ArrowDownUp, Loader2 } from 'lucide-react';
 import { parseUnits } from 'viem';
 
-const feeTierForSymbol = (_symbol: string) => '0.30%';
+const feeTierForSymbol = () => '0.30%';
 
 export default function XykPoolDetail() {
   const { poolId } = useParams<{ poolId: string }>();
@@ -36,11 +40,10 @@ export default function XykPoolDetail() {
     decodedPoolId,
   );
   const { lpBalance, refetch: refetchLpBalance } = useXykLpBalance(decodedPoolId);
-  const { notes: poolNotes, isLoading: notesLoading, error: notesError } =
-    useXykPoolNotes(
-      decodedPoolId,
-      poolData ?? null,
-    );
+  const { notes: poolNotes } = useXykPoolNotes(
+    decodedPoolId,
+    poolData ?? null,
+  );
   const { swap, isLoading: isSwapLoading } = useXykSwap(decodedPoolId);
   const [swapSellSide, setSwapSellSide] = useState<0 | 1>(0);
   const [amountInStr, setAmountInStr] = useState('');
@@ -90,10 +93,9 @@ export default function XykPoolDetail() {
 
   const expectedAmountOut = useMemo(() => {
     if (!poolData || !swapSellToken || !swapBuyToken || amountInBigint <= 0n) return 0n;
-    const [reserveIn, reserveOut] =
-      swapSellSide === 0
-        ? [poolData.reserve0, poolData.reserve1]
-        : [poolData.reserve1, poolData.reserve0];
+    const [reserveIn, reserveOut] = swapSellSide === 0
+      ? [poolData.reserve0, poolData.reserve1]
+      : [poolData.reserve1, poolData.reserve0];
     return getAmountOut(amountInBigint, reserveIn, reserveOut);
   }, [poolData, swapSellSide, swapSellToken, swapBuyToken, amountInBigint]);
 
@@ -101,9 +103,9 @@ export default function XykPoolDetail() {
     () =>
       swapBuyToken && expectedAmountOut >= 0n
         ? formatTokenAmountForInput({
-            value: expectedAmountOut,
-            expo: swapBuyToken.decimals,
-          })
+          value: expectedAmountOut,
+          expo: swapBuyToken.decimals,
+        })
         : '',
     [swapBuyToken, expectedAmountOut],
   );
@@ -169,11 +171,7 @@ export default function XykPoolDetail() {
   }, [decodedPoolId, poolData]);
 
   if (poolLoading && !poolData) {
-    return (
-      <PoolDetailLayout backTo='/pools' backLabel='Back to pools' title='Pool'>
-        <p className='text-muted-foreground'>Loading pool…</p>
-      </PoolDetailLayout>
-    );
+    return <XykPoolDetailSkeleton />;
   }
 
   if (poolError || !poolData) {
@@ -254,6 +252,41 @@ export default function XykPoolDetail() {
             decimals0={poolData.token0.decimals}
             decimals1={poolData.token1.decimals}
           />
+          <PoolInfoCard
+            tvlFormatted={totalSupplyFormatted}
+            firstRowLabel='Total LP Supply'
+            firstRowIsUsd={false}
+            extraRows={[
+              {
+                label: `${poolData.token0.symbol} Reserve`,
+                value: (
+                  <span className='inline-flex items-center gap-1.5'>
+                    <AssetIcon symbol={poolData.token0.symbol} size={20} />
+                    {prettyBigintFormat({
+                      value: poolData.reserve0,
+                      expo: poolData.token0.decimals,
+                    })}
+                  </span>
+                ),
+              },
+              {
+                label: `${poolData.token1.symbol} Reserve`,
+                value: (
+                  <span className='inline-flex items-center gap-1.5'>
+                    <AssetIcon symbol={poolData.token1.symbol} size={20} />
+                    {prettyBigintFormat({
+                      value: poolData.reserve1,
+                      expo: poolData.token1.decimals,
+                    })}
+                  </span>
+                ),
+              },
+            ]}
+          />
+          <IlRiskCard />
+        </div>
+
+        <div className='lg:col-span-2 space-y-6'>
           <Card className='rounded-xl'>
             <CardHeader className='pb-2'>
               <CardTitle className='text-base font-semibold'>Swap</CardTitle>
@@ -264,12 +297,10 @@ export default function XykPoolDetail() {
                   <span className='text-muted-foreground text-xs'>From</span>
                   {swapSellToken && sellBalance != null && (
                     <span className='text-muted-foreground text-xs'>
-                      Balance:{' '}
-                      {prettyBigintFormat({
+                      Balance: {prettyBigintFormat({
                         value: sellBalance,
                         expo: swapSellToken.decimals,
-                      })}{' '}
-                      {swapSellToken.symbol}
+                      })} {swapSellToken.symbol}
                     </span>
                   )}
                 </div>
@@ -321,12 +352,10 @@ export default function XykPoolDetail() {
                   <span className='text-muted-foreground text-xs'>To</span>
                   {swapBuyToken && buyBalance != null && (
                     <span className='text-muted-foreground text-xs'>
-                      Balance:{' '}
-                      {prettyBigintFormat({
+                      Balance: {prettyBigintFormat({
                         value: buyBalance,
                         expo: swapBuyToken.decimals,
-                      })}{' '}
-                      {swapBuyToken.symbol}
+                      })} {swapBuyToken.symbol}
                     </span>
                   )}
                 </div>
@@ -346,60 +375,26 @@ export default function XykPoolDetail() {
               <Button
                 className='w-full'
                 onClick={onExecuteSwap}
-                disabled={
-                  isSwapLoading ||
-                  !amountInStr ||
-                  amountInBigint <= 0n ||
-                  expectedAmountOut < 0n
-                }
+                disabled={isSwapLoading
+                  || !amountInStr
+                  || amountInBigint <= 0n
+                  || expectedAmountOut < 0n}
               >
-                {isSwapLoading ? (
-                  <>
-                    <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                    Swapping…
-                  </>
-                ) : (
-                  'Swap'
-                )}
+                {isSwapLoading
+                  ? (
+                    <>
+                      <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                      Swapping…
+                    </>
+                  )
+                  : (
+                    'Swap'
+                  )}
               </Button>
             </CardContent>
           </Card>
-          <PoolInfoCard
-            tvlFormatted={totalSupplyFormatted}
-            firstRowLabel='Total LP Supply'
-            firstRowIsUsd={false}
-            extraRows={[
-              {
-                label: `${poolData.token0.symbol} Reserve`,
-                value: (
-                  <span className='inline-flex items-center gap-1.5'>
-                    <AssetIcon symbol={poolData.token0.symbol} size={20} />
-                    {prettyBigintFormat({
-                      value: poolData.reserve0,
-                      expo: poolData.token0.decimals,
-                    })}
-                  </span>
-                ),
-              },
-              {
-                label: `${poolData.token1.symbol} Reserve`,
-                value: (
-                  <span className='inline-flex items-center gap-1.5'>
-                    <AssetIcon symbol={poolData.token1.symbol} size={20} />
-                    {prettyBigintFormat({
-                      value: poolData.reserve1,
-                      expo: poolData.token1.decimals,
-                    })}
-                  </span>
-                ),
-              },
-            ]}
-          />
-          <IlRiskCard />
-        </div>
-
-        <div className='lg:col-span-2 space-y-6'>
-          {/*
+          {
+            /*
           <Card className='rounded-xl'>
             <CardHeader className='pb-2'>
               <CardTitle className='text-base font-semibold'>Pool notes</CardTitle>
@@ -478,7 +473,8 @@ export default function XykPoolDetail() {
             </CardContent>
           </Card>
           <RecentTransactionsCard transactions={mockRecentTxs} />
-          */}
+          */
+          }
           {
             /*
           <PriceTvlChartCard

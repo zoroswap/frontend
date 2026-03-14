@@ -30,7 +30,7 @@ export interface XykPoolData {
 }
 
 export function useXykPool(poolId: string | undefined) {
-  const { rpcClient, accountId } = useContext(ZoroContext);
+  const { rpcClient } = useContext(ZoroContext);
   const [data, setData] = useState<XykPoolData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -80,12 +80,12 @@ export function useXykPool(poolId: string | undefined) {
       }
 
       const token0Id = accountIdFromPrefixSuffix(
-        felts[3],
-        felts[2],
-      );
-      const token1Id = accountIdFromPrefixSuffix(
         felts[1],
         felts[0],
+      );
+      const token1Id = accountIdFromPrefixSuffix(
+        felts[3],
+        felts[2],
       );
 
       const totalSupplyWord = storage.getItem('zoro::lp_local::total_supply');
