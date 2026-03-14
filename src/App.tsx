@@ -19,6 +19,7 @@ import HfPoolDetail from './pages/HfPoolDetail';
 import XykPoolDetail from './pages/XykPoolDetail';
 import NewXykPool from './pages/NewXykPool';
 import Pools from './pages/Pools';
+import { DisclaimerGate } from './components/Disclaimer';
 import ModalProvider from './providers/ModalProvider';
 import { ParaProviderWrapper } from './providers/ParaProviderWrapper';
 import { UnifiedWalletProvider } from './providers/UnifiedWalletProvider';
@@ -64,8 +65,9 @@ function App() {
                 <ThemeProvider storageKey='vite-ui-theme'>
                   <OracleProvider>
                     <ModalProvider>
-                      <AppRouter />
-                      <ToastContainer
+                      <DisclaimerGate>
+                        <AppRouter />
+                        <ToastContainer
                         position='top-center'
                         autoClose={5000}
                         hideProgressBar={false}
@@ -78,6 +80,7 @@ function App() {
                         theme='dark'
                         transition={Bounce}
                       />
+                      </DisclaimerGate>
                     </ModalProvider>
                   </OracleProvider>
                 </ThemeProvider>
