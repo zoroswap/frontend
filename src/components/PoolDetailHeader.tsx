@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button';
+import { getMidenscanAccountUrl } from '@/hooks/useLaunchpad';
 import { truncateId } from '@/lib/format';
 import { ExternalLink } from 'lucide-react';
 import type { ReactNode } from 'react';
@@ -33,7 +34,7 @@ export function PoolDetailHeader({
             <span>{feeTier}</span>
             <span>·</span>
             <a
-              href='https://testnet.midenscan.com'
+              href={getMidenscanAccountUrl(poolIdBech32)}
               target='_blank'
               rel='noopener noreferrer'
               className='inline-flex items-center gap-1 hover:text-foreground'

@@ -74,10 +74,10 @@ export async function deployNewPool({
       new Felt(BigInt(0)),
     ]),
     Word.newFromFelts([
-      token1.suffix(),
-      token1.prefix(),
       token0.suffix(),
       token0.prefix(),
+      token1.suffix(),
+      token1.prefix(),
     ]),
   );
 
@@ -121,8 +121,6 @@ export async function deployNewPool({
       user_deposits_slot,
     ],
   ).withSupportsAllTypes();
-
-  console.log('account built');
 
   const walletSeed = new Uint8Array(32);
   crypto.getRandomValues(walletSeed);

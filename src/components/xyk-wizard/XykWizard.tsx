@@ -20,6 +20,7 @@ import { AccountId } from '@miden-sdk/miden-sdk';
 import { AlertCircle, ChevronLeft, Loader2 } from 'lucide-react';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { orderPairByHex } from './steps/XykWizardStep1';
 import XykStep1 from './steps/XykWizardStep1';
 import XykStep2 from './steps/XykWizardStep2';
 import XykStep3 from './steps/XykWizardStep3';
@@ -287,13 +288,18 @@ const XykWizard = () => {
     setCreateError(null);
     setIsCreating(true);
     setCreateStep(null);
+    const [token0, token1] = orderPairByHex(form.tokenA, form.tokenB);
+    const amount0 =
+      form.tokenA.toString() === token0.toString() ? form.amountA : form.amountB;
+    const amount1 =
+      form.tokenA.toString() === token0.toString() ? form.amountB : form.amountA;
     try {
       const newPoolId = await launchXykPool(
         {
-          token0: form.tokenA,
-          token1: form.tokenB,
-          amount0: form.amountA,
-          amount1: form.amountB,
+          token0,
+          token1,
+          amount0,
+          amount1,
         },
         { onProgress: (s) => setCreateStep(s) },
       );
