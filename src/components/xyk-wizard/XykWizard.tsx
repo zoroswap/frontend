@@ -1,3 +1,4 @@
+import { ProgressBar } from '@/components/ProgressBar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { UnifiedWalletButton } from '@/components/UnifiedWalletButton';
@@ -117,6 +118,12 @@ function clearPersistedWizard() {
 
 const wizardSteps = [XykStep1, XykStep2, XykStep3, XykStep4];
 
+export const XYK_CREATE_STEPS = [
+  'Deploying pool',
+  'Adding liquidity',
+  'Finalizing',
+] as const;
+
 export { XykPairIcon } from '@/components/XykPairIcon';
 
 export interface XykWizardForm {
@@ -195,6 +202,7 @@ const XykWizard = () => {
   }, [canGoBackInWizard, step]);
 
   const [isCreating, setIsCreating] = useState(false);
+  const [createStep, setCreateStep] = useState<number | null>(null);
   const [createError, setCreateError] = useState<string | null>(null);
 
   const launchXykPool = useCallback(
@@ -205,7 +213,9 @@ const XykWizard = () => {
         amount0: bigint;
         amount1: bigint;
       },
+      options?: { onProgress?: (step: number) => void },
     ): Promise<AccountId | undefined> => {
+      const onProgress = options?.onProgress;
       try {
         if (!client) {
           throw new Error('Client not initialized');
@@ -214,8 +224,10 @@ const XykWizard = () => {
           throw new Error('User not logged in');
         }
 
+        onProgress?.(0);
         const { newPoolId } = await deployNewPool({ client, token0, token1 });
 
+        onProgress?.(1);
         const { tx } = await compileXykDepositTransaction({
           token0,
           token1,
@@ -225,21 +237,14 @@ const XykWizard = () => {
           poolAccountId: newPoolId,
           client,
         });
-        const txId = await requestTransaction({
+        await requestTransaction({
           type: TransactionType.Custom,
           payload: tx,
         });
+        onProgress?.(2);
         await client.syncState();
 
-        // For testing with public acc
-        // const consumeTx = new TransactionRequestBuilder().withInputNotes(
-        //   new NoteAndArgsArray([new NoteAndArgs(note, null)]),
-        // ).build();
-        // await client.submitNewTransaction(newPoolId, consumeTx);
-        //
-
         await client.syncState();
-        console.log('Deposited, tx of deposit: ', txId);
         return newPoolId;
       } catch (e) {
         console.error(e);
@@ -281,13 +286,17 @@ const XykWizard = () => {
 
     setCreateError(null);
     setIsCreating(true);
+    setCreateStep(null);
     try {
-      const newPoolId = await launchXykPool({
-        token0: form.tokenA,
-        token1: form.tokenB,
-        amount0: form.amountA,
-        amount1: form.amountB,
-      });
+      const newPoolId = await launchXykPool(
+        {
+          token0: form.tokenA,
+          token1: form.tokenB,
+          amount0: form.amountA,
+          amount1: form.amountB,
+        },
+        { onProgress: (s) => setCreateStep(s) },
+      );
 
       if (newPoolId == null) {
         setCreateError('Pool creation failed. Please try again.');
@@ -307,6 +316,7 @@ const XykWizard = () => {
       setCreateError(message);
     } finally {
       setIsCreating(false);
+      setCreateStep(null);
     }
   }, [form, tokensWithBalance, launchXykPool]);
 
@@ -426,7 +436,7 @@ const XykWizard = () => {
       <div className='flex items-center justify-center w-full'>
         {activeStep}
       </div>
-      <div className='flex flex-col gap-2 pt-8'>
+      <div className='flex flex-col gap-2'>
         {step !== 2 && step < wizardSteps.length - 1
           && (
             <Button
@@ -439,6 +449,15 @@ const XykWizard = () => {
           )}
         {step === 2 && (
           <>
+            {isCreating && createStep !== null && (
+              <div className='max-w-[780px] w-full mx-auto mb-8'>
+                <ProgressBar
+                  steps={XYK_CREATE_STEPS}
+                  currentStepIndex={createStep}
+                  title='Progress'
+                />
+              </div>
+            )}
             <Button
               className='w-full rounded-lg bg-primary text-primary-foreground h-16'
               onClick={() => onCreate()}

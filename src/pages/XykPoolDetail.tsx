@@ -5,6 +5,7 @@ import { PoolDetailHeader } from '@/components/PoolDetailHeader';
 import { PoolDetailLayout } from '@/components/PoolDetailLayout';
 import { PoolDetailStats } from '@/components/PoolDetailStats';
 import { PoolInfoCard } from '@/components/PoolInfoCard';
+import { ProgressBar } from '@/components/ProgressBar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -14,7 +15,9 @@ import { useXykLpBalance } from '@/hooks/useXykLpBalance';
 import { useXykPool } from '@/hooks/useXykPool';
 import type { XykTokenInfo } from '@/hooks/useXykPool';
 import { useXykPoolNotes } from '@/hooks/useXykPoolNotes';
+import { useWaitForNoteConsumed } from '@/hooks/useWaitForNoteConsumed';
 import { useXykSwap } from '@/hooks/useXykSwap';
+import { getMidenscanNoteUrl, getMidenscanTxUrl } from '@/hooks/useLaunchpad';
 import {
   formatTokenAmountForInput,
   fullNumberBigintFormat,
@@ -25,12 +28,14 @@ import { getMockRecentTransactions } from '@/mocks/poolDetailMocks';
 import { ModalContext } from '@/providers/ModalContext';
 import { XykPoolDetailSkeleton } from '@/pages/skeletons/XykPoolDetailSkeleton';
 import type { TokenConfig } from '@/providers/ZoroProvider';
-import { ArrowDownUp, Loader2 } from 'lucide-react';
-import { useCallback, useContext, useMemo, useState } from 'react';
+import { ArrowDownUp, ExternalLink, Loader2, ArrowRight } from 'lucide-react';
+import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { parseUnits } from 'viem';
 
 const feeTierForSymbol = () => '0.30%';
+
+const SWAP_PROGRESS_STEPS = ['Creating note', 'Sending note', 'Waiting'] as const;
 
 export default function XykPoolDetail() {
   const { poolId } = useParams<{ poolId: string }>();
@@ -44,11 +49,27 @@ export default function XykPoolDetail() {
     decodedPoolId,
     poolData ?? null,
   );
-  const { swap, isLoading: isSwapLoading } = useXykSwap(decodedPoolId);
+  const { swap, isLoading: isSwapLoading, error: swapError, noteId: swapNoteId, txId: swapTxId } = useXykSwap(decodedPoolId);
+  const waitForNoteConsumed = useWaitForNoteConsumed({ timeoutMs: 60_000 });
   const [swapSellSide, setSwapSellSide] = useState<0 | 1>(0);
   const [amountInStr, setAmountInStr] = useState('');
   const [swapInputError, setSwapInputError] = useState<string | undefined>();
+  const [swapProgressStep, setSwapProgressStep] = useState<number | null>(null);
+  const [lastTrade, setLastTrade] = useState<{
+    noteId: string;
+    txId: string | undefined;
+    amountIn: bigint;
+    amountOut: bigint;
+    sellSymbol: string;
+    buySymbol: string;
+    sellDecimals: number;
+    buyDecimals: number;
+  } | null>(null);
   const hasPosition = lpBalance > BigInt(0);
+
+  useEffect(() => {
+    if (!isSwapLoading) setSwapProgressStep(null);
+  }, [isSwapLoading]);
 
   const xykTokenToConfig = useCallback((t: XykTokenInfo): TokenConfig => ({
     symbol: t.symbol,
@@ -139,14 +160,31 @@ export default function XykPoolDetail() {
       setSwapInputError('Enter amount to sell');
       return;
     }
-    await swap(
+    setSwapProgressStep(null);
+    const result = await swap(
       swapSellToken.faucetId,
       swapBuyToken.faucetId,
       amountInBigint,
       expectedAmountOut,
+      {
+        onProgress: (step) => setSwapProgressStep(step),
+        waitForNoteConsumed,
+      },
     );
-    setAmountInStr('');
-  }, [poolData, swapSellToken, swapBuyToken, amountInBigint, expectedAmountOut, swap]);
+    if (result) {
+      setAmountInStr('');
+      setLastTrade({
+        noteId: result.noteId,
+        txId: result.txId,
+        amountIn: amountInBigint,
+        amountOut: expectedAmountOut,
+        sellSymbol: swapSellToken.symbol,
+        buySymbol: swapBuyToken.symbol,
+        sellDecimals: swapSellToken.decimals,
+        buyDecimals: swapBuyToken.decimals,
+      });
+    }
+  }, [poolData, swapSellToken, swapBuyToken, amountInBigint, expectedAmountOut, swap, waitForNoteConsumed]);
 
   const openXykModal = useCallback(
     (mode: 'Deposit' | 'Withdraw') => {
@@ -369,8 +407,8 @@ export default function XykPoolDetail() {
                   </span>
                 </div>
               </div>
-              {swapInputError && (
-                <p className='text-destructive text-sm'>{swapInputError}</p>
+              {(swapInputError || swapError) && (
+                <p className='text-destructive text-sm'>{swapInputError ?? swapError}</p>
               )}
               <Button
                 className='w-full'
@@ -391,6 +429,86 @@ export default function XykPoolDetail() {
                     'Swap'
                   )}
               </Button>
+              {isSwapLoading && swapProgressStep !== null && (
+                <ProgressBar
+                  steps={SWAP_PROGRESS_STEPS}
+                  currentStepIndex={swapProgressStep}
+                  title='Progress'
+                />
+              )}
+              {((isSwapLoading && (swapNoteId || swapTxId)) || lastTrade) && (
+                <div className='mt-8 rounded-xl border border-border bg-card overflow-hidden'>
+                  <div className='px-3 py-2 border-b border-border bg-muted/30'>
+                    <span className='text-xs font-medium uppercase tracking-wide text-muted-foreground'>
+                      {isSwapLoading ? 'Trade in progress' : 'Last trade'}
+                    </span>
+                  </div>
+                  <div className='p-4 space-y-4'>
+                    {(() => {
+                      const isCurrent = isSwapLoading && (swapNoteId || swapTxId);
+                      const noteId = isCurrent ? swapNoteId : lastTrade?.noteId;
+                      const txId = isCurrent ? swapTxId : lastTrade?.txId;
+                      const amountIn = isCurrent ? amountInBigint : lastTrade!.amountIn;
+                      const amountOut = isCurrent ? expectedAmountOut : lastTrade!.amountOut;
+                      const sellSym = isCurrent ? swapSellToken?.symbol ?? '—' : lastTrade!.sellSymbol;
+                      const buySym = isCurrent ? swapBuyToken?.symbol ?? '—' : lastTrade!.buySymbol;
+                      const sellDec = isCurrent ? (swapSellToken?.decimals ?? 18) : lastTrade!.sellDecimals;
+                      const buyDec = isCurrent ? (swapBuyToken?.decimals ?? 18) : lastTrade!.buyDecimals;
+                      const inStr = prettyBigintFormat({ value: amountIn, expo: sellDec });
+                      const outStr = prettyBigintFormat({ value: amountOut, expo: buyDec });
+                      return (
+                        <>
+                          <div className='flex items-center gap-3'>
+                            <div className='flex items-center gap-2 min-w-0'>
+                              <AssetIcon symbol={sellSym} size={28} />
+                              <span className='font-semibold tabular-nums truncate' title={inStr}>
+                                {inStr}
+                              </span>
+                              <span className='text-muted-foreground text-sm shrink-0'>{sellSym}</span>
+                            </div>
+                            <ArrowRight className='h-4 w-4 shrink-0 text-muted-foreground' />
+                            <div className='flex items-center gap-2 min-w-0'>
+                              <AssetIcon symbol={buySym} size={28} />
+                              <span className='font-semibold tabular-nums truncate' title={outStr}>
+                                {outStr}
+                              </span>
+                              <span className='text-muted-foreground text-sm shrink-0'>{buySym}</span>
+                            </div>
+                          </div>
+                          <div className='flex flex-wrap gap-3 pt-2 border-t border-border'>
+                            {noteId && (
+                              <a
+                                href={getMidenscanNoteUrl(noteId)}
+                                target='_blank'
+                                rel='noreferrer'
+                                className='inline-flex items-center gap-1.5 text-sm text-primary hover:underline'
+                              >
+                                <span className='font-mono text-muted-foreground'>
+                                  Note {noteId.slice(0, 8)}…{noteId.slice(-6)}
+                                </span>
+                                <ExternalLink className='h-3.5 w-3.5 shrink-0' />
+                              </a>
+                            )}
+                            {txId && (
+                              <a
+                                href={getMidenscanTxUrl(txId)}
+                                target='_blank'
+                                rel='noreferrer'
+                                className='inline-flex items-center gap-1.5 text-sm text-primary hover:underline'
+                              >
+                                <span className='font-mono text-muted-foreground'>
+                                  Tx {txId.slice(0, 8)}…{txId.slice(-6)}
+                                </span>
+                                <ExternalLink className='h-3.5 w-3.5 shrink-0' />
+                              </a>
+                            )}
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
           {

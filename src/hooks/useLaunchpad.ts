@@ -23,6 +23,10 @@ export function getMidenscanAccountUrl(accountBech32: string): string {
   return `${MIDENSCAN_BASE}/account/${accountBech32}`;
 }
 
+export function getMidenscanNoteUrl(noteId: string): string {
+  return `${MIDENSCAN_BASE}/note/${noteId}`;
+}
+
 export const LAUNCH_STEPS = [
   'Creating faucet',
   'Minting initial supply',

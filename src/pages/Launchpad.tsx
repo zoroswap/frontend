@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { UnifiedWalletButton } from '@/components/UnifiedWalletButton';
+import { ProgressBar } from '@/components/ProgressBar';
 import useLaunchpad, {
   getMidenscanAccountUrl,
   getMidenscanTxUrl,
@@ -13,13 +14,7 @@ import useLaunchpad, {
 } from '@/hooks/useLaunchpad';
 import { useUnifiedWallet } from '@/hooks/useUnifiedWallet';
 import { truncateId } from '@/lib/format';
-import {
-  ArrowLeft,
-  CheckCircle,
-  CheckCircle2,
-  ExternalLink,
-  Loader2,
-} from 'lucide-react';
+import { ArrowLeft, CheckCircle, ExternalLink, Loader2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { parseUnits } from 'viem';
@@ -358,59 +353,11 @@ export default function Launchpad() {
                   </div>
 
                   {isSubmitting && launchStep !== null && (
-                    <div className='rounded-xl border border-border bg-muted/20 p-4 space-y-3'>
-                      <p className='text-sm font-medium'>Progress</p>
-                      <div className='h-2 rounded-full bg-muted overflow-hidden'>
-                        <div
-                          className='h-full bg-primary transition-all duration-300'
-                          style={{
-                            width: `${((launchStep + 1) / LAUNCH_STEPS.length) * 100}%`,
-                          }}
-                        />
-                      </div>
-                      <ul className='space-y-2' aria-label='Launch steps'>
-                        {LAUNCH_STEPS.map((label, i) => {
-                          const done = i < launchStep;
-                          const current = i === launchStep;
-                          return (
-                            <li
-                              key={label}
-                              className='flex items-center gap-2 text-sm'
-                            >
-                              {done
-                                ? (
-                                  <CheckCircle2
-                                    className='h-4 w-4 shrink-0 text-green-600 dark:text-green-400'
-                                    aria-hidden
-                                  />
-                                )
-                                : current
-                                ? (
-                                  <Loader2
-                                    className='h-4 w-4 shrink-0 animate-spin text-primary'
-                                    aria-hidden
-                                  />
-                                )
-                                : (
-                                  <span
-                                    className='h-4 w-4 shrink-0 rounded-full border-2 border-muted-foreground/40'
-                                    aria-hidden
-                                  />
-                                )}
-                              <span
-                                className={done
-                                  ? 'text-muted-foreground'
-                                  : current
-                                  ? 'font-medium text-foreground'
-                                  : 'text-muted-foreground/70'}
-                              >
-                                {label}
-                              </span>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    </div>
+                    <ProgressBar
+                      steps={LAUNCH_STEPS}
+                      currentStepIndex={launchStep}
+                      title='Progress'
+                    />
                   )}
 
                   {error && (

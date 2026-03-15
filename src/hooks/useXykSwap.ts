@@ -24,6 +24,10 @@ export function useXykSwap(poolId: string | undefined) {
       buyToken: AccountId,
       amount: bigint,
       minAmountOut: bigint,
+      options?: {
+        onProgress?: (step: number) => void;
+        waitForNoteConsumed?: (noteId: string) => Promise<void>;
+      },
     ): Promise<{ noteId: string; txId: string | undefined } | undefined> => {
       if (
         !poolId ||
@@ -36,10 +40,13 @@ export function useXykSwap(poolId: string | undefined) {
       }
       const poolAccountId = bech32ToAccountId(poolId);
       if (!poolAccountId) return undefined;
+      const onProgress = options?.onProgress;
+      const waitForNoteConsumed = options?.waitForNoteConsumed;
       setError('');
       setIsLoading(true);
       try {
         await syncState();
+        onProgress?.(0);
         const { tx, noteId: nid } = await clientMutex.runExclusive(() =>
           compileXykSwapTransaction({
             poolAccountId,
@@ -51,17 +58,24 @@ export function useXykSwap(poolId: string | undefined) {
             client,
           }),
         );
+        onProgress?.(1);
         const txIdResult = await requestTransaction({
           type: TransactionType.Custom,
           payload: tx,
         });
-        await syncState();
         setNoteId(nid);
         setTxId(txIdResult);
+        onProgress?.(2);
+        if (waitForNoteConsumed) {
+          await waitForNoteConsumed(nid);
+        }
+        await syncState();
         return { noteId: nid, txId: txIdResult };
       } catch (err) {
         console.error(err);
-        toast.error(`Error swapping: ${err}`);
+        const message = err instanceof Error ? err.message : String(err);
+        setError(message);
+        toast.error(`Error swapping: ${message}`);
       } finally {
         setIsLoading(false);
       }
