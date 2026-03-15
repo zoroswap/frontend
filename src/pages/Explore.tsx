@@ -17,7 +17,7 @@ import { ZoroContext } from '@/providers/ZoroContext';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-function LiquidityPools() {
+function Explore() {
   const navigate = useNavigate();
   const { data: poolsInfo, refetch: refetchPoolsInfo, isLoading: isLoadingPools } =
     usePoolsInfo();
@@ -195,4 +195,4 @@ function LiquidityPools() {
   );
 }
 
-export default LiquidityPools;
+export default Explore;
