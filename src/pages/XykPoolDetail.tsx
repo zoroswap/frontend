@@ -35,7 +35,11 @@ import { parseUnits } from 'viem';
 
 const feeTierForSymbol = () => '0.30%';
 
-const SWAP_PROGRESS_STEPS = ['Creating note', 'Sending note', 'Waiting'] as const;
+const SWAP_PROGRESS_STEPS = [
+  'Creating note',
+  'Sending note',
+  'Waiting for trade to be confirmed on network',
+] as const;
 
 export default function XykPoolDetail() {
   const { poolId } = useParams<{ poolId: string }>();

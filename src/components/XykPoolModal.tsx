@@ -1,22 +1,31 @@
 import AssetIcon from '@/components/AssetIcon';
+import { ProgressBar } from '@/components/ProgressBar';
 import Slippage from '@/components/Slippage';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useTokens } from '@/hooks/useTokens';
+import { useWaitForNoteConsumed } from '@/hooks/useWaitForNoteConsumed';
 import { useXykDeposit } from '@/hooks/useXykDeposit';
 import { useXykLpBalance } from '@/hooks/useXykLpBalance';
 import { useXykPool } from '@/hooks/useXykPool';
 import type { XykTokenInfo } from '@/hooks/useXykPool';
 import { useXykWithdraw } from '@/hooks/useXykWithdraw';
+import { getMidenscanNoteUrl, getMidenscanTxUrl } from '@/hooks/useLaunchpad';
 import { DEFAULT_SLIPPAGE } from '@/lib/config';
 import { formatTokenAmount, formatTokenAmountForInput } from '@/lib/format';
 import { computeExpectedLp, computeExpectedWithdraw } from '@/lib/xykMath';
 import { ModalContext } from '@/providers/ModalContext';
 import type { TokenConfig } from '@/providers/ZoroProvider';
-import { AlertTriangle, Info, Loader, X } from 'lucide-react';
-import { useCallback, useContext, useMemo, useState } from 'react';
+import { AlertTriangle, ArrowRight, ExternalLink, Info, Loader, X } from 'lucide-react';
+import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { parseUnits } from 'viem';
 import { useBalance } from '../hooks/useBalance';
+
+const LP_PROGRESS_STEPS = [
+  'Creating note',
+  'Sending note',
+  'Waiting for confirmation on network',
+] as const;
 
 /** LP shares have no decimals (raw integer). */
 const LP_EXPO = 0;
@@ -103,6 +112,25 @@ export function XykPoolModal({
   const [inputError, setInputError] = useState<string | undefined>();
   const [depositPct, setDepositPct] = useState(100);
   const [withdrawPct, setWithdrawPct] = useState(100);
+  const [lpProgressStep, setLpProgressStep] = useState<number | null>(null);
+  const [lastLpAction, setLastLpAction] = useState<{
+    type: 'Deposit' | 'Withdraw';
+    noteId: string;
+    txId: string | undefined;
+    amount0: bigint;
+    amount1: bigint;
+    token0Symbol: string;
+    token1Symbol: string;
+    token0Decimals: number;
+    token1Decimals: number;
+    lpAmount?: bigint;
+  } | null>(null);
+
+  const waitForNoteConsumed = useWaitForNoteConsumed({ timeoutMs: 60_000 });
+
+  useEffect(() => {
+    if (!isDepositLoading && !isWithdrawLoading) setLpProgressStep(null);
+  }, [isDepositLoading, isWithdrawLoading]);
 
   const clearForm = useCallback(() => {
     setAmount0Str('');
@@ -391,13 +419,26 @@ export function XykPoolModal({
       return;
     }
     setInputError(undefined);
-    const result = await deposit(amount0, amount1);
-    console.log(result);
+    setLpProgressStep(null);
+    const result = await deposit(amount0, amount1, {
+      onProgress: (step) => setLpProgressStep(step),
+      waitForNoteConsumed,
+    });
     if (result) {
       clearForm();
       refetchLpBalance();
       onSuccess?.();
-      handleClose();
+      setLastLpAction({
+        type: 'Deposit',
+        noteId: result.noteId,
+        txId: result.txId,
+        amount0,
+        amount1,
+        token0Symbol: poolData.token0.symbol,
+        token1Symbol: poolData.token1.symbol,
+        token0Decimals: poolData.token0.decimals,
+        token1Decimals: poolData.token1.decimals,
+      });
     }
   }, [
     poolData,
@@ -409,7 +450,7 @@ export function XykPoolModal({
     clearForm,
     refetchLpBalance,
     onSuccess,
-    handleClose,
+    waitForNoteConsumed,
   ]);
 
   const writeWithdraw = useCallback(async () => {
@@ -424,22 +465,39 @@ export function XykPoolModal({
       return;
     }
     setInputError(undefined);
-    const result = await withdraw(lpAmount);
+    setLpProgressStep(null);
+    const result = await withdraw(lpAmount, {
+      onProgress: (step) => setLpProgressStep(step),
+      waitForNoteConsumed,
+    });
     if (result) {
       clearForm();
       refetchLpBalance();
       onSuccess?.();
-      handleClose();
+      setLastLpAction({
+        type: 'Withdraw',
+        noteId: result.noteId,
+        txId: result.txId,
+        amount0: expectedWithdraw0,
+        amount1: expectedWithdraw1,
+        token0Symbol: poolData.token0.symbol,
+        token1Symbol: poolData.token1.symbol,
+        token0Decimals: poolData.token0.decimals,
+        token1Decimals: poolData.token1.decimals,
+        lpAmount,
+      });
     }
   }, [
     poolData,
     lpAmount,
     lpBalance,
+    expectedWithdraw0,
+    expectedWithdraw1,
     withdraw,
     clearForm,
     refetchLpBalance,
     onSuccess,
-    handleClose,
+    waitForNoteConsumed,
   ]);
 
   if (poolLoading || !poolData) {
@@ -471,14 +529,14 @@ export function XykPoolModal({
     ?? '0';
 
   return (
-    <div className='flex flex-col gap-5'>
+    <div className='flex flex-col gap-5 p-8'>
       <div className='flex items-center justify-between gap-2'>
         <div className='flex items-center gap-2'>
           <div className='flex -space-x-2'>
-            <span className='inline-block rounded-full border-2 border-background overflow-hidden bg-muted'>
+            <span className='inline-block rounded-full border-2 border-background bg-muted'>
               <AssetIcon symbol={poolData.token0.symbol} size={28} />
             </span>
-            <span className='inline-block rounded-full border-2 border-background overflow-hidden bg-muted'>
+            <span className='inline-block rounded-full border-2 border-background bg-muted'>
               <AssetIcon symbol={poolData.token1.symbol} size={28} />
             </span>
           </div>
@@ -554,7 +612,7 @@ export function XykPoolModal({
                       expo: poolData.token0.decimals,
                     })} {poolData.token0.symbol}
                   </span>
-                  <span className='rounded-full overflow-hidden'>
+                  <span className='rounded-full'>
                     <AssetIcon symbol={poolData.token0.symbol} size={24} />
                   </span>
                 </div>
@@ -578,7 +636,7 @@ export function XykPoolModal({
                       expo: poolData.token1.decimals,
                     })} {poolData.token1.symbol}
                   </span>
-                  <span className='rounded-full overflow-hidden'>
+                  <span className='rounded-full'>
                     <AssetIcon symbol={poolData.token1.symbol} size={24} />
                   </span>
                 </div>
@@ -601,7 +659,7 @@ export function XykPoolModal({
               <span className='text-muted-foreground'>Deposit percentage</span>
               <span className='font-medium'>{depositPct}%</span>
             </div>
-            <div className='h-2 rounded-full bg-muted overflow-hidden'>
+            <div className='h-2 rounded-full bg-muted'>
               <div
                 className='h-full rounded-full bg-primary transition-all'
                 style={{ width: `${depositPct}%` }}
@@ -671,7 +729,7 @@ export function XykPoolModal({
                       expo: LP_EXPO,
                     })} LP
                   </span>
-                  <span className='rounded-full overflow-hidden'>
+                  <span className='rounded-full'>
                     <AssetIcon symbol={poolData.token0.symbol} size={24} />
                   </span>
                 </div>
@@ -694,7 +752,7 @@ export function XykPoolModal({
               <span className='text-muted-foreground'>Withdraw percentage</span>
               <span className='font-medium'>{withdrawPct}%</span>
             </div>
-            <div className='h-2 rounded-full bg-muted overflow-hidden'>
+            <div className='h-2 rounded-full bg-muted'>
               <div
                 className='h-full rounded-full bg-primary transition-all'
                 style={{ width: `${withdrawPct}%` }}
@@ -767,6 +825,113 @@ export function XykPoolModal({
             )}
           </Button>
         </>
+      )}
+
+      {(isDepositLoading || isWithdrawLoading) && lpProgressStep !== null && (
+        <ProgressBar
+          steps={LP_PROGRESS_STEPS}
+          currentStepIndex={lpProgressStep}
+          title='Progress'
+        />
+      )}
+      {lastLpAction && (
+        <div className='rounded-xl border border-border bg-card'>
+          <div className='px-3 py-2 border-b border-border bg-muted/30'>
+            <span className='text-xs font-medium uppercase tracking-wide text-muted-foreground'>
+              Last {lastLpAction.type.toLowerCase()}
+            </span>
+          </div>
+          <div className='p-4 space-y-4'>
+            <div className='flex items-center gap-3 flex-wrap'>
+              {lastLpAction.type === 'Deposit'
+                ? (
+                    <>
+                      <div className='flex items-center gap-2 min-w-0'>
+                        <AssetIcon symbol={lastLpAction.token0Symbol} size={28} />
+                        <span className='font-semibold tabular-nums'>
+                          {formatTokenAmount({
+                            value: lastLpAction.amount0,
+                            expo: lastLpAction.token0Decimals,
+                          })}
+                        </span>
+                        <span className='text-muted-foreground text-sm'>{lastLpAction.token0Symbol}</span>
+                      </div>
+                      <ArrowRight className='h-4 w-4 shrink-0 text-muted-foreground' />
+                      <div className='flex items-center gap-2 min-w-0'>
+                        <AssetIcon symbol={lastLpAction.token1Symbol} size={28} />
+                        <span className='font-semibold tabular-nums'>
+                          {formatTokenAmount({
+                            value: lastLpAction.amount1,
+                            expo: lastLpAction.token1Decimals,
+                          })}
+                        </span>
+                        <span className='text-muted-foreground text-sm'>{lastLpAction.token1Symbol}</span>
+                      </div>
+                    </>
+                  )
+                : (
+                    <>
+                      <div className='flex items-center gap-2 min-w-0'>
+                        <span className='font-semibold tabular-nums'>
+                          {lastLpAction.lpAmount != null
+                            ? formatTokenAmount({ value: lastLpAction.lpAmount, expo: 0 })
+                            : '—'}
+                        </span>
+                        <span className='text-muted-foreground text-sm'>LP</span>
+                      </div>
+                      <ArrowRight className='h-4 w-4 shrink-0 text-muted-foreground' />
+                      <div className='flex items-center gap-2 min-w-0'>
+                        <AssetIcon symbol={lastLpAction.token0Symbol} size={28} />
+                        <span className='font-semibold tabular-nums'>
+                          {formatTokenAmount({
+                            value: lastLpAction.amount0,
+                            expo: lastLpAction.token0Decimals,
+                          })}
+                        </span>
+                        <span className='text-muted-foreground text-sm'>{lastLpAction.token0Symbol}</span>
+                      </div>
+                      <span className='text-muted-foreground'>+</span>
+                      <div className='flex items-center gap-2 min-w-0'>
+                        <AssetIcon symbol={lastLpAction.token1Symbol} size={28} />
+                        <span className='font-semibold tabular-nums'>
+                          {formatTokenAmount({
+                            value: lastLpAction.amount1,
+                            expo: lastLpAction.token1Decimals,
+                          })}
+                        </span>
+                        <span className='text-muted-foreground text-sm'>{lastLpAction.token1Symbol}</span>
+                      </div>
+                    </>
+                  )}
+            </div>
+            <div className='flex flex-wrap gap-3 pt-2 border-t border-border'>
+              <a
+                href={getMidenscanNoteUrl(lastLpAction.noteId)}
+                target='_blank'
+                rel='noreferrer'
+                className='inline-flex items-center gap-1.5 text-sm text-primary hover:underline'
+              >
+                <span className='font-mono text-muted-foreground'>
+                  Note {lastLpAction.noteId.slice(0, 8)}…{lastLpAction.noteId.slice(-6)}
+                </span>
+                <ExternalLink className='h-3.5 w-3.5 shrink-0' />
+              </a>
+              {lastLpAction.txId && (
+                <a
+                  href={getMidenscanTxUrl(lastLpAction.txId)}
+                  target='_blank'
+                  rel='noreferrer'
+                  className='inline-flex items-center gap-1.5 text-sm text-primary hover:underline'
+                >
+                  <span className='font-mono text-muted-foreground'>
+                    Tx {lastLpAction.txId.slice(0, 8)}…{lastLpAction.txId.slice(-6)}
+                  </span>
+                  <ExternalLink className='h-3.5 w-3.5 shrink-0' />
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
       {(depositError || withdrawError) && (

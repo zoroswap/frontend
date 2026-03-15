@@ -20,6 +20,10 @@ export function useXykWithdraw(poolId: string | undefined) {
   const withdraw = useCallback(
     async (
       lpAmount: bigint,
+      options?: {
+        onProgress?: (step: number) => void;
+        waitForNoteConsumed?: (noteId: string) => Promise<void>;
+      },
     ): Promise<{ noteId: string; txId: string | undefined } | undefined> => {
       if (
         !poolId
@@ -32,10 +36,13 @@ export function useXykWithdraw(poolId: string | undefined) {
       }
       const poolAccountId = bech32ToAccountId(poolId);
       if (!poolAccountId) return undefined;
+      const onProgress = options?.onProgress;
+      const waitForNoteConsumed = options?.waitForNoteConsumed;
       setError('');
       setIsLoading(true);
       try {
         await syncState();
+        onProgress?.(0);
         const { tx, noteId: nid } = await clientMutex.runExclusive(() =>
           compileXykWithdrawTransaction({
             poolAccountId,
@@ -46,31 +53,24 @@ export function useXykWithdraw(poolId: string | undefined) {
             client,
           })
         );
+        onProgress?.(1);
         const txIdResult = await requestTransaction({
           type: TransactionType.Custom,
           payload: tx,
         });
-        await syncState();
         setNoteId(nid);
         setTxId(txIdResult);
-
-        console.log(txIdResult, nid);
-
-        // const consumeReq = new TransactionRequestBuilder()
-        //   .withInputNotes(
-        //     new NoteAndArgsArray([new NoteAndArgs(withdrawNote, null)]),
-        //   )
-        //   .withExpectedOutputRecipients(
-        //     new NoteRecipientArray([returnNote.recipient()]),
-        //   )
-        //   .build();
-        // await client.submitNewTransaction(poolAccountId, consumeReq);
-        // await syncState();
-
+        onProgress?.(2);
+        if (waitForNoteConsumed) {
+          await waitForNoteConsumed(nid);
+        }
+        await syncState();
         return { noteId: nid, txId: txIdResult };
       } catch (err) {
         console.error(err);
-        toast.error(`Error withdrawing liquidity: ${err}`);
+        const message = err instanceof Error ? err.message : String(err);
+        setError(message);
+        toast.error(`Error withdrawing liquidity: ${message}`);
       } finally {
         setIsLoading(false);
       }
