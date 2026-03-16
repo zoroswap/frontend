@@ -58,16 +58,16 @@ const Slippage = ({ slippage, onSlippageChange }: SlippageProps) => {
             onClick={handleClose}
           />
 
-          <Card className='absolute top-full right-0 mt-1 w-[280px] z-20 shadow-lg rounded-2xl border border-border/60'>
-            <CardContent className='p-5 space-y-4'>
+          <Card className='absolute top-full right-0 mt-1 w-[200px] z-20 shadow-md rounded-xl border border-border/60'>
+            <CardContent className='p-3 space-y-2.5'>
               <div className='flex items-center justify-between'>
-                <h3 className='text-lg' style={{ fontWeight: 300 }}>Max Slippage</h3>
+                <span className='text-sm font-medium'>Max Slippage</span>
                 <button
                   onClick={handleClose}
                   className='text-muted-foreground hover:text-foreground transition-colors'
                   aria-label='Close settings'
                 >
-                  <X className='h-5 w-5' />
+                  <X className='h-3.5 w-3.5' />
                 </button>
               </div>
 
@@ -76,13 +76,13 @@ const Slippage = ({ slippage, onSlippageChange }: SlippageProps) => {
                   type='number'
                   value={inputValue}
                   onChange={(e) => handleSlippageChange(e.target.value)}
-                  className='text-center text-lg font-medium pr-10 h-12 rounded-xl'
+                  className='text-center text-sm font-medium pr-8 h-9 rounded-lg'
                   min='0'
                   max='50'
                   step='0.1'
                   placeholder='0.5'
                 />
-                <span className='absolute right-4 top-1/2 transform -translate-y-1/2 text-base text-muted-foreground pointer-events-none'>
+                <span className='absolute right-3 top-1/2 transform -translate-y-1/2 text-sm text-muted-foreground pointer-events-none'>
                   %
                 </span>
               </div>

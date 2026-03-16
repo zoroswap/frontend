@@ -330,7 +330,7 @@ function Swap() {
           {/* Buy Card — gray bg, no border, no shadow */}
           <Card className='border-0 rounded-xl sm:rounded-2xl bg-[hsl(0,0%,95%)] shadow-none'>
             <CardContent className='p-4 py-6 sm:p-8 pb-10 sm:pb-12'>
-              <div className='text-xs sm:text-sm text-primary font-semibold mb-3 sm:mb-4'>Sell</div>
+              <div className='text-xs sm:text-sm text-primary font-semibold mb-3 sm:mb-4'>Buy</div>
               <div className='flex items-center justify-between gap-3 sm:gap-4'>
                 <SwapInputBuy
                   amountSell={rawSell}

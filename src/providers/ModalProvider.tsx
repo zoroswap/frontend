@@ -40,7 +40,7 @@ const ModalBackdrop = ({
   return createPortal(
     <div
       ref={backdropRef}
-      className='fixed top-0 left-0 w-full h-full bg-[rgba(0,0,0,.5)] flex flex-col items-center justify-center z-1000 backdrop-blur-xs'
+      className='fixed inset-0 w-full h-full bg-[rgba(0,0,0,.5)] flex flex-col items-center justify-center z-[9999] backdrop-blur-xs'
       onClick={handleClose}
     >
       <Card
