@@ -394,13 +394,13 @@ export default function PoolModal({
 
       {/* Tabs */}
       <div className='flex items-center'>
-        <div className='flex flex-1 rounded-xl bg-[hsl(0,0%,95%)] p-1'>
+        <div className='flex flex-1 rounded-xl bg-muted p-1'>
           <button
             type='button'
             onClick={() => { setMode('Deposit'); clearForm(); }}
             className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
               mode === 'Deposit'
-                ? 'bg-white text-foreground shadow-sm'
+                ? 'bg-primary text-primary-foreground shadow-sm'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
@@ -411,7 +411,7 @@ export default function PoolModal({
             onClick={() => { setMode('Withdraw'); clearForm(); }}
             className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
               mode === 'Withdraw'
-                ? 'bg-white text-foreground shadow-sm'
+                ? 'bg-primary text-primary-foreground shadow-sm'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
@@ -423,7 +423,7 @@ export default function PoolModal({
       {mode === 'Deposit' && (
         <>
           {/* Input card */}
-          <div className='rounded-2xl border border-border/50 bg-white p-5'>
+          <div className='rounded-2xl border border-border/50 bg-background p-5'>
             <div className='flex items-center justify-between gap-3 mb-4'>
               <Input
                 value={inputValue}
@@ -454,7 +454,7 @@ export default function PoolModal({
                   onClick={() => setAmountPercentage(n)}
                   className={`flex-1 py-2 text-xs font-medium rounded-lg border transition-all ${
                     depositPct === n
-                      ? 'bg-primary text-white border-primary'
+                      ? 'bg-primary text-primary-foreground border-primary'
                       : 'bg-transparent text-muted-foreground border-border/60 hover:border-foreground/20 hover:text-foreground'
                   }`}
                 >
@@ -467,7 +467,7 @@ export default function PoolModal({
           {inputError && <p className='text-sm text-destructive px-1'>{inputError}</p>}
 
           {/* Details */}
-          <div className='rounded-2xl bg-[hsl(0,0%,95%)] p-4 space-y-3 text-sm'>
+          <div className='rounded-2xl bg-muted p-4 space-y-3 text-sm'>
             <div className='relative flex items-center justify-between'>
               <span className='text-muted-foreground font-medium'>Max slippage</span>
               <span className='flex items-center gap-1.5'>
@@ -498,7 +498,7 @@ export default function PoolModal({
           </div>
 
           {/* Receive row — inline with details */}
-          <div className='rounded-2xl bg-[hsl(0,0%,95%)] p-4 space-y-3 text-sm'>
+          <div className='rounded-2xl bg-muted p-4 space-y-3 text-sm'>
             <div className='flex items-center justify-between'>
               <span className='text-muted-foreground font-medium'>You receive (min)</span>
               <span className='flex items-center gap-2 font-semibold'>
@@ -536,7 +536,7 @@ export default function PoolModal({
       {mode === 'Withdraw' && (
         <>
           {/* Input card */}
-          <div className='rounded-2xl border border-border/50 bg-white p-5'>
+          <div className='rounded-2xl border border-border/50 bg-background p-5'>
             <div className='flex items-center justify-between gap-3 mb-4'>
               <Input
                 value={inputValue}
@@ -564,7 +564,7 @@ export default function PoolModal({
                   onClick={() => setAmountPercentage(n)}
                   className={`flex-1 py-2 text-xs font-medium rounded-lg border transition-all ${
                     withdrawPct === n
-                      ? 'bg-primary text-white border-primary'
+                      ? 'bg-primary text-primary-foreground border-primary'
                       : 'bg-transparent text-muted-foreground border-border/60 hover:border-foreground/20 hover:text-foreground'
                   }`}
                 >
@@ -575,7 +575,7 @@ export default function PoolModal({
           </div>
 
           {/* Details */}
-          <div className='rounded-2xl bg-[hsl(0,0%,95%)] p-4 space-y-3 text-sm'>
+          <div className='rounded-2xl bg-muted p-4 space-y-3 text-sm'>
             <div className='relative flex items-center justify-between'>
               <span className='text-muted-foreground font-medium'>Max slippage</span>
               <span className='flex items-center gap-1.5'>
@@ -608,7 +608,7 @@ export default function PoolModal({
           </div>
 
           {/* Receive row */}
-          <div className='rounded-2xl bg-[hsl(0,0%,95%)] p-4 space-y-3 text-sm'>
+          <div className='rounded-2xl bg-muted p-4 space-y-3 text-sm'>
             <div className='flex items-center justify-between'>
               <span className='text-muted-foreground font-medium'>You receive (min)</span>
               <span className='flex items-center gap-2 font-semibold'>
