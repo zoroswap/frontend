@@ -1,41 +1,36 @@
 import { useClaimNotes } from '@/hooks/useClaimNotes';
-import { useUnifiedWallet } from '@/hooks/useUnifiedWallet';
 import { truncateAddress } from '@/lib/format';
-import { useWalletModal } from '@demox-labs/miden-wallet-adapter';
-import { useModal } from '@getpara/react-sdk-lite';
+import { useWallet } from '@miden-sdk/miden-wallet-adapter';
 import { ChevronDown, Download, Loader2, LogOut, Wallet } from 'lucide-react';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
-import { WalletSelectionModal } from './WalletSelectionModal';
 
 interface UnifiedWalletButtonProps {
   readonly className?: string;
 }
 
 export function UnifiedWalletButton({ className }: UnifiedWalletButtonProps) {
-  const { connected, connecting, walletType, address, disconnect } = useUnifiedWallet();
-  const { claimNotes, claiming, isParaWallet, isExpectingNotes, pendingNotesCount } =
-    useClaimNotes();
-  const { openModal } = useModal();
-  const { setVisible: setMidenModalVisible } = useWalletModal();
-  const [showSelectionModal, setShowSelectionModal] = useState(false);
+  const { connected, connecting, address, connect, disconnect, wallet, wallets, select } = useWallet();
+  const walletType = connected ? 'miden' : null;
+  const { claimNotes, claiming, isExpectingNotes, pendingNotesCount } = useClaimNotes();
   const [showDropdown, setShowDropdown] = useState(false);
+  const pendingConnectRef = useRef(false);
 
-  const handleOpenSelectionModal = useCallback(() => {
-    setShowSelectionModal(true);
-  }, []);
+  useEffect(() => {
+    if (wallet && pendingConnectRef.current) {
+      pendingConnectRef.current = false;
+      connect();
+    }
+  }, [wallet, connect]);
 
-  const handleCloseSelectionModal = useCallback(() => {
-    setShowSelectionModal(false);
-  }, []);
-
-  const handleSelectMiden = useCallback(() => {
-    setMidenModalVisible(true);
-  }, [setMidenModalVisible]);
-
-  const handleSelectPara = useCallback(() => {
-    openModal();
-  }, [openModal]);
+  const handleConnect = useCallback(() => {
+    if (wallet) {
+      connect();
+    } else if (wallets.length > 0) {
+      select(wallets[0].adapter.name);
+      pendingConnectRef.current = true;
+    }
+  }, [wallet, wallets, select, connect]);
 
   const handleDisconnect = useCallback(async () => {
     setShowDropdown(false);
@@ -55,7 +50,6 @@ export function UnifiedWalletButton({ className }: UnifiedWalletButtonProps) {
     }
   }, [claimNotes]);
 
-  // Connected state: show address with dropdown
   if (connected && address) {
     return (
       <div className='relative'>
@@ -65,7 +59,7 @@ export function UnifiedWalletButton({ className }: UnifiedWalletButtonProps) {
         >
           <div className='relative'>
             <Wallet className='h-3 w-3 sm:h-4 sm:w-4' />
-            {isParaWallet && (isExpectingNotes || pendingNotesCount > 0) && (
+            {(isExpectingNotes || pendingNotesCount > 0) && (
               <span className='absolute -top-1.5 -right-1.5 min-w-[12px] h-[12px] flex items-center justify-center text-[8px] sm:text-[10px] font-bold bg-primary text-primary-foreground rounded-full px-0.5'>
                 {isExpectingNotes
                   ? <Loader2 className='h-2 w-2 animate-spin' />
@@ -89,27 +83,25 @@ export function UnifiedWalletButton({ className }: UnifiedWalletButtonProps) {
               onClick={() => setShowDropdown(false)}
             />
             <div className='absolute right-0 top-full mt-2 w-56 bg-background border border-border rounded-xl shadow-lg z-50 overflow-hidden'>
-              {isParaWallet && (
-                <button
-                  onClick={handleClaimNotes}
-                  disabled={claiming}
-                  className='w-full px-4 py-3 text-left text-sm hover:bg-muted/50 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed'
-                >
-                  {claiming
-                    ? <Loader2 className='h-4 w-4 animate-spin' />
-                    : <Download className='h-4 w-4' />}
-                  <span className='flex-1'>
-                    {claiming ? 'Claiming...' : 'Claim Notes'}
+              <button
+                onClick={handleClaimNotes}
+                disabled={claiming}
+                className='w-full px-4 py-3 text-left text-sm hover:bg-muted/50 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed'
+              >
+                {claiming
+                  ? <Loader2 className='h-4 w-4 animate-spin' />
+                  : <Download className='h-4 w-4' />}
+                <span className='flex-1'>
+                  {claiming ? 'Claiming...' : 'Claim Notes'}
+                </span>
+                {(isExpectingNotes || pendingNotesCount > 0) && !claiming && (
+                  <span className='text-xs px-1.5 py-0.5 rounded-full bg-primary/20 text-primary'>
+                    {isExpectingNotes
+                      ? <Loader2 className='h-3 w-3 animate-spin' />
+                      : pendingNotesCount}
                   </span>
-                  {(isExpectingNotes || pendingNotesCount > 0) && !claiming && (
-                    <span className='text-xs px-1.5 py-0.5 rounded-full bg-primary/20 text-primary'>
-                      {isExpectingNotes
-                        ? <Loader2 className='h-3 w-3 animate-spin' />
-                        : pendingNotesCount}
-                    </span>
-                  )}
-                </button>
-              )}
+                )}
+              </button>
               <button
                 onClick={handleDisconnect}
                 className='w-full px-4 py-3 text-left text-sm hover:bg-muted/50 flex items-center gap-2 text-red-500'
@@ -124,7 +116,6 @@ export function UnifiedWalletButton({ className }: UnifiedWalletButtonProps) {
     );
   }
 
-  // Connecting state
   if (connecting) {
     return (
       <button
@@ -137,24 +128,13 @@ export function UnifiedWalletButton({ className }: UnifiedWalletButtonProps) {
     );
   }
 
-  // Disconnected state: show connect button
   return (
-    <>
-      <button
-        onClick={handleOpenSelectionModal}
-        className={`flex items-center gap-2 p-3 rounded-xl font-medium text-sm text-muted-foreground border-none hover:text-foreground hover:bg-gray-500/10 dark:bg-muted/30 dark:hover:bg-muted/70 ${className}`}
-      >
-        <Wallet className='h-4 w-4' />
-        Connect Wallet
-      </button>
-
-      {showSelectionModal && (
-        <WalletSelectionModal
-          onClose={handleCloseSelectionModal}
-          onSelectMiden={handleSelectMiden}
-          onSelectPara={handleSelectPara}
-        />
-      )}
-    </>
+    <button
+      onClick={handleConnect}
+      className={`flex items-center gap-2 p-3 rounded-xl font-medium text-sm text-muted-foreground border-none hover:text-foreground hover:bg-gray-500/10 dark:bg-muted/30 dark:hover:bg-muted/70 ${className}`}
+    >
+      <Wallet className='h-4 w-4' />
+      Connect Wallet
+    </button>
   );
 }

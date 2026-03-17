@@ -1,8 +1,16 @@
 import { accountIdToBech32, bech32ToAccountId } from '@/lib/utils';
-import { ZoroContext } from '@/providers/ZoroContext';
 import type { XykPoolData } from '@/hooks/useXykPool';
-import { NoteTag } from '@miden-sdk/miden-sdk';
-import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { NETWORK } from '@/lib/config';
+import { Endpoint, NoteTag, RpcClient } from '@miden-sdk/miden-sdk';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+
+let notesRpcClient: RpcClient | null = null;
+function getNotesRpcClient(): RpcClient {
+  if (!notesRpcClient) {
+    notesRpcClient = new RpcClient(new Endpoint(NETWORK.rpcEndpoint));
+  }
+  return notesRpcClient;
+}
 
 export interface XykPoolNoteAsset {
   faucetIdBech32: string;
@@ -20,17 +28,17 @@ export function useXykPoolNotes(
   poolId: string | undefined,
   poolData: XykPoolData | null,
 ) {
-  const { rpcClient } = useContext(ZoroContext);
   const [notes, setNotes] = useState<XykPoolNoteRow[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
   const refetch = useCallback(async () => {
-    if (!poolId || !rpcClient || !poolData) {
+    if (!poolId || !poolData) {
       setNotes([]);
       setIsLoading(false);
       return;
     }
+    const rpcClient = getNotesRpcClient();
     setIsLoading(true);
     setError(null);
     try {
@@ -85,7 +93,7 @@ export function useXykPoolNotes(
     } finally {
       setIsLoading(false);
     }
-  }, [poolId, rpcClient, poolData]);
+  }, [poolId, poolData]);
 
   useEffect(() => {
     refetch();

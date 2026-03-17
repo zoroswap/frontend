@@ -46,10 +46,6 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
       '@demox-labs/miden-sdk': '@miden-sdk/miden-sdk',
     },
-    dedupe: [
-      '@getpara/web-sdk',
-      '@getpara/react-sdk-lite',
-    ],
   },
   assetsInclude: ['**/*.wasm', '**/*.masm'],
   optimizeDeps: {

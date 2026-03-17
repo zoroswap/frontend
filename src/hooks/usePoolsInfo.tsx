@@ -27,7 +27,7 @@ export const usePoolsInfo = () => {
   const { data, refetch, isLoading, isFetched } = useQuery({
     queryKey: ['pool-info'],
     queryFn: fetchPoolInfo,
-    staleTime: 3600000,
+    staleTime: 240,
   });
   const value = useMemo(() => ({
     isLoading,

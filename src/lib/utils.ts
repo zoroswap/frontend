@@ -72,6 +72,20 @@ export const bech32ToAccountId = (bech32str?: string) => {
   return Address.fromBech32(bech32str).accountId();
 };
 
+/** Parse string (hex or bech32) to AccountId for use with client.importAccountById etc. */
+export function parseAccountIdString(str: string | undefined): AccountId | undefined {
+  if (str == null || str === '') return undefined;
+  const s = str.trim();
+  if (s.startsWith('0x') || /^[0-9a-fA-F]+$/.test(s)) {
+    return AccountId.fromHex(s.startsWith('0x') ? s : '0x' + s);
+  }
+  try {
+    return Address.fromBech32(s).accountId();
+  } catch {
+    return undefined;
+  }
+}
+
 export const generateRandomSerialNumber = () => {
   return Word.newFromFelts([
     new Felt(BigInt(Math.floor(Math.random() * 0x1_0000_0000))),

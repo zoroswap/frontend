@@ -1,6 +1,5 @@
 import type { PoolBalance } from '@/hooks/usePoolsBalances';
 import type { PoolInfo } from '@/hooks/usePoolsInfo';
-import { useUnifiedWallet } from '@/hooks/useUnifiedWallet';
 import { prettyBigintFormat } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import type { TokenConfig } from '@/providers/ZoroProvider';
@@ -37,7 +36,7 @@ const LiquidityPoolRow = ({
   onRowClick?: (pool: PoolInfo) => void;
   showSaturation?: boolean;
 }) => {
-  const { connected: isConnected } = useUnifiedWallet();
+  const isConnected = true;
   const decimals = pool.decimals;
   const feeTier = feeTierForSymbol(pool.symbol);
   const tvlFormatted = prettyBigintFormat({

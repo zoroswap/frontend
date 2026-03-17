@@ -1,5 +1,6 @@
 import { accountIdToBech32 } from '@/lib/utils';
 import { ZoroContext } from '@/providers/ZoroContext';
+import { useCreateFaucet, useMint } from '@miden-sdk/react';
 import { useCallback, useContext, useMemo, useState } from 'react';
 
 export interface FaucetParams {
@@ -35,9 +36,11 @@ export const LAUNCH_STEPS = [
 
 export type LaunchStepIndex = 0 | 1 | 2;
 
-const useLaunchpad = () => {
+export default function useLaunchpad() {
   const [error, setError] = useState<string>('');
-  const { accountId, createFaucet, mintFromFaucet } = useContext(ZoroContext);
+  const { accountId } = useContext(ZoroContext);
+  const { createFaucet } = useCreateFaucet();
+  const { mint } = useMint();
 
   const clearError = useCallback(() => setError(''), []);
 
@@ -53,15 +56,25 @@ const useLaunchpad = () => {
           throw new Error('Connect your wallet to use the launchpad');
         }
         onProgress?.(0);
-        const faucet = await createFaucet(params);
+        const faucet = await createFaucet({
+          tokenSymbol: params.symbol,
+          decimals: params.decimals,
+          maxSupply: params.initialSupply,
+          storageMode: 'public',
+        });
         if (!faucet) {
           throw new Error('Faucet creation failed');
         }
         onProgress?.(1);
-        const txId = await mintFromFaucet(faucet.id(), accountId, params.initialSupply);
+        const result = await mint({
+          faucetId: faucet.id().toString(),
+          targetAccountId: accountId.toString(),
+          amount: params.initialSupply,
+          noteType: 'public',
+        });
         onProgress?.(2);
         const faucetIdBech32 = accountIdToBech32(faucet.id());
-        return { txId, faucetIdBech32 };
+        return { txId: result?.transactionId ?? '', faucetIdBech32 };
       } catch (e) {
         const message = e instanceof Error ? e.message : typeof e === 'string' ? e : 'Launch failed. Check the console for details.';
         setError(message);
@@ -69,15 +82,12 @@ const useLaunchpad = () => {
         return undefined;
       }
     },
-    [accountId, createFaucet, mintFromFaucet],
+    [accountId, createFaucet, mint],
   );
 
-  const value = useMemo(() => ({
+  return useMemo(() => ({
     launchToken,
     error,
     clearError,
   }), [launchToken, error, clearError]);
-  return value;
-};
-
-export default useLaunchpad;
+}

@@ -12,7 +12,7 @@ import useLaunchpad, {
   type LaunchStepIndex,
   type LaunchSuccess,
 } from '@/hooks/useLaunchpad';
-import { useUnifiedWallet } from '@/hooks/useUnifiedWallet';
+import { useSigner } from '@miden-sdk/react';
 import { truncateId } from '@/lib/format';
 import { ArrowLeft, CheckCircle, ExternalLink, Loader2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
@@ -61,7 +61,8 @@ function validateInitialSupply(raw: string, decimals: number): string | null {
 }
 
 export default function Launchpad() {
-  const { connected } = useUnifiedWallet();
+  const signer = useSigner();
+  const connected = signer?.isConnected ?? false;
   const { launchToken, error, clearError } = useLaunchpad();
   const [symbol, setSymbol] = useState('');
   const [decimals, setDecimals] = useState<string>('4');

@@ -14,13 +14,14 @@ import { Input } from '@/components/ui/input';
 import { UnifiedWalletButton } from '@/components/UnifiedWalletButton';
 import { useBalance } from '@/hooks/useBalance';
 import { useSwap } from '@/hooks/useSwap';
-import { useUnifiedWallet } from '@/hooks/useUnifiedWallet';
 import { useOrderUpdates } from '@/hooks/useWebSocket';
 import { DEFAULT_SLIPPAGE } from '@/lib/config';
 import { bech32ToAccountId } from '@/lib/utils';
 import { OracleContext, useOraclePrices } from '@/providers/OracleContext';
 import { ZoroContext } from '@/providers/ZoroContext';
 import { type TokenConfig } from '@/providers/ZoroProvider.tsx';
+import { useWallet } from '@miden-sdk/miden-wallet-adapter';
+import { useMiden, useSigner } from '@miden-sdk/react';
 import { Loader2 } from 'lucide-react';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
@@ -37,9 +38,11 @@ const validateValue = (val: bigint, max: bigint) => {
 };
 
 function Swap() {
-  const { tokens, client, accountId } = useContext(
-    ZoroContext,
-  );
+  const { tokens, accountId } = useContext(ZoroContext);
+  const { client } = useMiden();
+  const signer = useSigner();
+  const { connecting } = useWallet();
+  const connected = signer?.isConnected ?? false;
   const {
     swap,
     isLoading: isLoadingSwap,
@@ -48,7 +51,6 @@ function Swap() {
   } = useSwap();
   // Subscribe to all order updates from the start
   const { orderStatus, registerCallback } = useOrderUpdates();
-  const { connecting, connected } = useUnifiedWallet();
   const [selectedAssetBuy, setSelectedAssetBuy] = useState<undefined | TokenConfig>(
     () => getLocalStoredToken('buy'),
   );

@@ -1,36 +1,39 @@
-import { type TokenConfigWithBalance, ZoroContext } from '@/providers/ZoroContext';
+import { accountIdToBech32 } from '@/lib/utils';
+import { type TokenConfigWithBalance } from '@/providers/ZoroContext';
+import { ZoroContext } from '@/providers/ZoroContext';
 import type { TokenConfig } from '@/providers/ZoroProvider';
-import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { AccountId } from '@miden-sdk/miden-sdk';
+import { useAccountWithImport } from '@/hooks/useAccountWithImport';
+import { useContext, useMemo } from 'react';
 
-const useTokensWithBalance = () => {
-  const { getAvailableTokens, accountId } = useContext(ZoroContext);
-  const [tokensWithBalance, setTokensWithBalance] = useState<
-    TokenConfigWithBalance[]
-  >([]);
-  const [loading, setLoading] = useState(true);
+export default function useTokensWithBalance() {
+  const { accountId } = useContext(ZoroContext);
+  const accountIdStr = accountId?.toString();
+  const { assets, isLoading } = useAccountWithImport(accountIdStr);
 
-  const refresh = useCallback(async () => {
-    setLoading(true);
-    const tokens = await getAvailableTokens();
-    setTokensWithBalance(tokens);
-    setLoading(false);
-  }, [getAvailableTokens]);
+  const tokensWithBalance = useMemo((): TokenConfigWithBalance[] => {
+    return assets.map(a => {
+      const id = a.assetId.startsWith('0x') ? AccountId.fromHex(a.assetId) : AccountId.fromHex('0x' + a.assetId);
+      return {
+        config: {
+          symbol: a.symbol ?? '',
+          name: a.symbol ?? '',
+          decimals: a.decimals ?? 8,
+          faucetId: id,
+          faucetIdBech32: accountIdToBech32(id),
+          oracleId: '0x',
+        } as TokenConfig,
+        amount: a.amount,
+      };
+    });
+  }, [assets]);
 
   const metadata = useMemo(() => {
     return tokensWithBalance.reduce((acc, t) => {
-      return { ...acc, [t.config.faucetIdBech32]: t.config };
+      acc[t.config.faucetIdBech32] = t.config;
+      return acc;
     }, {} as Record<string, TokenConfig>);
   }, [tokensWithBalance]);
 
-  useEffect(() => {
-    if (accountId) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setLoading(true);
-      refresh();
-    }
-  }, [refresh, accountId]);
-
-  return { tokensWithBalance, loading, metadata };
-};
-
-export default useTokensWithBalance;
+  return { tokensWithBalance, loading: isLoading, metadata };
+}

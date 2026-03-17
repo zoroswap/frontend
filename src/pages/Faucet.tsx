@@ -6,8 +6,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { UnifiedWalletButton } from '@/components/UnifiedWalletButton';
 import { useClaimNotes } from '@/hooks/useClaimNotes';
-import { useUnifiedWallet } from '@/hooks/useUnifiedWallet';
-
+import { accountIdToBech32 } from '@/lib/utils';
+import { useSigner } from '@miden-sdk/react';
 import { ZoroContext } from '@/providers/ZoroContext';
 import { type FaucetMintResult, mintFromFaucet } from '@/services/faucet';
 import { Loader2 } from 'lucide-react';
@@ -24,12 +24,14 @@ interface MintStatus {
 type TokenMintStatuses = Record<string, MintStatus>;
 
 function Faucet() {
-  const { connected, address } = useUnifiedWallet();
+  const signer = useSigner();
+  const connected = signer?.isConnected ?? false;
+  const { accountId, tokens, tokensLoading, startExpectingNotes } = useContext(ZoroContext);
+  const address = accountId ? accountIdToBech32(accountId) : null;
   const { refreshPendingNotes } = useClaimNotes();
   const [mintStatuses, setMintStatuses] = useState<TokenMintStatuses>(
     {} as TokenMintStatuses,
   );
-  const { tokens, tokensLoading, startExpectingNotes } = useContext(ZoroContext);
   const updateMintStatus = useCallback((
     tokenSymbol: string,
     updates: Partial<MintStatus>,

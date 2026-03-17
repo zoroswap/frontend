@@ -49,7 +49,7 @@ export default function XykPoolDetail() {
     decodedPoolId,
   );
   const { lpBalance, refetch: refetchLpBalance } = useXykLpBalance(decodedPoolId);
-  const { notes: poolNotes } = useXykPoolNotes(
+  useXykPoolNotes(
     decodedPoolId,
     poolData ?? null,
   );
@@ -204,13 +204,14 @@ export default function XykPoolDetail() {
     [decodedPoolId, modalContext, refetchLpBalance],
   );
 
-  const mockRecentTxs = useMemo(() => {
+  const _mockRecentTxs = useMemo(() => {
     if (!poolData) return [];
     return getMockRecentTransactions({
       seedKey: decodedPoolId ?? '',
       baseSymbol: poolData.token0.symbol,
     });
   }, [decodedPoolId, poolData]);
+  void _mockRecentTxs;
 
   if (poolLoading && !poolData) {
     return <XykPoolDetailSkeleton />;
@@ -227,7 +228,7 @@ export default function XykPoolDetail() {
   }
 
   const pairLabel = `${poolData.token0.symbol} / ${poolData.token1.symbol}`;
-  const feeTier = feeTierForSymbol(poolData.token0.symbol);
+  const feeTier = feeTierForSymbol();
   const priceDisplay = poolData.priceToken0InToken1 > 0
     ? `1 ${poolData.token0.symbol} = ${
       poolData.priceToken0InToken1.toFixed(6)
@@ -238,12 +239,12 @@ export default function XykPoolDetail() {
     expo: 0,
   });
 
-  const assetSymbol = (faucetIdBech32: string) => {
+  const _assetSymbol = (faucetIdBech32: string) => {
     if (faucetIdBech32 === poolData.token0.faucetIdBech32) return poolData.token0.symbol;
     if (faucetIdBech32 === poolData.token1.faucetIdBech32) return poolData.token1.symbol;
     return null;
   };
-  const assetDecimals = (faucetIdBech32: string) => {
+  const _assetDecimals = (faucetIdBech32: string) => {
     if (faucetIdBech32 === poolData.token0.faucetIdBech32) {
       return poolData.token0.decimals;
     }
@@ -252,6 +253,8 @@ export default function XykPoolDetail() {
     }
     return 18;
   };
+  void _assetSymbol;
+  void _assetDecimals;
 
   return (
     <PoolDetailLayout
@@ -562,7 +565,7 @@ export default function XykPoolDetail() {
                             <td className='py-3 px-4'>
                               <span className='inline-flex flex-wrap items-center gap-x-3 gap-y-1'>
                                 {row.assets.map((a) => {
-                                  const sym = assetSymbol(a.faucetIdBech32);
+                                  const sym = _assetSymbol(a.faucetIdBech32);
                                   return (
                                     <span
                                       key={a.faucetIdBech32}
@@ -571,7 +574,7 @@ export default function XykPoolDetail() {
                                       <AssetIcon symbol={sym ?? '?'} size={18} />
                                       {prettyBigintFormat({
                                         value: a.amount,
-                                        expo: assetDecimals(a.faucetIdBech32),
+                                        expo: _assetDecimals(a.faucetIdBech32),
                                       })}
                                       {sym ? ` ${sym}` : ''}
                                     </span>
@@ -594,7 +597,7 @@ export default function XykPoolDetail() {
                 )}
             </CardContent>
           </Card>
-          <RecentTransactionsCard transactions={mockRecentTxs} />
+          <RecentTransactionsCard transactions={_mockRecentTxs} />
           */
           }
           {

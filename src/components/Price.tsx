@@ -28,7 +28,7 @@ const Price = (
         setPrice(formattedPrice);
         activePrice.current = formattedPrice;
       }
-    }, 50);
+    }, 1000);
     return () => clearInterval(i);
   }, [amountAsNum, getWebsocketPrice, tokenConfig.oracleId]);
 

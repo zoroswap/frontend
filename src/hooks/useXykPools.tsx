@@ -1,8 +1,8 @@
 import { REGISTRY_ACCOUNT } from '@/lib/config';
 import { accountIdFromPrefixSuffix } from '@/lib/utils';
-import { ZoroContext } from '@/providers/ZoroContext';
 import { AccountId, Word } from '@miden-sdk/miden-sdk';
-import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { useAccountWithImport } from '@/hooks/useAccountWithImport';
+import { useEffect, useMemo } from 'react';
 
 export interface XykPool {
   token0: AccountId;
@@ -11,48 +11,36 @@ export interface XykPool {
 }
 
 export const useXykPools = () => {
-  const { rpcClient } = useContext(ZoroContext);
-  const [xykPools, setXykPools] = useState<XykPool[]>([]);
+  const registryAccountIdStr = REGISTRY_ACCOUNT?.toString();
+  const { account, refetch } = useAccountWithImport(registryAccountIdStr);
 
-  const refetch = useCallback(async () => {
+  const xykPools = useMemo((): XykPool[] => {
+    if (!account) return [];
     try {
-      if (!rpcClient || !REGISTRY_ACCOUNT) return;
-      const xykPools: XykPool[] = [];
-      const fetched = await rpcClient.getAccountDetails(REGISTRY_ACCOUNT);
-      const storage = fetched.account()?.storage();
-
-      const pools = storage?.getMapEntries('zoro::registry::assets_to_pool_mapping')
-        ?? [];
-
+      const storage = account.storage();
+      const pools = storage?.getMapEntries('zoro::registry::assets_to_pool_mapping') ?? [];
+      const result: XykPool[] = [];
       for (const pool of pools) {
         const key = pool.key;
         const value = pool.value;
         const keyword = Word.fromHex(key).toFelts();
         const valueword = Word.fromHex(value).toFelts();
-
         const token0 = accountIdFromPrefixSuffix(valueword[1], valueword[0]);
         const token1 = accountIdFromPrefixSuffix(valueword[3], valueword[2]);
         const xykPoolId = accountIdFromPrefixSuffix(keyword[1], keyword[0]);
-
-        xykPools.push({ token0, token1, xykPoolId });
+        result.push({ token0, token1, xykPoolId });
       }
-
-      setXykPools(xykPools);
+      return result;
     } catch (e) {
       console.error(e);
+      return [];
     }
-  }, [rpcClient]);
+  }, [account]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    refetch();
-    const refresh = setInterval(refetch, 30000);
-    return () => clearInterval(refresh);
+    const t = setInterval(refetch, 30000);
+    return () => clearInterval(t);
   }, [refetch]);
 
-  const value = useMemo(() => ({
-    xykPools,
-    refetch,
-  }), [xykPools, refetch]);
-  return value;
+  return useMemo(() => ({ xykPools, refetch }), [xykPools, refetch]);
 };

@@ -1,21 +1,22 @@
-import { useUnifiedWallet } from '@/hooks/useUnifiedWallet';
 import { clientMutex } from '@/lib/clientMutex';
 import { API } from '@/lib/config';
 import { compileWithdrawTransaction } from '@/lib/ZoroWithdrawNote';
 import { ZoroContext } from '@/providers/ZoroContext';
 import { type TokenConfig } from '@/providers/ZoroProvider';
-import { TransactionType } from '@demox-labs/miden-wallet-adapter';
-import { NoteType } from '@miden-sdk/miden-sdk';
+import { NoteType, TransactionRequest as TxRequest } from '@miden-sdk/miden-sdk';
+import { useMiden, useSyncState, useTransaction } from '@miden-sdk/react';
 import { useCallback, useContext, useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
 
 export const useWithdraw = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>();
-  const { requestTransaction } = useUnifiedWallet();
   const [txId, setTxId] = useState<undefined | string>();
   const [noteId, setNoteId] = useState<undefined | string>();
-  const { client, accountId, poolAccountId, syncState } = useContext(ZoroContext);
+  const { client } = useMiden();
+  const { sync } = useSyncState();
+  const { execute } = useTransaction();
+  const { accountId, poolAccountId } = useContext(ZoroContext);
 
   const withdraw = useCallback(async ({
     amount,
@@ -28,13 +29,13 @@ export const useWithdraw = () => {
     token: TokenConfig;
     noteType: NoteType;
   }) => {
-    if (!poolAccountId || !accountId || !client || !requestTransaction) {
+    if (!poolAccountId || !accountId || !client) {
       return;
     }
     setError('');
     setIsLoading(true);
     try {
-      await syncState();
+      await sync();
 
       const { tx, noteId, note } = await clientMutex.runExclusive(() =>
         compileWithdrawTransaction({
@@ -47,11 +48,12 @@ export const useWithdraw = () => {
           noteType,
         })
       );
-      const txId = await requestTransaction({
-        type: TransactionType.Custom,
-        payload: tx,
-      });
-      await syncState();
+      const custom = tx as { transactionRequest: string };
+      const txRequestBytes = Uint8Array.from(atob(custom.transactionRequest), c => c.charCodeAt(0));
+      const txRequest = TxRequest.deserialize(txRequestBytes);
+      const result = await execute({ accountId: accountId.toString(), request: txRequest });
+      const txId = result.transactionId;
+      await sync();
 
       if (noteType === NoteType.Private) {
         const serialized = btoa(
@@ -76,7 +78,7 @@ export const useWithdraw = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [client, accountId, poolAccountId, requestTransaction, syncState]);
+  }, [client, accountId, poolAccountId, sync, execute]);
 
   const value = useMemo(() => ({ withdraw, isLoading, error, txId, noteId }), [
     withdraw,

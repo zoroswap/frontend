@@ -1,7 +1,7 @@
-import { accountIdToBech32, bech32ToAccountId } from '@/lib/utils';
 import { ZoroContext } from '@/providers/ZoroContext';
 import { Felt, Word } from '@miden-sdk/miden-sdk';
-import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { useAccountWithImport } from '@/hooks/useAccountWithImport';
+import { useContext, useEffect, useMemo } from 'react';
 
 /**
  * Returns the user's LP share balance for a single XYK pool.
@@ -9,26 +9,13 @@ import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
  * with key = (accountId.prefix, accountId.suffix, 0, 0); value's first felt = LP shares.
  */
 export function useXykLpBalance(poolId: string | undefined) {
-  const { rpcClient, accountId } = useContext(ZoroContext);
-  const [lpBalance, setLpBalance] = useState<bigint>(BigInt(0));
-  const [isLoading, setIsLoading] = useState(false);
+  const { accountId } = useContext(ZoroContext);
+  const { account, refetch, isLoading } = useAccountWithImport(poolId);
 
-  const refetch = useCallback(async () => {
-    if (!poolId || !rpcClient || !accountId) {
-      setLpBalance(BigInt(0));
-      return;
-    }
-    setIsLoading(true);
+  const lpBalance = useMemo(() => {
+    if (!poolId || !accountId || !account) return BigInt(0);
     try {
-      const poolIdClone = bech32ToAccountId(poolId);
-      if (!poolIdClone) {
-        setLpBalance(BigInt(0));
-        return;
-      }
-      const fetched = await rpcClient.getAccountDetails(
-        bech32ToAccountId(accountIdToBech32(poolIdClone))!,
-      );
-      const storage = fetched.account()?.storage();
+      const storage = account.storage();
       const key = Word.newFromFelts([
         new Felt(BigInt(0)),
         new Felt(BigInt(0)),
@@ -39,17 +26,13 @@ export function useXykLpBalance(poolId: string | undefined) {
         'zoro::lp_local::user_deposits_mapping',
         key,
       )?.toFelts();
-      const balance = value?.[0] ? BigInt(value[0].asInt()) : BigInt(0);
-      setLpBalance(balance);
+      return value?.[0] ? BigInt(value[0].asInt()) : BigInt(0);
     } catch {
-      setLpBalance(BigInt(0));
-    } finally {
-      setIsLoading(false);
+      return BigInt(0);
     }
-  }, [poolId, rpcClient, accountId]);
+  }, [poolId, accountId, account]);
 
   useEffect(() => {
-    refetch();
     const interval = setInterval(refetch, 10000);
     return () => clearInterval(interval);
   }, [refetch]);

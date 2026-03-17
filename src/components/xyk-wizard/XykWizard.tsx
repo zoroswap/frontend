@@ -3,7 +3,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { UnifiedWalletButton } from '@/components/UnifiedWalletButton';
 import useTokensWithBalance from '@/hooks/useTokensWithBalance';
-import { useUnifiedWallet } from '@/hooks/useUnifiedWallet';
 import { deployNewPool } from '@/lib/DeployXykPool';
 import {
   type CreatedPoolDraft,
@@ -15,8 +14,9 @@ import { accountIdToBech32 } from '@/lib/utils';
 import { compileXykDepositTransaction } from '@/lib/XykDepositNote';
 import { type TokenConfigWithBalance, ZoroContext } from '@/providers/ZoroContext';
 import { type TokenConfig } from '@/providers/ZoroProvider';
-import { TransactionType } from '@demox-labs/miden-wallet-adapter';
-import { AccountId } from '@miden-sdk/miden-sdk';
+import { AccountId, TransactionRequest as TxRequest } from '@miden-sdk/miden-sdk';
+import { useMiden, useSyncState } from '@miden-sdk/react';
+import { useTransaction } from '@miden-sdk/react';
 import { AlertCircle, ChevronLeft, Loader2 } from 'lucide-react';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -147,8 +147,11 @@ export interface XykStepProps {
 }
 
 const XykWizard = () => {
-  const { connected, requestTransaction } = useUnifiedWallet();
-  const { client, accountId } = useContext(ZoroContext);
+  const connected = true;
+  const { client } = useMiden();
+  const { sync } = useSyncState();
+  const { execute } = useTransaction();
+  const { accountId } = useContext(ZoroContext);
   const [form, setForm] = useState<XykWizardForm>(() => readPersistedWizard().form);
   const [step, setStep] = useState<number>(() => readPersistedWizard().step);
   const [lastDeployedPoolIdBech32, setLastDeployedPoolIdBech32] = useState<
@@ -238,21 +241,19 @@ const XykWizard = () => {
           poolAccountId: newPoolId,
           client,
         });
-        await requestTransaction({
-          type: TransactionType.Custom,
-          payload: tx,
-        });
+        const custom = tx as { transactionRequest: string };
+        const txRequestBytes = Uint8Array.from(atob(custom.transactionRequest), c => c.charCodeAt(0));
+        const txRequest = TxRequest.deserialize(txRequestBytes);
+        await execute({ accountId: accountId.toString(), request: txRequest });
         onProgress?.(2);
-        await client.syncState();
-
-        await client.syncState();
+        await sync();
         return newPoolId;
       } catch (e) {
         console.error(e);
         throw e;
       }
     },
-    [client, requestTransaction, accountId],
+    [client, accountId, sync, execute],
   );
 
   const onCreate = useCallback(async () => {

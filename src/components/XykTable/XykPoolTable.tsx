@@ -15,7 +15,7 @@ export interface XykPoolTableProps {
 const normalize = (s: string) => s.trim().toLowerCase();
 
 const XykPoolTable = ({ search }: XykPoolTableProps) => {
-  const { xykPools, refetch } = useXykPools();
+  const { xykPools } = useXykPools();
   const [page, setPage] = useState(0);
 
   const filteredPools = useMemo(() => {

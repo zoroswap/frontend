@@ -1,48 +1,44 @@
 import { formalBigIntFormat, prettyBigintFormat } from '@/lib/format';
 import { ZoroContext } from '@/providers/ZoroContext';
 import { type TokenConfig } from '@/providers/ZoroProvider';
-import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { useAccountWithImport } from '@/hooks/useAccountWithImport';
+import { useContext, useEffect, useMemo } from 'react';
 
 interface BalanceParams {
   token?: TokenConfig;
 }
 
-export const useBalance = (
-  { token }: BalanceParams,
-) => {
-  const { accountId, getBalance } = useContext(ZoroContext);
-  const [balance, setBalance] = useState<bigint | null>(null);
-  const faucetId = token?.faucetId;
+export const useBalance = ({ token }: BalanceParams) => {
+  const { accountId } = useContext(ZoroContext);
+  const accountIdStr = accountId?.toString();
 
-  const refetch = useCallback(async () => {
-    if (!accountId || !faucetId) return;
-    const newBalance = await getBalance(accountId, faucetId);
-    setBalance(newBalance);
-  }, [accountId, faucetId, getBalance]);
+  const { getBalance, refetch, error } = useAccountWithImport(accountIdStr ?? undefined);
+  const faucetId = token?.faucetId?.toString();
+  const isAccountNotFound =
+    error?.message?.toLowerCase().includes('no account header') ?? false;
+
+  const balance = useMemo(() => {
+    if (!faucetId) return null;
+    return getBalance(faucetId);
+  }, [faucetId, getBalance]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    refetch();
-    const clear = setInterval(refetch, 3000);
-    return () => clearInterval(clear);
-  }, [refetch]);
+    if (!accountIdStr || isAccountNotFound) return;
+    const t = setInterval(refetch, 15000);
+    return () => clearInterval(t);
+  }, [refetch, accountIdStr, isAccountNotFound]);
 
-  const value = useMemo(() => ({
+  return useMemo(() => ({
     balance,
     refetch,
+    accountError: isAccountNotFound ? error : undefined,
     formatted: prettyBigintFormat({
-      value: balance || undefined,
+      value: balance ?? undefined,
       expo: token?.decimals || 0,
     }),
     formattedLong: formalBigIntFormat({
-      val: balance || undefined,
+      val: balance ?? undefined,
       expo: token?.decimals || 0,
     }),
-  }), [
-    balance,
-    refetch,
-    token,
-  ]);
-
-  return value;
+  }), [balance, refetch, token, isAccountNotFound, error]);
 };

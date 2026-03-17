@@ -1,4 +1,4 @@
-import { AccountId, NetworkId } from '@miden-sdk/miden-sdk';
+import { NetworkId } from '@miden-sdk/miden-sdk';
 import { bech32ToAccountId } from './utils';
 
 export interface NetworkConfig {

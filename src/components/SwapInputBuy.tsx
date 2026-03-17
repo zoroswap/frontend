@@ -40,7 +40,7 @@ const SwapInputBuy = (
         setStringBuy(newStringBuy);
         activeStringBuy.current = newStringBuy;
       }
-    }, 50);
+    }, 1000);
     return () => clearInterval(i);
   }, [assetBuy, assetSell, amountSell, getWebsocketPrice]);
 

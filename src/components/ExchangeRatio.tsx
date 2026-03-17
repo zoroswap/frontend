@@ -23,7 +23,7 @@ const ExchangeRatio = (
         setRatio(newRatio);
         activeRatio.current = newRatio;
       }
-    }, 50);
+    }, 1000);
     return () => clearInterval(i);
   }, [assetA.oracleId, assetB.oracleId, getWebsocketPrice]);
 

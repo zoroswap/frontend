@@ -1,4 +1,4 @@
-import { CustomTransaction } from '@demox-labs/miden-wallet-adapter';
+import { CustomTransaction } from '@miden-sdk/miden-wallet-adapter';
 import {
   AccountId,
   FeltArray,
