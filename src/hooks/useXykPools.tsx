@@ -30,9 +30,9 @@ export const useXykPools = () => {
         const keyword = Word.fromHex(key).toFelts();
         const valueword = Word.fromHex(value).toFelts();
 
-        const token0 = accountIdFromPrefixSuffix(keyword[0], keyword[1]);
-        const token1 = accountIdFromPrefixSuffix(keyword[2], keyword[3]);
-        const xykPoolId = accountIdFromPrefixSuffix(valueword[2], valueword[3]);
+        const token0 = accountIdFromPrefixSuffix(valueword[1], valueword[0]);
+        const token1 = accountIdFromPrefixSuffix(valueword[3], valueword[2]);
+        const xykPoolId = accountIdFromPrefixSuffix(keyword[1], keyword[0]);
 
         xykPools.push({ token0, token1, xykPoolId });
       }

@@ -4,7 +4,6 @@ import type { TokenConfig } from '@/providers/ZoroProvider';
 import { Clock, Droplets, Flame, Loader2, Search, Star } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import LiquidityPoolRow from './LiquidityPoolRow';
-import { poweredByMiden } from './PoweredByMiden';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { Input } from './ui/input';
@@ -192,10 +191,6 @@ const LiquidityPoolsTable = ({
             </div>
           </Card>
         )}
-
-      <div className='flex justify-center mt-6'>
-        {poweredByMiden}
-      </div>
     </div>
   );
 };

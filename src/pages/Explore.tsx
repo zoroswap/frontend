@@ -2,18 +2,22 @@ import { AllDropdown } from '@/components/AllDropdown';
 import { Footer } from '@/components/Footer';
 import { Header } from '@/components/Header';
 import LiquidityPoolsTable from '@/components/LiquidityPoolsTable';
+import { poweredByMiden } from '@/components/PoweredByMiden';
+import XykPoolTable from '@/components/XykTable/XykPoolTable';
 import { type LpDetails, OrderStatus, type TxResult } from '@/components/OrderStatus';
 import PoolModal from '@/components/PoolModal';
 import type { LpActionType } from '@/components/PoolModal';
 import { PositionCard } from '@/components/PositionCard';
 import { SelectPoolModal } from '@/components/SelectPoolModal';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { useLPBalances } from '@/hooks/useLPBalances';
 import { usePoolsBalances } from '@/hooks/usePoolsBalances';
 import { type PoolInfo, usePoolsInfo } from '@/hooks/usePoolsInfo';
 import { useOrderUpdates } from '@/hooks/useWebSocket';
 import { ModalContext } from '@/providers/ModalContext';
 import { ZoroContext } from '@/providers/ZoroContext';
+import { Search } from 'lucide-react';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -33,6 +37,7 @@ function Explore() {
   const [txResult, setTxResult] = useState<undefined | TxResult>();
   const [lpDetails, setLpDetails] = useState<undefined | LpDetails>(undefined);
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
+  const [communityPoolsSearch, setCommunityPoolsSearch] = useState('');
 
   const tokenConfigs = useMemo(
     () => poolsInfo?.liquidityPools?.map(p => tokens[p.faucetIdBech32]),
@@ -158,15 +163,15 @@ function Explore() {
               ))
               : (
                 <div className='col-span-full rounded-xl border border-dashed border-muted-foreground/30 bg-muted/20 p-8 text-center text-muted-foreground text-sm'>
-                  No positions yet. Add liquidity in Existing Pools below.
+                  No positions yet. Add liquidity in High frequency pools below.
                 </div>
               )}
           </div>
         </section>
 
-        <section id='existing-pools'>
+        <section id='high-frequency-pools'>
           <h2 className='text-2xl font-bold font-cal-sans text-foreground mb-4'>
-            Existing Pools
+            High frequency pools
           </h2>
           <LiquidityPoolsTable
             poolsInfo={poolsInfo}
@@ -177,6 +182,22 @@ function Explore() {
             onPoolRowClick={onPoolRowClick}
             isLoading={isLoadingPools || isLoadingBalances}
           />
+          <div className='flex justify-center mt-6'>
+            {poweredByMiden}
+          </div>
+          <h2 className='text-2xl font-bold font-cal-sans text-foreground mt-12 mb-4'>
+            Community pools
+          </h2>
+          <div className='relative mb-4'>
+            <Search className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground' />
+            <Input
+              placeholder='Search by pool id (bech32 or 0x hex)…'
+              value={communityPoolsSearch}
+              onChange={e => setCommunityPoolsSearch(e.target.value)}
+              className='pl-9 rounded-lg bg-muted/50 border-muted-foreground/20'
+            />
+          </div>
+          <XykPoolTable search={communityPoolsSearch} />
         </section>
       </main>
       <Footer />
