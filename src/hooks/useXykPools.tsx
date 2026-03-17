@@ -46,7 +46,7 @@ export const useXykPools = () => {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     refetch();
-    const refresh = setInterval(refetch, 30000);
+    const refresh = setInterval(refetch, 180000);
     return () => clearInterval(refresh);
   }, [refetch]);
 

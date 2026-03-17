@@ -356,3 +356,4 @@ pub proc get_account_code_commitment() -> word
     exec.active_account::get_code_commitment
     exec.sys::truncate_stack
 end 
+
