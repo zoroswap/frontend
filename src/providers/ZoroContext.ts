@@ -22,7 +22,9 @@ type ZoroProviderState = {
   tokensLoading: boolean;
   syncState: () => Promise<void>;
   /** Returns the current status of a note by id (syncs with node first). */
-  getNoteStatus: (noteId: string) => Promise<'consumed' | 'committed' | 'pending' | 'processing' | 'unknown'>;
+  getNoteStatus: (
+    noteId: string,
+  ) => Promise<'consumed' | 'committed' | 'pending' | 'processing' | 'unknown'>;
   getAccount: (accountId: AccountId) => Promise<Account | undefined>;
   getBalance: (accountId: AccountId, faucetId: AccountId) => Promise<bigint>;
   getConsumableNotes: (accountId: AccountId) => Promise<ConsumableNoteRecord[]>;

@@ -101,22 +101,26 @@ export function ZoroProvider({
       if (!client) return 'unknown';
       return withClientLock(async () => {
         const summary = await client.syncState();
-        const consumedIds = summary.consumedNotes().map((id: { toString: () => string }) => id.toString());
+        const consumedIds = summary.consumedNotes().map((
+          id: { toString: () => string },
+        ) => id.toString());
         if (consumedIds.includes(noteId)) return 'consumed';
         try {
           const record = await client.getOutputNote(noteId);
           const state = record.state();
           if (state === OutputNoteState.Consumed) return 'consumed';
           if (
-            state === OutputNoteState.CommittedPartial ||
-            state === OutputNoteState.CommittedFull
-          )
+            state === OutputNoteState.CommittedPartial
+            || state === OutputNoteState.CommittedFull
+          ) {
             return 'committed';
+          }
           if (
-            state === OutputNoteState.ExpectedPartial ||
-            state === OutputNoteState.ExpectedFull
-          )
+            state === OutputNoteState.ExpectedPartial
+            || state === OutputNoteState.ExpectedFull
+          ) {
             return 'pending';
+          }
           return 'processing';
         } catch {
           return 'pending';
