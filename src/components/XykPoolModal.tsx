@@ -3,6 +3,7 @@ import { ProgressBar } from '@/components/ProgressBar';
 import Slippage from '@/components/Slippage';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { getMidenscanNoteUrl, getMidenscanTxUrl } from '@/hooks/useLaunchpad';
 import { useTokens } from '@/hooks/useTokens';
 import { useWaitForNoteConsumed } from '@/hooks/useWaitForNoteConsumed';
 import { useXykDeposit } from '@/hooks/useXykDeposit';
@@ -10,7 +11,6 @@ import { useXykLpBalance } from '@/hooks/useXykLpBalance';
 import { useXykPool } from '@/hooks/useXykPool';
 import type { XykTokenInfo } from '@/hooks/useXykPool';
 import { useXykWithdraw } from '@/hooks/useXykWithdraw';
-import { getMidenscanNoteUrl, getMidenscanTxUrl } from '@/hooks/useLaunchpad';
 import { DEFAULT_SLIPPAGE } from '@/lib/config';
 import { formatTokenAmount, formatTokenAmountForInput } from '@/lib/format';
 import { computeExpectedLp, computeExpectedWithdraw } from '@/lib/xykMath';
@@ -113,18 +113,20 @@ export function XykPoolModal({
   const [depositPct, setDepositPct] = useState(100);
   const [withdrawPct, setWithdrawPct] = useState(100);
   const [lpProgressStep, setLpProgressStep] = useState<number | null>(null);
-  const [lastLpAction, setLastLpAction] = useState<{
-    type: 'Deposit' | 'Withdraw';
-    noteId: string;
-    txId: string | undefined;
-    amount0: bigint;
-    amount1: bigint;
-    token0Symbol: string;
-    token1Symbol: string;
-    token0Decimals: number;
-    token1Decimals: number;
-    lpAmount?: bigint;
-  } | null>(null);
+  const [lastLpAction, setLastLpAction] = useState<
+    {
+      type: 'Deposit' | 'Withdraw';
+      noteId: string;
+      txId: string | undefined;
+      amount0: bigint;
+      amount1: bigint;
+      token0Symbol: string;
+      token1Symbol: string;
+      token0Decimals: number;
+      token1Decimals: number;
+      lpAmount?: bigint;
+    } | null
+  >(null);
 
   const waitForNoteConsumed = useWaitForNoteConsumed({ timeoutMs: 60_000 });
 
@@ -807,9 +809,9 @@ export function XykPoolModal({
                 Impermanent Loss Notice
               </p>
               <p className='text-muted-foreground'>
-                Withdrawing now realizes any impermanent loss. Your position may have
-                experienced IL since deposit. If you deposited at a different price ratio,
-                you may receive fewer tokens than expected.
+                Withdrawing now realizes any impermanent loss or gain. Your position may
+                have experienced IL since deposit. If you deposited at a different price
+                ratio, you may receive fewer tokens than expected.
               </p>
             </div>
           </div>
@@ -845,64 +847,72 @@ export function XykPoolModal({
             <div className='flex items-center gap-3 flex-wrap'>
               {lastLpAction.type === 'Deposit'
                 ? (
-                    <>
-                      <div className='flex items-center gap-2 min-w-0'>
-                        <AssetIcon symbol={lastLpAction.token0Symbol} size={28} />
-                        <span className='font-semibold tabular-nums'>
-                          {formatTokenAmount({
-                            value: lastLpAction.amount0,
-                            expo: lastLpAction.token0Decimals,
-                          })}
-                        </span>
-                        <span className='text-muted-foreground text-sm'>{lastLpAction.token0Symbol}</span>
-                      </div>
-                      <ArrowRight className='h-4 w-4 shrink-0 text-muted-foreground' />
-                      <div className='flex items-center gap-2 min-w-0'>
-                        <AssetIcon symbol={lastLpAction.token1Symbol} size={28} />
-                        <span className='font-semibold tabular-nums'>
-                          {formatTokenAmount({
-                            value: lastLpAction.amount1,
-                            expo: lastLpAction.token1Decimals,
-                          })}
-                        </span>
-                        <span className='text-muted-foreground text-sm'>{lastLpAction.token1Symbol}</span>
-                      </div>
-                    </>
-                  )
+                  <>
+                    <div className='flex items-center gap-2 min-w-0'>
+                      <AssetIcon symbol={lastLpAction.token0Symbol} size={28} />
+                      <span className='font-semibold tabular-nums'>
+                        {formatTokenAmount({
+                          value: lastLpAction.amount0,
+                          expo: lastLpAction.token0Decimals,
+                        })}
+                      </span>
+                      <span className='text-muted-foreground text-sm'>
+                        {lastLpAction.token0Symbol}
+                      </span>
+                    </div>
+                    <ArrowRight className='h-4 w-4 shrink-0 text-muted-foreground' />
+                    <div className='flex items-center gap-2 min-w-0'>
+                      <AssetIcon symbol={lastLpAction.token1Symbol} size={28} />
+                      <span className='font-semibold tabular-nums'>
+                        {formatTokenAmount({
+                          value: lastLpAction.amount1,
+                          expo: lastLpAction.token1Decimals,
+                        })}
+                      </span>
+                      <span className='text-muted-foreground text-sm'>
+                        {lastLpAction.token1Symbol}
+                      </span>
+                    </div>
+                  </>
+                )
                 : (
-                    <>
-                      <div className='flex items-center gap-2 min-w-0'>
-                        <span className='font-semibold tabular-nums'>
-                          {lastLpAction.lpAmount != null
-                            ? formatTokenAmount({ value: lastLpAction.lpAmount, expo: 0 })
-                            : '—'}
-                        </span>
-                        <span className='text-muted-foreground text-sm'>LP</span>
-                      </div>
-                      <ArrowRight className='h-4 w-4 shrink-0 text-muted-foreground' />
-                      <div className='flex items-center gap-2 min-w-0'>
-                        <AssetIcon symbol={lastLpAction.token0Symbol} size={28} />
-                        <span className='font-semibold tabular-nums'>
-                          {formatTokenAmount({
-                            value: lastLpAction.amount0,
-                            expo: lastLpAction.token0Decimals,
-                          })}
-                        </span>
-                        <span className='text-muted-foreground text-sm'>{lastLpAction.token0Symbol}</span>
-                      </div>
-                      <span className='text-muted-foreground'>+</span>
-                      <div className='flex items-center gap-2 min-w-0'>
-                        <AssetIcon symbol={lastLpAction.token1Symbol} size={28} />
-                        <span className='font-semibold tabular-nums'>
-                          {formatTokenAmount({
-                            value: lastLpAction.amount1,
-                            expo: lastLpAction.token1Decimals,
-                          })}
-                        </span>
-                        <span className='text-muted-foreground text-sm'>{lastLpAction.token1Symbol}</span>
-                      </div>
-                    </>
-                  )}
+                  <>
+                    <div className='flex items-center gap-2 min-w-0'>
+                      <span className='font-semibold tabular-nums'>
+                        {lastLpAction.lpAmount != null
+                          ? formatTokenAmount({ value: lastLpAction.lpAmount, expo: 0 })
+                          : '—'}
+                      </span>
+                      <span className='text-muted-foreground text-sm'>LP</span>
+                    </div>
+                    <ArrowRight className='h-4 w-4 shrink-0 text-muted-foreground' />
+                    <div className='flex items-center gap-2 min-w-0'>
+                      <AssetIcon symbol={lastLpAction.token0Symbol} size={28} />
+                      <span className='font-semibold tabular-nums'>
+                        {formatTokenAmount({
+                          value: lastLpAction.amount0,
+                          expo: lastLpAction.token0Decimals,
+                        })}
+                      </span>
+                      <span className='text-muted-foreground text-sm'>
+                        {lastLpAction.token0Symbol}
+                      </span>
+                    </div>
+                    <span className='text-muted-foreground'>+</span>
+                    <div className='flex items-center gap-2 min-w-0'>
+                      <AssetIcon symbol={lastLpAction.token1Symbol} size={28} />
+                      <span className='font-semibold tabular-nums'>
+                        {formatTokenAmount({
+                          value: lastLpAction.amount1,
+                          expo: lastLpAction.token1Decimals,
+                        })}
+                      </span>
+                      <span className='text-muted-foreground text-sm'>
+                        {lastLpAction.token1Symbol}
+                      </span>
+                    </div>
+                  </>
+                )}
             </div>
             <div className='flex flex-wrap gap-3 pt-2 border-t border-border'>
               <a

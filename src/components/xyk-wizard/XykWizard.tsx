@@ -117,6 +117,7 @@ const wizardSteps = [XykStep1, XykStep2, XykStep3, XykStep4];
 export const XYK_CREATE_STEPS = [
   'Deploying pool',
   'Adding liquidity',
+  'Registering with central registry',
   'Finalizing',
 ] as const;
 
@@ -295,7 +296,10 @@ const XykWizard = () => {
           pool_acc: newPoolId,
           requestTransaction,
           client,
+          sender: accountId,
         });
+
+        onProgress?.(3);
 
         await client.syncState();
         return newPoolId;
@@ -383,7 +387,16 @@ const XykWizard = () => {
         pairError={pairError}
       />
     );
-  }, [step, form, tokensWithBalance, restart, lastDeployedPoolIdBech32, hfAmmBech32s, registeredPairs, pairError]);
+  }, [
+    step,
+    form,
+    tokensWithBalance,
+    restart,
+    lastDeployedPoolIdBech32,
+    hfAmmBech32s,
+    registeredPairs,
+    pairError,
+  ]);
 
   if (!connected) {
     return (

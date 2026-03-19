@@ -423,7 +423,7 @@ export default function Launchpad() {
                   {MAX_SUPPLY_DISPLAY}
                 </span>{' '}
                 raw units. Operations with large token amounts paired with high decimals
-                may fail due to current Miden limitations.
+                may fail due to current network limitations.
               </p>
             </div>
           </CardContent>

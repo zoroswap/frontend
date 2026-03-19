@@ -12,8 +12,8 @@ export function IlRiskCard() {
       </CardHeader>
       <CardContent>
         <p className='text-sm text-muted-foreground'>
-          This pool&apos;s tokens may have price correlation. Impermanent loss
-          is possible when prices move. Consider concentrated ranges carefully.
+          This pool&apos;s tokens may have price correlation. Impermanent loss/gain is
+          possible when prices move.
         </p>
       </CardContent>
     </Card>

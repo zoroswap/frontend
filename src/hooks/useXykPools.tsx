@@ -23,6 +23,8 @@ export const useXykPools = () => {
         { kind: 'mapEntries', slotName: 'zoro::registry::assets_to_pool_mapping' },
       ]);
 
+      console.log(results);
+
       const entries = (results[0] as SlotMapEntriesResult).entries;
       const pools: XykPool[] = [];
 

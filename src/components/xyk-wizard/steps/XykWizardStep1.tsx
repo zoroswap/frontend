@@ -173,9 +173,8 @@ const XykStep1 = (
         <div className='flex items-start gap-2 rounded-lg border text-xs border-border/80 bg-muted/40 px-3 py-2 text-sm text-muted-foreground'>
           <Info className='h-4 w-4 shrink-0 mt-0.5' aria-hidden />
           <p>
-            Base and quote (token0 / token1) are determined by the token account ID hex
-            value: the token with the lower{' '}
-            hex is base (token0), the other is quote (token1).
+            Base and quote order (token0 / token1) is based on the tokens' faucet account
+            IDs.
           </p>
         </div>
 

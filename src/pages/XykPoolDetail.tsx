@@ -44,7 +44,12 @@ export default function XykPoolDetail() {
   const { poolId } = useParams<{ poolId: string }>();
   const decodedPoolId = poolId ? decodeURIComponent(poolId) : undefined;
   const modalContext = useContext(ModalContext);
-  const { data: poolData, isLoading: poolLoading, error: poolError } = useXykPool(
+  const {
+    data: poolData,
+    isLoading: poolLoading,
+    error: poolError,
+    refetch: refetchPool,
+  } = useXykPool(
     decodedPoolId,
   );
   const { lpBalance, refetch: refetchLpBalance } = useXykLpBalance(decodedPoolId);
@@ -205,8 +210,10 @@ export default function XykPoolDetail() {
         sellDecimals: swapSellToken.decimals,
         buyDecimals: swapBuyToken.decimals,
       });
+      refetchPool();
     }
   }, [
+    refetchPool,
     poolData,
     swapSellToken,
     swapBuyToken,
@@ -223,11 +230,14 @@ export default function XykPoolDetail() {
         <XykPoolModal
           poolId={decodedPoolId}
           initialMode={mode}
-          onSuccess={() => refetchLpBalance()}
+          onSuccess={() => {
+            refetchLpBalance();
+            refetchPool();
+          }}
         />,
       );
     },
-    [decodedPoolId, modalContext, refetchLpBalance],
+    [decodedPoolId, modalContext, refetchLpBalance, refetchPool],
   );
 
   if (poolLoading && !poolData) {
@@ -494,7 +504,7 @@ export default function XykPoolDetail() {
                 <p className='text-destructive text-sm'>{swapInputError ?? swapError}</p>
               )}
               <Button
-                className='w-full'
+                className='w-full h-12 font-bold'
                 onClick={onExecuteSwap}
                 disabled={isSwapLoading
                   || !amountInStr

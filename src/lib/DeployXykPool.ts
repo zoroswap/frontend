@@ -251,9 +251,11 @@ export const registerPool = async ({
   token0,
   token1,
   pool_acc,
+  sender,
   requestTransaction,
 }: DeployNewPoolParams & {
   pool_acc: AccountId;
+  sender: AccountId;
   requestTransaction: (tx: TransactionRequest) => void;
 }) => {
   if (!REGISTRY_ACCOUNT) return;
@@ -262,9 +264,6 @@ export const registerPool = async ({
   await client.importAccountById(pool_acc);
   await client.syncState();
 
-  const sender = AccountId.fromBech32(
-    'mtst1arw578zk4gfdzyzuzvj2xdlhds22nfkc_qruqqypuyph',
-  );
   const script = compile_xyk_register_note_script(client);
   const noteTag = NoteTag.withAccountTarget(REGISTRY_ACCOUNT);
   const attachment = NoteAttachment.newNetworkAccountTarget(
