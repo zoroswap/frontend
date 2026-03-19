@@ -1,7 +1,7 @@
 import { XYK_REGISTRY_BECH32 } from '@/lib/config';
 import { accountIdFromPrefixSuffix } from '@/lib/utils';
-import { AccountId, Word } from '@miden-sdk/miden-sdk';
 import type { SlotMapEntriesResult } from '@/workers/rpcWorkerTypes';
+import { AccountId, Word } from '@miden-sdk/miden-sdk';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRpcWorker } from './useRpcWorker';
 
@@ -33,8 +33,6 @@ export const useXykPools = () => {
         const token0 = accountIdFromPrefixSuffix(valueword[1], valueword[0]);
         const token1 = accountIdFromPrefixSuffix(valueword[3], valueword[2]);
         const xykPoolId = accountIdFromPrefixSuffix(keyword[1], keyword[0]);
-
-        console.log(xykPoolId);
 
         pools.push({ token0, token1, xykPoolId });
       }

@@ -1,3 +1,4 @@
+import { useRpcWorker } from '@/hooks/useRpcWorker';
 import { useUnifiedWallet } from '@/hooks/useUnifiedWallet';
 import { useXykPool } from '@/hooks/useXykPool';
 import { clientMutex } from '@/lib/clientMutex';
@@ -16,6 +17,7 @@ export function useXykWithdraw(poolId: string | undefined) {
   const { requestTransaction } = useUnifiedWallet();
   const { client, accountId, syncState } = useContext(ZoroContext);
   const { data: poolData } = useXykPool(poolId);
+  const { invalidateCache } = useRpcWorker();
 
   const withdraw = useCallback(
     async (
@@ -64,6 +66,7 @@ export function useXykWithdraw(poolId: string | undefined) {
         if (waitForNoteConsumed) {
           await waitForNoteConsumed(nid);
         }
+        if (poolId) await invalidateCache(poolId);
         await syncState();
         return { noteId: nid, txId: txIdResult };
       } catch (err) {
@@ -83,6 +86,7 @@ export function useXykWithdraw(poolId: string | undefined) {
       accountId,
       requestTransaction,
       syncState,
+      invalidateCache,
     ],
   );
 

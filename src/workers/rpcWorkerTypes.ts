@@ -63,9 +63,17 @@ export interface GetFaucetInfoRequest {
   accountBech32: string;
 }
 
+export interface InvalidateCacheRequest {
+  type: 'invalidateCache';
+  id: number;
+  rpcEndpoint: string;
+  accountBech32: string;
+}
+
 export type WorkerRequest =
   | GetAccountStorageRequest
-  | GetFaucetInfoRequest;
+  | GetFaucetInfoRequest
+  | InvalidateCacheRequest;
 
 // --- Responses ---
 
@@ -81,6 +89,11 @@ export interface GetFaucetInfoResponse {
   result: { symbol: string; decimals: number } | null;
 }
 
+export interface InvalidateCacheResponse {
+  type: 'invalidateCache';
+  id: number;
+}
+
 export interface RpcErrorResponse {
   type: 'error';
   id: number;
@@ -94,6 +107,7 @@ export interface RpcReady {
 export type WorkerResponse =
   | GetAccountStorageResponse
   | GetFaucetInfoResponse
+  | InvalidateCacheResponse
   | RpcErrorResponse;
 
 export type WorkerOutgoing = WorkerResponse | RpcReady;

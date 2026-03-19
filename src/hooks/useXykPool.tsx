@@ -28,7 +28,6 @@ export function useXykPool(poolId: string | undefined) {
   const [error, setError] = useState<Error | null>(null);
 
   const refetch = useCallback(async () => {
-    console.time('refetch xyk pool' + poolId);
     if (!poolId) {
       setData(null);
       setIsLoading(false);
@@ -105,7 +104,6 @@ export function useXykPool(poolId: string | undefined) {
       setData(null);
     } finally {
       setIsLoading(false);
-      console.timeEnd('refetch xyk pool' + poolId);
     }
   }, [poolId, getAccountStorage, getFaucetInfo]);
 
