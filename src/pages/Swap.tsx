@@ -13,6 +13,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { UnifiedWalletButton } from '@/components/UnifiedWalletButton';
 import { useBalance } from '@/hooks/useBalance';
+import { useRpcWorker } from '@/hooks/useRpcWorker';
 import { useSwap } from '@/hooks/useSwap';
 import { useUnifiedWallet } from '@/hooks/useUnifiedWallet';
 import { useWaitForNoteConsumed } from '@/hooks/useWaitForNoteConsumed';
@@ -25,7 +26,6 @@ import { formalBigIntFormat, truncateId } from '@/lib/format';
 import { bech32ToAccountId } from '@/lib/utils';
 import { getAmountOut } from '@/lib/xykMath';
 import { compileXykSwapTransaction } from '@/lib/XykSwapNote';
-import { useRpcWorker } from '@/hooks/useRpcWorker';
 import { OracleContext, useOraclePrices } from '@/providers/OracleContext';
 import { ZoroContext } from '@/providers/ZoroContext';
 import { type TokenConfig } from '@/providers/ZoroProvider.tsx';
@@ -87,7 +87,9 @@ function Swap() {
 
   // Track hfAMM noteId → txInfo
   const lastHfAmmNoteRef = useRef<string | undefined>(undefined);
-  const lastSellRef = useRef<{ token: TokenConfig; buy: TokenConfig; sellAmt: bigint; buyAmt: bigint } | null>(null);
+  const lastSellRef = useRef<
+    { token: TokenConfig; buy: TokenConfig; sellAmt: bigint; buyAmt: bigint } | null
+  >(null);
 
   // --- Merged token list (hfAMM + XYK, deduplicated) ---
   const allTokens = useMemo(() => {
@@ -121,7 +123,7 @@ function Swap() {
   });
 
   const [rawSell, setRawSell] = useState<bigint>(BigInt(0));
-  const [rawBuy, setRawBuy] = useState<bigint>(BigInt(0));
+  const [, setRawBuy] = useState<bigint>(BigInt(0));
   const [slippage, setSlippage] = useState<number>(DEFAULT_SLIPPAGE);
   const [stringSell, setStringSell] = useState<string | undefined>('');
   const [sellInputError, setSellInputError] = useState<string | undefined>(undefined);
@@ -139,10 +141,14 @@ function Swap() {
 
   // --- XYK buy amount estimation ---
   const xykBuyAmount = useMemo(() => {
-    if (!isXykSwap || !xykPoolData || !selectedAssetSell || !selectedAssetBuy || rawSell <= 0n) {
+    if (
+      !isXykSwap || !xykPoolData || !selectedAssetSell || !selectedAssetBuy
+      || rawSell <= 0n
+    ) {
       return undefined;
     }
-    const sellIst0 = selectedAssetSell.faucetIdBech32 === xykPoolData.token0.faucetIdBech32;
+    const sellIst0 =
+      selectedAssetSell.faucetIdBech32 === xykPoolData.token0.faucetIdBech32;
     const [reserveIn, reserveOut] = sellIst0
       ? [xykPoolData.reserve0, xykPoolData.reserve1]
       : [xykPoolData.reserve1, xykPoolData.reserve0];
@@ -152,14 +158,17 @@ function Swap() {
   // --- XYK exchange ratio (1 unit of sell -> ? buy) ---
   const xykExchangeRatio = useMemo(() => {
     if (!isXykSwap || !xykPoolData || !selectedAssetSell) return undefined;
-    const sellIst0 = selectedAssetSell.faucetIdBech32 === xykPoolData.token0.faucetIdBech32;
+    const sellIst0 =
+      selectedAssetSell.faucetIdBech32 === xykPoolData.token0.faucetIdBech32;
     const [reserveIn, reserveOut] = sellIst0
       ? [xykPoolData.reserve0, xykPoolData.reserve1]
       : [xykPoolData.reserve1, xykPoolData.reserve0];
     const oneUnit = 10n ** BigInt(selectedAssetSell.decimals);
     if (reserveIn === 0n) return undefined;
     const out = getAmountOut(oneUnit, reserveIn, reserveOut);
-    const buyDecimals = sellIst0 ? xykPoolData.token1.decimals : xykPoolData.token0.decimals;
+    const buyDecimals = sellIst0
+      ? xykPoolData.token1.decimals
+      : xykPoolData.token0.decimals;
     return formatUnits(out, buyDecimals);
   }, [isXykSwap, xykPoolData, selectedAssetSell]);
 
@@ -312,7 +321,10 @@ function Swap() {
 
   // --- XYK swap execution ---
   const onXykSwap = useCallback(async () => {
-    if (!selectedAssetBuy || !selectedAssetSell || !xykPoolId || !client || !accountId || !requestTransaction) return;
+    if (
+      !selectedAssetBuy || !selectedAssetSell || !xykPoolId || !client || !accountId
+      || !requestTransaction
+    ) return;
 
     const poolAccountId = bech32ToAccountId(xykPoolId);
     if (!poolAccountId) return;
@@ -344,7 +356,7 @@ function Swap() {
           amount: rawSell,
           minAmountOut: minAmountOut > 0n ? minAmountOut : 1n,
           client,
-        }),
+        })
       );
       const newTxId = await requestTransaction({
         type: TransactionType.Custom,
@@ -352,14 +364,21 @@ function Swap() {
       });
       await syncState();
 
-      const updated: SwapTxInfo = { ...info, noteId: nid, txId: newTxId, xykStatus: 'confirming' };
+      const updated: SwapTxInfo = {
+        ...info,
+        noteId: nid,
+        txId: newTxId,
+        xykStatus: 'confirming',
+      };
       setTxInfo(updated);
       setIsLoadingXykSwap(false);
       setRawBuy(expectedOut);
 
       try {
         await waitForNoteConsumed(nid);
-        setTxInfo(prev => prev?.noteId === nid ? { ...prev, xykStatus: 'confirmed' } : prev);
+        setTxInfo(prev =>
+          prev?.noteId === nid ? { ...prev, xykStatus: 'confirmed' } : prev
+        );
         if (xykPoolId) await invalidateCache(xykPoolId);
         refetchBalanceSell();
       } catch {
@@ -369,7 +388,9 @@ function Swap() {
       console.error(err);
       const message = err instanceof Error ? err.message : String(err);
       toast.error(`Error swapping: ${message}`);
-      setTxInfo(prev => prev?.xykStatus === 'submitting' ? { ...prev, xykStatus: 'failed' } : prev);
+      setTxInfo(prev =>
+        prev?.xykStatus === 'submitting' ? { ...prev, xykStatus: 'failed' } : prev
+      );
       setIsLoadingXykSwap(false);
     }
   }, [
@@ -415,7 +436,14 @@ function Swap() {
       sellToken: selectedAssetSell,
     });
     setRawBuy(computedBuy);
-  }, [rawSell, slippage, selectedAssetBuy, selectedAssetSell, hfAmmSwap, getWebsocketPrice]);
+  }, [
+    rawSell,
+    slippage,
+    selectedAssetBuy,
+    selectedAssetSell,
+    hfAmmSwap,
+    getWebsocketPrice,
+  ]);
 
   const onSwap = useCallback(() => {
     if (isXykSwap) {
@@ -446,7 +474,9 @@ function Swap() {
     || stringSell === '' || !!sellInputError || !selectedAssetBuy;
 
   // --- Inline tx status ---
-  const hfAmmOrderStatus = txInfo && !txInfo.isXyk ? orderStatus[txInfo.noteId]?.status : undefined;
+  const hfAmmOrderStatus = txInfo && !txInfo.isXyk
+    ? orderStatus[txInfo.noteId]?.status
+    : undefined;
   const showTxStatus = txInfo != null;
 
   const dismissTxInfo = useCallback(() => {
@@ -503,13 +533,16 @@ function Swap() {
               <div>
                 <div className='flex items-center justify-between text-sm'>
                   <div className='text-muted-foreground font-medium'>
-                    {!isXykSwap && rawSell > BigInt(0) && selectedAssetSell && hasOracle(selectedAssetSell)
+                    {!isXykSwap && rawSell > BigInt(0) && selectedAssetSell
+                        && hasOracle(selectedAssetSell)
                       ? (
                         <>
                           $<Price amount={rawSell} tokenConfig={selectedAssetSell} />
                         </>
                       )
-                      : !isXykSwap ? '$0' : ''}
+                      : !isXykSwap
+                      ? '$0'
+                      : ''}
                   </div>
                   {accountId && selectedAssetSell && (
                     balanceSell === null
@@ -633,8 +666,7 @@ function Swap() {
                     assetA={selectedAssetSell}
                     assetB={selectedAssetBuy}
                     overrideRatio={isXykSwap ? xykExchangeRatio : undefined}
-                  />
-                  {' '}
+                  />{' '}
                   {selectedAssetBuy.symbol}
                 </span>
               )
@@ -688,40 +720,110 @@ function InlineTxStatus({
     if (txInfo.isXyk) {
       switch (txInfo.xykStatus) {
         case 'submitting':
-          return { label: 'Submitting', color: 'text-blue-600 dark:text-blue-400', bgColor: 'bg-blue-100 dark:bg-blue-900/30', spinning: true, pulse: true };
+          return {
+            label: 'Submitting',
+            color: 'text-blue-600 dark:text-blue-400',
+            bgColor: 'bg-blue-100 dark:bg-blue-900/30',
+            spinning: true,
+            pulse: true,
+          };
         case 'confirming':
-          return { label: 'Confirming', color: 'text-yellow-600 dark:text-yellow-400', bgColor: 'bg-yellow-100 dark:bg-yellow-900/30', spinning: true, pulse: true };
+          return {
+            label: 'Confirming',
+            color: 'text-yellow-600 dark:text-yellow-400',
+            bgColor: 'bg-yellow-100 dark:bg-yellow-900/30',
+            spinning: true,
+            pulse: true,
+          };
         case 'confirmed':
-          return { label: 'Confirmed', color: 'text-green-600 dark:text-green-400', bgColor: 'bg-green-100 dark:bg-green-900/30', spinning: false, pulse: false };
+          return {
+            label: 'Confirmed',
+            color: 'text-green-600 dark:text-green-400',
+            bgColor: 'bg-green-100 dark:bg-green-900/30',
+            spinning: false,
+            pulse: false,
+          };
         case 'failed':
-          return { label: 'Failed', color: 'text-red-600 dark:text-red-400', bgColor: 'bg-red-100 dark:bg-red-900/30', spinning: false, pulse: false };
+          return {
+            label: 'Failed',
+            color: 'text-red-600 dark:text-red-400',
+            bgColor: 'bg-red-100 dark:bg-red-900/30',
+            spinning: false,
+            pulse: false,
+          };
         default:
-          return { label: 'Created', color: 'text-muted-foreground', bgColor: 'bg-muted/50', spinning: false, pulse: true };
+          return {
+            label: 'Created',
+            color: 'text-muted-foreground',
+            bgColor: 'bg-muted/50',
+            spinning: false,
+            pulse: true,
+          };
       }
     }
     // hfAMM status
     switch (hfAmmOrderStatus) {
       case 'pending':
-        return { label: 'Pending', color: 'text-yellow-600 dark:text-yellow-400', bgColor: 'bg-yellow-100 dark:bg-yellow-900/30', spinning: false, pulse: true };
+        return {
+          label: 'Pending',
+          color: 'text-yellow-600 dark:text-yellow-400',
+          bgColor: 'bg-yellow-100 dark:bg-yellow-900/30',
+          spinning: false,
+          pulse: true,
+        };
       case 'matching':
-        return { label: 'Matching', color: 'text-blue-600 dark:text-blue-400', bgColor: 'bg-blue-100 dark:bg-blue-900/30', spinning: true, pulse: true };
+        return {
+          label: 'Matching',
+          color: 'text-blue-600 dark:text-blue-400',
+          bgColor: 'bg-blue-100 dark:bg-blue-900/30',
+          spinning: true,
+          pulse: true,
+        };
       case 'executed':
-        return { label: 'Executed', color: 'text-green-600 dark:text-green-400', bgColor: 'bg-green-100 dark:bg-green-900/30', spinning: false, pulse: false };
+        return {
+          label: 'Executed',
+          color: 'text-green-600 dark:text-green-400',
+          bgColor: 'bg-green-100 dark:bg-green-900/30',
+          spinning: false,
+          pulse: false,
+        };
       case 'failed':
-        return { label: 'Failed', color: 'text-red-600 dark:text-red-400', bgColor: 'bg-red-100 dark:bg-red-900/30', spinning: false, pulse: false };
+        return {
+          label: 'Failed',
+          color: 'text-red-600 dark:text-red-400',
+          bgColor: 'bg-red-100 dark:bg-red-900/30',
+          spinning: false,
+          pulse: false,
+        };
       case 'expired':
-        return { label: 'Expired', color: 'text-muted-foreground', bgColor: 'bg-muted/50', spinning: false, pulse: false };
+        return {
+          label: 'Expired',
+          color: 'text-muted-foreground',
+          bgColor: 'bg-muted/50',
+          spinning: false,
+          pulse: false,
+        };
       default:
-        return { label: 'Created', color: 'text-muted-foreground', bgColor: 'bg-muted/50', spinning: false, pulse: true };
+        return {
+          label: 'Created',
+          color: 'text-muted-foreground',
+          bgColor: 'bg-muted/50',
+          spinning: false,
+          pulse: true,
+        };
     }
   }, [txInfo.isXyk, txInfo.xykStatus, hfAmmOrderStatus]);
 
-  const StatusIcon = spinning ? Loader2
-    : label === 'Confirmed' || label === 'Executed' ? CheckCircle
-    : label === 'Failed' ? XCircle
+  const StatusIcon = spinning
+    ? Loader2
+    : label === 'Confirmed' || label === 'Executed'
+    ? CheckCircle
+    : label === 'Failed'
+    ? XCircle
     : Clock;
 
-  const isDone = label === 'Confirmed' || label === 'Executed' || label === 'Failed' || label === 'Expired';
+  const isDone = label === 'Confirmed' || label === 'Executed' || label === 'Failed'
+    || label === 'Expired';
 
   return (
     <div className='mt-4 rounded-xl border border-border bg-card p-4 space-y-3 animate-in fade-in slide-in-from-top-2 duration-300'>
@@ -729,16 +831,23 @@ function InlineTxStatus({
       <div className='flex items-center justify-between'>
         <span className='text-sm font-semibold'>Swap Order</span>
         {isDone && (
-          <button onClick={onDismiss} className='text-muted-foreground hover:text-foreground'>
+          <button
+            onClick={onDismiss}
+            className='text-muted-foreground hover:text-foreground'
+          >
             <X className='h-4 w-4' />
           </button>
         )}
       </div>
 
       {/* Status badge */}
-      <div className={`flex items-center justify-center gap-2 rounded-lg p-2.5 ${bgColor}`}>
+      <div
+        className={`flex items-center justify-center gap-2 rounded-lg p-2.5 ${bgColor}`}
+      >
         <StatusIcon
-          className={`h-4 w-4 ${color} ${spinning ? 'animate-spin' : ''} ${pulse ? 'animate-pulse' : ''}`}
+          className={`h-4 w-4 ${color} ${spinning ? 'animate-spin' : ''} ${
+            pulse ? 'animate-pulse' : ''
+          }`}
         />
         <span className={`text-sm font-semibold ${color}`}>
           {label}
@@ -750,16 +859,20 @@ function InlineTxStatus({
         <span className='inline-flex items-center gap-1'>
           <AssetIcon symbol={txInfo.sellToken.symbol} size={16} />
           <span className='dark:text-red-200 text-red-700'>
-            {formalBigIntFormat({ val: txInfo.sellAmount, expo: txInfo.sellToken.decimals })}
-            {' '}{txInfo.sellToken.symbol}
+            {formalBigIntFormat({
+              val: txInfo.sellAmount,
+              expo: txInfo.sellToken.decimals,
+            })} {txInfo.sellToken.symbol}
           </span>
         </span>
         <span className='text-muted-foreground'>→</span>
         <span className='inline-flex items-center gap-1'>
           <AssetIcon symbol={txInfo.buyToken.symbol} size={16} />
           <span className='dark:text-green-200 text-green-700'>
-            {formalBigIntFormat({ val: txInfo.buyAmount, expo: txInfo.buyToken.decimals })}
-            {' '}{txInfo.buyToken.symbol}
+            {formalBigIntFormat({
+              val: txInfo.buyAmount,
+              expo: txInfo.buyToken.decimals,
+            })} {txInfo.buyToken.symbol}
           </span>
         </span>
       </div>
@@ -772,12 +885,14 @@ function InlineTxStatus({
             onClick={copyNoteId}
             className='font-mono hover:bg-muted/50 rounded px-1 py-0.5 transition-colors cursor-pointer'
           >
-            {copied ? (
-              <span className='inline-flex items-center gap-1'>
-                <CheckCircle className='h-3 w-3 text-green-500' />
-                Copied
-              </span>
-            ) : truncateId(txInfo.noteId)}
+            {copied
+              ? (
+                <span className='inline-flex items-center gap-1'>
+                  <CheckCircle className='h-3 w-3 text-green-500' />
+                  Copied
+                </span>
+              )
+              : truncateId(txInfo.noteId)}
           </button>
           <a
             href={`https://testnet.midenscan.com/note/${txInfo.noteId}`}

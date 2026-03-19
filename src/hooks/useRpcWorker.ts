@@ -29,7 +29,9 @@ function getWorker(): { worker: Worker; ready: Promise<void> } {
     );
 
     let resolveReady: () => void;
-    readyPromise = new Promise<void>((r) => { resolveReady = r; });
+    readyPromise = new Promise<void>((r) => {
+      resolveReady = r;
+    });
 
     worker.onmessage = (e: MessageEvent<WorkerOutgoing>) => {
       const data = e.data;
@@ -52,7 +54,7 @@ function getWorker(): { worker: Worker; ready: Promise<void> } {
 }
 
 async function send<T extends WorkerResponse>(
-  request: Omit<WorkerRequest, 'id' | 'rpcEndpoint'>,
+  request: Omit<WorkerRequest, 'id' | 'rpcEndpoint'> & { queries?: SlotQuery[] },
 ): Promise<T> {
   const { worker: w, ready } = getWorker();
   await ready;
@@ -83,7 +85,10 @@ const storageCacheMain = new Map<string, StorageCacheEntry>();
 const inflightMain = new Map<string, Promise<SlotResult[]>>();
 
 const faucetCacheMain = new Map<string, { symbol: string; decimals: number }>();
-const inflightFaucet = new Map<string, Promise<{ symbol: string; decimals: number } | null>>();
+const inflightFaucet = new Map<
+  string,
+  Promise<{ symbol: string; decimals: number } | null>
+>();
 
 export function useRpcWorker() {
   const getAccountStorage = useCallback(
@@ -151,7 +156,7 @@ export function useRpcWorker() {
       // Now re-fetch every cached query set for this account so main-thread
       // cache gets updated with fresh data instead of being empty.
       const keysToRefresh: { key: string; queries: SlotQuery[] }[] = [];
-      for (const [key, entry] of storageCacheMain.entries()) {
+      for (const [key] of storageCacheMain.entries()) {
         if (key.startsWith(accountBech32 + '|')) {
           const queries: SlotQuery[] = JSON.parse(key.slice(accountBech32.length + 1));
           keysToRefresh.push({ key, queries });

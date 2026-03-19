@@ -11,13 +11,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { XykPoolModal } from '@/components/XykPoolModal';
 import { useBalance } from '@/hooks/useBalance';
+import { getMidenscanNoteUrl, getMidenscanTxUrl } from '@/hooks/useLaunchpad';
+import { useWaitForNoteConsumed } from '@/hooks/useWaitForNoteConsumed';
 import { useXykLpBalance } from '@/hooks/useXykLpBalance';
 import { useXykPool } from '@/hooks/useXykPool';
 import type { XykTokenInfo } from '@/hooks/useXykPool';
-import { useXykPoolNotes } from '@/hooks/useXykPoolNotes';
-import { useWaitForNoteConsumed } from '@/hooks/useWaitForNoteConsumed';
 import { useXykSwap } from '@/hooks/useXykSwap';
-import { getMidenscanNoteUrl, getMidenscanTxUrl } from '@/hooks/useLaunchpad';
 import {
   formatTokenAmount,
   formatTokenAmountForInput,
@@ -25,11 +24,10 @@ import {
   prettyBigintFormat,
 } from '@/lib/format';
 import { computeExpectedWithdraw, getAmountOut } from '@/lib/xykMath';
-import { getMockRecentTransactions } from '@/mocks/poolDetailMocks';
-import { ModalContext } from '@/providers/ModalContext';
 import { XykPoolDetailSkeleton } from '@/pages/skeletons/XykPoolDetailSkeleton';
+import { ModalContext } from '@/providers/ModalContext';
 import type { TokenConfig } from '@/providers/ZoroProvider';
-import { ArrowDownUp, ExternalLink, Loader2, ArrowRight } from 'lucide-react';
+import { ArrowDownUp, ArrowRight, ExternalLink, Loader2 } from 'lucide-react';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { parseUnits } from 'viem';
@@ -50,26 +48,30 @@ export default function XykPoolDetail() {
     decodedPoolId,
   );
   const { lpBalance, refetch: refetchLpBalance } = useXykLpBalance(decodedPoolId);
-  const { notes: poolNotes } = useXykPoolNotes(
-    decodedPoolId,
-    poolData ?? null,
-  );
-  const { swap, isLoading: isSwapLoading, error: swapError, noteId: swapNoteId, txId: swapTxId } = useXykSwap(decodedPoolId);
+  const {
+    swap,
+    isLoading: isSwapLoading,
+    error: swapError,
+    noteId: swapNoteId,
+    txId: swapTxId,
+  } = useXykSwap(decodedPoolId);
   const waitForNoteConsumed = useWaitForNoteConsumed({ timeoutMs: 60_000 });
   const [swapSellSide, setSwapSellSide] = useState<0 | 1>(0);
   const [amountInStr, setAmountInStr] = useState('');
   const [swapInputError, setSwapInputError] = useState<string | undefined>();
   const [swapProgressStep, setSwapProgressStep] = useState<number | null>(null);
-  const [lastTrade, setLastTrade] = useState<{
-    noteId: string;
-    txId: string | undefined;
-    amountIn: bigint;
-    amountOut: bigint;
-    sellSymbol: string;
-    buySymbol: string;
-    sellDecimals: number;
-    buyDecimals: number;
-  } | null>(null);
+  const [lastTrade, setLastTrade] = useState<
+    {
+      noteId: string;
+      txId: string | undefined;
+      amountIn: bigint;
+      amountOut: bigint;
+      sellSymbol: string;
+      buySymbol: string;
+      sellDecimals: number;
+      buyDecimals: number;
+    } | null
+  >(null);
   const hasPosition = lpBalance > BigInt(0);
 
   const poolSharePct = useMemo(() => {
@@ -204,7 +206,15 @@ export default function XykPoolDetail() {
         buyDecimals: swapBuyToken.decimals,
       });
     }
-  }, [poolData, swapSellToken, swapBuyToken, amountInBigint, expectedAmountOut, swap, waitForNoteConsumed]);
+  }, [
+    poolData,
+    swapSellToken,
+    swapBuyToken,
+    amountInBigint,
+    expectedAmountOut,
+    swap,
+    waitForNoteConsumed,
+  ]);
 
   const openXykModal = useCallback(
     (mode: 'Deposit' | 'Withdraw') => {
@@ -219,14 +229,6 @@ export default function XykPoolDetail() {
     },
     [decodedPoolId, modalContext, refetchLpBalance],
   );
-
-  const mockRecentTxs = useMemo(() => {
-    if (!poolData) return [];
-    return getMockRecentTransactions({
-      seedKey: decodedPoolId ?? '',
-      baseSymbol: poolData.token0.symbol,
-    });
-  }, [decodedPoolId, poolData]);
 
   if (poolLoading && !poolData) {
     return <XykPoolDetailSkeleton />;
@@ -243,7 +245,7 @@ export default function XykPoolDetail() {
   }
 
   const pairLabel = `${poolData.token0.symbol} / ${poolData.token1.symbol}`;
-  const feeTier = feeTierForSymbol(poolData.token0.symbol);
+  const feeTier = feeTierForSymbol();
   const priceDisplay = poolData.priceToken0InToken1 > 0
     ? `1 ${poolData.token0.symbol} = ${
       poolData.priceToken0InToken1.toFixed(6)
@@ -253,21 +255,6 @@ export default function XykPoolDetail() {
     value: poolData.totalSupply,
     expo: 0,
   });
-
-  const assetSymbol = (faucetIdBech32: string) => {
-    if (faucetIdBech32 === poolData.token0.faucetIdBech32) return poolData.token0.symbol;
-    if (faucetIdBech32 === poolData.token1.faucetIdBech32) return poolData.token1.symbol;
-    return null;
-  };
-  const assetDecimals = (faucetIdBech32: string) => {
-    if (faucetIdBech32 === poolData.token0.faucetIdBech32) {
-      return poolData.token0.decimals;
-    }
-    if (faucetIdBech32 === poolData.token1.faucetIdBech32) {
-      return poolData.token1.decimals;
-    }
-    return 18;
-  };
 
   return (
     <PoolDetailLayout
@@ -330,19 +317,29 @@ export default function XykPoolDetail() {
                   <div className='flex items-center justify-between text-sm'>
                     <span className='inline-flex items-center gap-1.5'>
                       <AssetIcon symbol={poolData.token0.symbol} size={20} />
-                      <span className='text-muted-foreground'>{poolData.token0.symbol}</span>
+                      <span className='text-muted-foreground'>
+                        {poolData.token0.symbol}
+                      </span>
                     </span>
                     <span className='font-medium tabular-nums'>
-                      {prettyBigintFormat({ value: userToken0, expo: poolData.token0.decimals })}
+                      {prettyBigintFormat({
+                        value: userToken0,
+                        expo: poolData.token0.decimals,
+                      })}
                     </span>
                   </div>
                   <div className='flex items-center justify-between text-sm'>
                     <span className='inline-flex items-center gap-1.5'>
                       <AssetIcon symbol={poolData.token1.symbol} size={20} />
-                      <span className='text-muted-foreground'>{poolData.token1.symbol}</span>
+                      <span className='text-muted-foreground'>
+                        {poolData.token1.symbol}
+                      </span>
                     </span>
                     <span className='font-medium tabular-nums'>
-                      {prettyBigintFormat({ value: userToken1, expo: poolData.token1.decimals })}
+                      {prettyBigintFormat({
+                        value: userToken1,
+                        expo: poolData.token1.decimals,
+                      })}
                     </span>
                   </div>
                 </div>
@@ -535,30 +532,56 @@ export default function XykPoolDetail() {
                       const noteId = isCurrent ? swapNoteId : lastTrade?.noteId;
                       const txId = isCurrent ? swapTxId : lastTrade?.txId;
                       const amountIn = isCurrent ? amountInBigint : lastTrade!.amountIn;
-                      const amountOut = isCurrent ? expectedAmountOut : lastTrade!.amountOut;
-                      const sellSym = isCurrent ? swapSellToken?.symbol ?? '—' : lastTrade!.sellSymbol;
-                      const buySym = isCurrent ? swapBuyToken?.symbol ?? '—' : lastTrade!.buySymbol;
-                      const sellDec = isCurrent ? (swapSellToken?.decimals ?? 18) : lastTrade!.sellDecimals;
-                      const buyDec = isCurrent ? (swapBuyToken?.decimals ?? 18) : lastTrade!.buyDecimals;
-                      const inStr = prettyBigintFormat({ value: amountIn, expo: sellDec });
-                      const outStr = prettyBigintFormat({ value: amountOut, expo: buyDec });
+                      const amountOut = isCurrent
+                        ? expectedAmountOut
+                        : lastTrade!.amountOut;
+                      const sellSym = isCurrent
+                        ? swapSellToken?.symbol ?? '—'
+                        : lastTrade!.sellSymbol;
+                      const buySym = isCurrent
+                        ? swapBuyToken?.symbol ?? '—'
+                        : lastTrade!.buySymbol;
+                      const sellDec = isCurrent
+                        ? (swapSellToken?.decimals ?? 18)
+                        : lastTrade!.sellDecimals;
+                      const buyDec = isCurrent
+                        ? (swapBuyToken?.decimals ?? 18)
+                        : lastTrade!.buyDecimals;
+                      const inStr = prettyBigintFormat({
+                        value: amountIn,
+                        expo: sellDec,
+                      });
+                      const outStr = prettyBigintFormat({
+                        value: amountOut,
+                        expo: buyDec,
+                      });
                       return (
                         <>
                           <div className='flex items-center gap-3'>
                             <div className='flex items-center gap-2 min-w-0'>
                               <AssetIcon symbol={sellSym} size={28} />
-                              <span className='font-semibold tabular-nums truncate' title={inStr}>
+                              <span
+                                className='font-semibold tabular-nums truncate'
+                                title={inStr}
+                              >
                                 {inStr}
                               </span>
-                              <span className='text-muted-foreground text-sm shrink-0'>{sellSym}</span>
+                              <span className='text-muted-foreground text-sm shrink-0'>
+                                {sellSym}
+                              </span>
                             </div>
                             <ArrowRight className='h-4 w-4 shrink-0 text-muted-foreground' />
                             <div className='flex items-center gap-2 min-w-0'>
                               <AssetIcon symbol={buySym} size={28} />
-                              <span className='font-semibold tabular-nums truncate' title={outStr}>
+                              <span
+                                className='font-semibold tabular-nums truncate'
+                                title={outStr}
+                              >
                                 {outStr}
                               </span>
-                              <span className='text-muted-foreground text-sm shrink-0'>{buySym}</span>
+                              <span className='text-muted-foreground text-sm shrink-0'>
+                                {buySym}
+                              </span>
                             </div>
                           </div>
                           <div className='flex flex-wrap gap-3 pt-2 border-t border-border'>

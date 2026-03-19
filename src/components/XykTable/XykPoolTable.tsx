@@ -15,7 +15,7 @@ export interface XykPoolTableProps {
 const normalize = (s: string) => s.trim().toLowerCase();
 
 const XykPoolTable = ({ search }: XykPoolTableProps) => {
-  const { xykPools, refetch } = useXykPools();
+  const { xykPools } = useXykPools();
   const [page, setPage] = useState(0);
 
   const filteredPools = useMemo(() => {
@@ -24,13 +24,15 @@ const XykPoolTable = ({ search }: XykPoolTableProps) => {
     const qNo0x = q.startsWith('0x') ? q.slice(2) : q;
     return xykPools.filter((p) => {
       const bech = accountIdToBech32(p.xykPoolId).toLowerCase();
-      const hex = ((p.xykPoolId as unknown as { toHex?: () => string }).toHex?.() ?? '').toLowerCase();
+      const hex = ((p.xykPoolId as unknown as { toHex?: () => string }).toHex?.() ?? '')
+        .toLowerCase();
       const hexNo0x = hex.startsWith('0x') ? hex.slice(2) : hex;
       return bech.includes(q) || hex.includes(q) || hexNo0x.includes(qNo0x);
     });
   }, [search, xykPools]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPage(0);
   }, [search]);
 
@@ -83,7 +85,10 @@ const XykPoolTable = ({ search }: XykPoolTableProps) => {
                 )
                 : (
                   paginatedPools.map(pool => (
-                    <XykPoolTableRow key={accountIdToBech32(pool.xykPoolId)} pool={pool} />
+                    <XykPoolTableRow
+                      key={accountIdToBech32(pool.xykPoolId)}
+                      pool={pool}
+                    />
                   ))
                 )}
             </tbody>
@@ -93,8 +98,10 @@ const XykPoolTable = ({ search }: XykPoolTableProps) => {
         {!isEmpty && totalPages > 1 && (
           <div className='flex items-center justify-between gap-4 py-3 px-4 border-t border-border'>
             <span className='text-sm text-muted-foreground'>
-              {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, filteredPools.length)} of{' '}
-              {filteredPools.length}
+              {page * PAGE_SIZE + 1}–{Math.min(
+                (page + 1) * PAGE_SIZE,
+                filteredPools.length,
+              )} of {filteredPools.length}
             </span>
             <div className='flex items-center gap-2'>
               <Button

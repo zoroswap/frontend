@@ -1,12 +1,7 @@
-import { useState } from 'react';
-
 export const SwapPairs = (
   { swapPairs, disabled }: { swapPairs: () => void; disabled: boolean },
 ) => {
-  const [rotation, setRotation] = useState(0);
-
   const handleClick = () => {
-    setRotation((r) => r + 180);
     swapPairs();
   };
 

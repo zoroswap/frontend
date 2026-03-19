@@ -9,6 +9,7 @@ import {
 import type {
   RpcReady,
   SerializedWord,
+  SlotQuery,
   SlotResult,
   WorkerOutgoing,
   WorkerRequest,
@@ -27,11 +28,21 @@ function getClient(rpcEndpoint: string): RpcClient {
 
 function wordToSerialized(w: Word): SerializedWord {
   const f = w.toFelts();
-  return [f[0].asInt().toString(), f[1].asInt().toString(), f[2].asInt().toString(), f[3].asInt().toString()];
+  return [
+    f[0].asInt().toString(),
+    f[1].asInt().toString(),
+    f[2].asInt().toString(),
+    f[3].asInt().toString(),
+  ];
 }
 
 function serializedToWord(s: SerializedWord): Word {
-  return Word.newFromFelts([new Felt(BigInt(s[0])), new Felt(BigInt(s[1])), new Felt(BigInt(s[2])), new Felt(BigInt(s[3]))]);
+  return Word.newFromFelts([
+    new Felt(BigInt(s[0])),
+    new Felt(BigInt(s[1])),
+    new Felt(BigInt(s[2])),
+    new Felt(BigInt(s[3])),
+  ]);
 }
 
 // --- Caches ---
@@ -40,7 +51,9 @@ const faucetCache = new Map<string, { symbol: string; decimals: number }>();
 
 const STORAGE_TTL_MS = 30_000;
 type AccountStorageObj = ReturnType<
-  NonNullable<ReturnType<Awaited<ReturnType<RpcClient['getAccountDetails']>>['account']>>['storage']
+  NonNullable<
+    ReturnType<Awaited<ReturnType<RpcClient['getAccountDetails']>>['account']>
+  >['storage']
 >;
 interface StorageCacheEntry {
   storage: AccountStorageObj | undefined;
@@ -51,7 +64,10 @@ const storageCache = new Map<string, StorageCacheEntry>();
 // Dedup: if a fetch for the same account is already in-flight, reuse its promise
 const inflightStorage = new Map<string, Promise<AccountStorageObj | undefined>>();
 
-async function fetchAccountStorage(client: RpcClient, bech32: string): Promise<AccountStorageObj | undefined> {
+async function fetchAccountStorage(
+  client: RpcClient,
+  bech32: string,
+): Promise<AccountStorageObj | undefined> {
   const cached = storageCache.get(bech32);
   if (cached && Date.now() - cached.ts < STORAGE_TTL_MS) {
     return cached.storage;
@@ -72,7 +88,10 @@ async function fetchAccountStorage(client: RpcClient, bech32: string): Promise<A
   return promise;
 }
 
-function readSlots(storage: AccountStorageObj | undefined, queries: WorkerRequest extends { queries: infer Q } ? Q : never): SlotResult[] {
+function readSlots(
+  storage: AccountStorageObj | undefined,
+  queries: SlotQuery[],
+): SlotResult[] {
   return (queries as import('./rpcWorkerTypes').SlotQuery[]).map((q) => {
     switch (q.kind) {
       case 'item': {
@@ -81,17 +100,23 @@ function readSlots(storage: AccountStorageObj | undefined, queries: WorkerReques
       }
       case 'mapItem': {
         const value = storage?.getMapItem(q.slotName, serializedToWord(q.key));
-        return { kind: 'mapItem' as const, value: value ? wordToSerialized(value) : null };
+        return {
+          kind: 'mapItem' as const,
+          value: value ? wordToSerialized(value) : null,
+        };
       }
       case 'mapEntries': {
         const entries = storage?.getMapEntries(q.slotName) ?? [];
-        return { kind: 'mapEntries' as const, entries: entries.map(e => ({ key: e.key, value: e.value })) };
+        return {
+          kind: 'mapEntries' as const,
+          entries: entries.map(e => ({ key: e.key, value: e.value })),
+        };
       }
     }
   });
 }
 
-async function handleMessage(msg: WorkerRequest): Promise<WorkerOutgoing> {
+async function handleMessage(msg: WorkerRequest) {
   const client = getClient(msg.rpcEndpoint);
 
   switch (msg.type) {
@@ -105,7 +130,9 @@ async function handleMessage(msg: WorkerRequest): Promise<WorkerOutgoing> {
       if (cached) {
         return { type: 'getFaucetInfo', id: msg.id, result: cached };
       }
-      const fetched = await client.getAccountDetails(Address.fromBech32(msg.accountBech32).accountId());
+      const fetched = await client.getAccountDetails(
+        Address.fromBech32(msg.accountBech32).accountId(),
+      );
       const account = fetched.account();
       if (!account) {
         return { type: 'getFaucetInfo', id: msg.id, result: null };
@@ -123,18 +150,23 @@ async function handleMessage(msg: WorkerRequest): Promise<WorkerOutgoing> {
       return { type: 'invalidateCache', id: msg.id };
     }
     default:
-      return { type: 'error', id: msg.id, message: `Unknown request type: ${(msg as { type: string }).type}` };
+      return {
+        type: 'error',
+        id: -199999,
+        message: `Unknown request type: ${(msg as { type: string }).type}`,
+      } as WorkerOutgoing;
   }
 }
 
 self.onmessage = (e: MessageEvent<WorkerRequest>) => {
   handleMessage(e.data).then(
     (response) => self.postMessage(response),
-    (err) => self.postMessage({
-      type: 'error',
-      id: e.data.id,
-      message: err instanceof Error ? err.message : String(err),
-    }),
+    (err) =>
+      self.postMessage({
+        type: 'error',
+        id: e.data.id,
+        message: err instanceof Error ? err.message : String(err),
+      }),
   );
 };
 
