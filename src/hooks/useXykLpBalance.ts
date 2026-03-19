@@ -1,56 +1,44 @@
-import { accountIdToBech32, bech32ToAccountId } from '@/lib/utils';
 import { ZoroContext } from '@/providers/ZoroContext';
-import { Felt, Word } from '@miden-sdk/miden-sdk';
+import type { SerializedWord } from '@/workers/rpcWorkerTypes';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { useRpcWorker } from './useRpcWorker';
 
 /**
  * Returns the user's LP share balance for a single XYK pool.
  * Reads from pool storage slot "zoro::lp_local::user_deposits_mapping"
- * with key = (accountId.prefix, accountId.suffix, 0, 0); value's first felt = LP shares.
+ * with key = (0, 0, accountId.suffix, accountId.prefix); value's first felt = LP shares.
  */
 export function useXykLpBalance(poolId: string | undefined) {
-  const { rpcClient, accountId } = useContext(ZoroContext);
-  const [lpBalance, setLpBalance] = useState<bigint>(BigInt(0));
+  const { accountId } = useContext(ZoroContext);
+  const { getStorageMapItem } = useRpcWorker();
+  const [lpBalance, setLpBalance] = useState<bigint>(0n);
   const [isLoading, setIsLoading] = useState(false);
 
   const refetch = useCallback(async () => {
-    if (!poolId || !rpcClient || !accountId) {
-      setLpBalance(BigInt(0));
+    if (!poolId || !accountId) {
+      setLpBalance(0n);
       return;
     }
     setIsLoading(true);
     try {
-      const poolIdClone = bech32ToAccountId(poolId);
-      if (!poolIdClone) {
-        setLpBalance(BigInt(0));
-        return;
-      }
-      const fetched = await rpcClient.getAccountDetails(
-        bech32ToAccountId(accountIdToBech32(poolIdClone))!,
-      );
-      const storage = fetched.account()?.storage();
-      const key = Word.newFromFelts([
-        new Felt(BigInt(0)),
-        new Felt(BigInt(0)),
-        new Felt(accountId.suffix().asInt()),
-        new Felt(accountId.prefix().asInt()),
-      ]);
-      const value = storage?.getMapItem(
-        'zoro::lp_local::user_deposits_mapping',
-        key,
-      )?.toFelts();
-      const balance = value?.[0] ? BigInt(value[0].asInt()) : BigInt(0);
-      setLpBalance(balance);
+      const key: SerializedWord = [
+        '0',
+        '0',
+        accountId.suffix().asInt().toString(),
+        accountId.prefix().asInt().toString(),
+      ];
+      const result = await getStorageMapItem(poolId, 'zoro::lp_local::user_deposits_mapping', key);
+      setLpBalance(result ? BigInt(result[0]) : 0n);
     } catch {
-      setLpBalance(BigInt(0));
+      setLpBalance(0n);
     } finally {
       setIsLoading(false);
     }
-  }, [poolId, rpcClient, accountId]);
+  }, [poolId, accountId, getStorageMapItem]);
 
   useEffect(() => {
     refetch();
-    const interval = setInterval(refetch, 10000);
+    const interval = setInterval(refetch, 180000);
     return () => clearInterval(interval);
   }, [refetch]);
 

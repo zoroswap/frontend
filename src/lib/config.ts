@@ -72,8 +72,8 @@ export const API: ApiConfig = {
 export const DEFAULT_SLIPPAGE = getNumericEnvVar('VITE_DEFAULT_SLIPPAGE', 0.5);
 
 // Xyk configuration
-const xykRegistry = getEnvVar('VITE_XYK_REGISTRY');
-export const REGISTRY_ACCOUNT = bech32ToAccountId(xykRegistry);
+export const XYK_REGISTRY_BECH32 = getEnvVar('VITE_XYK_REGISTRY');
+export const REGISTRY_ACCOUNT = bech32ToAccountId(XYK_REGISTRY_BECH32);
 
 /** Create a fresh NetworkId matching the configured network (toBech32 consumes the NetworkId) */
 export const createNetworkId = (): NetworkId => {

@@ -1,8 +1,8 @@
-import { REGISTRY_ACCOUNT } from '@/lib/config';
+import { XYK_REGISTRY_BECH32 } from '@/lib/config';
 import { accountIdFromPrefixSuffix } from '@/lib/utils';
-import { ZoroContext } from '@/providers/ZoroContext';
 import { AccountId, Word } from '@miden-sdk/miden-sdk';
-import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useRpcWorker } from './useRpcWorker';
 
 export interface XykPool {
   token0: AccountId;
@@ -11,24 +11,18 @@ export interface XykPool {
 }
 
 export const useXykPools = () => {
-  const { rpcClient } = useContext(ZoroContext);
+  const { getStorageMapEntries } = useRpcWorker();
   const [xykPools, setXykPools] = useState<XykPool[]>([]);
 
   const refetch = useCallback(async () => {
     try {
-      if (!rpcClient || !REGISTRY_ACCOUNT) return;
-      const xykPools: XykPool[] = [];
-      const fetched = await rpcClient.getAccountDetails(REGISTRY_ACCOUNT);
-      const storage = fetched.account()?.storage();
+      if (!XYK_REGISTRY_BECH32) return;
+      const entries = await getStorageMapEntries(XYK_REGISTRY_BECH32, 'zoro::registry::assets_to_pool_mapping');
+      const pools: XykPool[] = [];
 
-      const pools = storage?.getMapEntries('zoro::registry::assets_to_pool_mapping')
-        ?? [];
-
-      for (const pool of pools) {
-        const key = pool.key;
-        const value = pool.value;
-        const keyword = Word.fromHex(key).toFelts();
-        const valueword = Word.fromHex(value).toFelts();
+      for (const entry of entries) {
+        const keyword = Word.fromHex(entry.key).toFelts();
+        const valueword = Word.fromHex(entry.value).toFelts();
 
         const token0 = accountIdFromPrefixSuffix(valueword[1], valueword[0]);
         const token1 = accountIdFromPrefixSuffix(valueword[3], valueword[2]);
@@ -36,14 +30,14 @@ export const useXykPools = () => {
 
         console.log(xykPoolId);
 
-        xykPools.push({ token0, token1, xykPoolId });
+        pools.push({ token0, token1, xykPoolId });
       }
 
-      setXykPools(xykPools);
+      setXykPools(pools);
     } catch (e) {
       console.error(e);
     }
-  }, [rpcClient]);
+  }, [getStorageMapEntries]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -52,9 +46,5 @@ export const useXykPools = () => {
     return () => clearInterval(refresh);
   }, [refetch]);
 
-  const value = useMemo(() => ({
-    xykPools,
-    refetch,
-  }), [xykPools, refetch]);
-  return value;
+  return useMemo(() => ({ xykPools, refetch }), [xykPools, refetch]);
 };

@@ -1,21 +1,19 @@
 import type { TokenConfig } from '@/providers/ZoroProvider';
-import { accountIdToBech32, bech32ToAccountId } from '@/lib/utils';
-import { ZoroContext } from '@/providers/ZoroContext';
-import { BasicFungibleFaucetComponent } from '@miden-sdk/miden-sdk';
-import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { bech32ToAccountId } from '@/lib/utils';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useRpcWorker } from './useRpcWorker';
 
 /**
  * Fetches token metadata from the network for the given faucet IDs.
- * Converts each faucet account to TokenConfig the same way as getAvailableTokens in ZoroProvider.
  * Returns tokens keyed by faucetIdBech32.
  */
 export function useTokens(faucetIds: string[] | undefined) {
-  const { rpcClient } = useContext(ZoroContext);
+  const { getFaucetInfo } = useRpcWorker();
   const [tokens, setTokens] = useState<Record<string, TokenConfig>>({});
   const [loading, setLoading] = useState(false);
 
   const refresh = useCallback(async () => {
-    if (!rpcClient || !faucetIds?.length) {
+    if (!faucetIds?.length) {
       setTokens({});
       setLoading(false);
       return;
@@ -27,17 +25,14 @@ export function useTokens(faucetIds: string[] | undefined) {
         const faucetId = bech32ToAccountId(bech32);
         if (!faucetId) continue;
         try {
-          const details = await rpcClient.getAccountDetails(faucetId);
-          const account = details.account();
-          if (!account) continue;
-          const faucet = BasicFungibleFaucetComponent.fromAccount(account);
-          const symbol = faucet.symbol().toString();
-          result[accountIdToBech32(faucetId)] = {
-            symbol,
-            decimals: faucet.decimals(),
-            name: symbol,
+          const info = await getFaucetInfo(bech32);
+          if (!info) continue;
+          result[bech32] = {
+            symbol: info.symbol,
+            decimals: info.decimals,
+            name: info.symbol,
             faucetId,
-            faucetIdBech32: accountIdToBech32(faucetId),
+            faucetIdBech32: bech32,
             oracleId: '0x',
           };
         } catch {
@@ -48,7 +43,7 @@ export function useTokens(faucetIds: string[] | undefined) {
     } finally {
       setLoading(false);
     }
-  }, [rpcClient, faucetIds]);
+  }, [faucetIds, getFaucetInfo]);
 
   useEffect(() => {
     refresh();

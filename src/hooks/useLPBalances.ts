@@ -1,45 +1,41 @@
-import { accountIdToBech32, bech32ToAccountId } from '@/lib/utils';
+import { accountIdToBech32 } from '@/lib/utils';
 import { ZoroContext } from '@/providers/ZoroContext';
 import type { TokenConfig } from '@/providers/ZoroProvider';
-import { Felt, Word } from '@miden-sdk/miden-sdk';
+import type { SerializedWord } from '@/workers/rpcWorkerTypes';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { useRpcWorker } from './useRpcWorker';
 
 export const useLPBalances = ({ tokens }: { tokens?: TokenConfig[] }) => {
-  const { rpcClient, poolAccountId, accountId } = useContext(ZoroContext);
+  const { poolAccountId, accountId } = useContext(ZoroContext);
   const [balances, setBalances] = useState<Record<string, bigint>>({});
+  const { getStorageMapItem } = useRpcWorker();
 
   const refetch = useCallback(async () => {
-    if (!poolAccountId || !rpcClient || !accountId || !tokens) return;
-    const balances: Record<string, bigint> = {};
-    // Clone poolAccountId since getAccountDetails() consumes the AccountId argument
-    const fetched = await rpcClient.getAccountDetails(poolAccountId);
-    const storage = fetched.account()?.storage();
+    if (!poolAccountId || !accountId || !tokens) return;
+
+    const poolBech32 = accountIdToBech32(poolAccountId);
+    const accSuffix = accountId.suffix().asInt().toString();
+    const accPrefix = accountId.prefix().asInt().toString();
+    const newBalances: Record<string, bigint> = {};
+
     for (const token of tokens) {
-      const lp = storage?.getMapItem(
-        'zoroswap::user_deposits',
-        Word.newFromFelts([
-          new Felt(accountId.suffix().asInt()),
-          new Felt(accountId.prefix().asInt()),
-          new Felt(token.faucetId.suffix().asInt()),
-          new Felt(token.faucetId.prefix().asInt()),
-        ]),
-      )?.toFelts();
-      const balance = BigInt(lp?.[0].asInt() || BigInt(0)) ?? BigInt(0);
-      balances[token.faucetIdBech32] = balance;
+      const key: SerializedWord = [
+        accSuffix,
+        accPrefix,
+        token.faucetId.suffix().asInt().toString(),
+        token.faucetId.prefix().asInt().toString(),
+      ];
+      const result = await getStorageMapItem(poolBech32, 'zoroswap::user_deposits', key);
+      newBalances[token.faucetIdBech32] = result ? BigInt(result[0]) : 0n;
     }
-    setBalances(balances);
-  }, [poolAccountId, rpcClient, accountId, tokens]);
+    setBalances(newBalances);
+  }, [poolAccountId, accountId, tokens, getStorageMapItem]);
 
   useEffect(() => {
-    // eslint-disable-next-line
     refetch();
-    const refresh = setInterval(refetch, 10000);
+    const refresh = setInterval(refetch, 180000);
     return () => clearInterval(refresh);
   }, [refetch]);
 
-  const value = useMemo(() => ({
-    balances,
-    refetch,
-  }), [balances, refetch]);
-  return value;
+  return useMemo(() => ({ balances, refetch }), [balances, refetch]);
 };

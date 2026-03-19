@@ -1,4 +1,5 @@
 import { type PoolInfo, usePoolsInfo } from '@/hooks/usePoolsInfo';
+import { useRpcWorker } from '@/hooks/useRpcWorker';
 import { useUnifiedWallet } from '@/hooks/useUnifiedWallet';
 import { clientMutex } from '@/lib/clientMutex';
 import { NETWORK } from '@/lib/config';
@@ -8,7 +9,6 @@ import {
   AccountStorageMode,
   Address,
   AuthScheme,
-  BasicFungibleFaucetComponent,
   Endpoint,
   Note,
   NoteType,
@@ -43,6 +43,7 @@ export function ZoroProvider({
   );
   const [midenClient, setMidenClient] = useState<WebClient | undefined>(undefined);
   const rpcClientRef = useRef<RpcClient | null>(null);
+  const { getFaucetInfo: workerGetFaucetInfo } = useRpcWorker();
 
   // For Para users, use paraClient; for Miden users, create our own client
   const client = walletType === 'para' ? paraClient : midenClient;
@@ -275,18 +276,16 @@ export function ZoroProvider({
       for (const t of acc?.vault().fungibleAssets() ?? []) {
         const f = t.faucetId();
         const amount = t.amount();
-        const faucet = await rpcClient.getAccountDetails(f);
-        const account = faucet.account();
-        if (account) {
-          const faucet = BasicFungibleFaucetComponent.fromAccount(account);
-          const symbol = faucet.symbol().toString();
+        const bech32 = accountIdToBech32(f);
+        const info = await workerGetFaucetInfo(bech32);
+        if (info) {
           tokens.push({
             config: {
-              symbol,
-              decimals: faucet.decimals(),
-              name: symbol,
+              symbol: info.symbol,
+              decimals: info.decimals,
+              name: info.symbol,
               faucetId: f,
-              faucetIdBech32: accountIdToBech32(f),
+              faucetIdBech32: bech32,
               oracleId: '0x',
             } as TokenConfig,
             amount,
@@ -295,7 +294,7 @@ export function ZoroProvider({
       }
       return tokens;
     });
-  }, [client, withClientLock, accountId, rpcClient]);
+  }, [client, withClientLock, accountId, workerGetFaucetInfo]);
 
   // Periodic refresh for Para wallet users
   useEffect(() => {
