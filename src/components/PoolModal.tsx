@@ -7,7 +7,7 @@ import { useOraclePrices } from '@/providers/OracleContext';
 import { ZoroContext } from '@/providers/ZoroContext';
 import type { TokenConfig } from '@/providers/ZoroProvider';
 import { NoteType } from '@miden-sdk/miden-sdk';
-import { AlertTriangle, Info, Loader, X } from 'lucide-react';
+import { Loader, X } from 'lucide-react';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { parseUnits } from 'viem';
 import { useBalance } from '../hooks/useBalance';
@@ -377,7 +377,10 @@ export default function PoolModal({
         <div className='flex flex-1 rounded-xl bg-muted p-1'>
           <button
             type='button'
-            onClick={() => { setMode('Deposit'); clearForm(); }}
+            onClick={() => {
+              setMode('Deposit');
+              clearForm();
+            }}
             className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
               mode === 'Deposit'
                 ? 'bg-primary text-primary-foreground shadow-sm'
@@ -388,7 +391,10 @@ export default function PoolModal({
           </button>
           <button
             type='button'
-            onClick={() => { setMode('Withdraw'); clearForm(); }}
+            onClick={() => {
+              setMode('Withdraw');
+              clearForm();
+            }}
             className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
               mode === 'Withdraw'
                 ? 'bg-primary text-primary-foreground shadow-sm'
@@ -418,7 +424,7 @@ export default function PoolModal({
                   className='border-0 bg-transparent p-0 h-auto text-lg focus-visible:ring-0'
                   onChange={(e) => onInputChange(e.target.value)}
                 />
-              </span>
+              </div>
             </div>
             <div className='flex items-center justify-end text-sm text-muted-foreground mb-4'>
               <span>
@@ -465,8 +471,7 @@ export default function PoolModal({
             <div className='flex items-center justify-between'>
               <span className='text-muted-foreground font-medium'>My position</span>
               <span className='font-medium'>
-                {formatTokenAmount({ value: lpBalance, expo: pool.decimals })}{' '}
-                {isHfAmm
+                {formatTokenAmount({ value: lpBalance, expo: pool.decimals })} {isHfAmm
                   ? (pool.symbol.startsWith('z') ? pool.symbol : `z${pool.symbol}`)
                   : pool.symbol}
               </span>
@@ -491,8 +496,11 @@ export default function PoolModal({
                 />
               </span>
             </div>
-            {expectedLpFormatted != null && expectedLpFormatted !== (minLpFormatted ?? '0.00') && (
-              <p className='text-xs text-muted-foreground'>Expected: {expectedLpFormatted}</p>
+            {expectedLpFormatted != null
+              && expectedLpFormatted !== (minLpFormatted ?? '0.00') && (
+              <p className='text-xs text-muted-foreground'>
+                Expected: {expectedLpFormatted}
+              </p>
             )}
             {isHfAmm && (
               <div className='flex items-center justify-between'>
@@ -597,8 +605,7 @@ export default function PoolModal({
             <div className='flex items-center justify-between'>
               <span className='text-muted-foreground font-medium'>Balance</span>
               <span className='font-medium'>
-                {formatTokenAmount({ value: lpBalance, expo: pool.decimals })}{' '}
-                {isHfAmm
+                {formatTokenAmount({ value: lpBalance, expo: pool.decimals })} {isHfAmm
                   ? (pool.symbol.startsWith('z') ? pool.symbol : `z${pool.symbol}`)
                   : 'LP'}
               </span>
@@ -606,8 +613,7 @@ export default function PoolModal({
             <div className='flex items-center justify-between'>
               <span className='text-muted-foreground font-medium'>My position</span>
               <span className='font-medium'>
-                {formatTokenAmount({ value: lpBalance, expo: pool.decimals })}{' '}
-                {isHfAmm
+                {formatTokenAmount({ value: lpBalance, expo: pool.decimals })} {isHfAmm
                   ? (pool.symbol.startsWith('z') ? pool.symbol : `z${pool.symbol}`)
                   : pool.symbol}
               </span>
@@ -636,13 +642,17 @@ export default function PoolModal({
               )
               : (
                 <>
-                  <p className='text-xs text-muted-foreground'>LP: {withdrawReceiveFormatted ?? '0'}</p>
+                  <p className='text-xs text-muted-foreground'>
+                    LP: {withdrawReceiveFormatted ?? '0'}
+                  </p>
                   <div className='flex items-center justify-between text-sm'>
                     <div className='flex items-center gap-2'>
                       <AssetIcon symbol={pool.symbol} size={20} />
                       <span>{pool.symbol}</span>
                     </div>
-                    <span>{withdrawAssetOutFormatted} (min: {minWithdrawAssetFormatted})</span>
+                    <span>
+                      {withdrawAssetOutFormatted} (min: {minWithdrawAssetFormatted})
+                    </span>
                   </div>
                   <div className='flex items-center justify-between text-sm'>
                     <div className='flex items-center gap-2'>
