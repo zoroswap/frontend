@@ -19,11 +19,12 @@ import { useWaitForNoteConsumed } from '@/hooks/useWaitForNoteConsumed';
 import { useXykSwap } from '@/hooks/useXykSwap';
 import { getMidenscanNoteUrl, getMidenscanTxUrl } from '@/hooks/useLaunchpad';
 import {
+  formatTokenAmount,
   formatTokenAmountForInput,
   fullNumberBigintFormat,
   prettyBigintFormat,
 } from '@/lib/format';
-import { getAmountOut } from '@/lib/xykMath';
+import { computeExpectedWithdraw, getAmountOut } from '@/lib/xykMath';
 import { getMockRecentTransactions } from '@/mocks/poolDetailMocks';
 import { ModalContext } from '@/providers/ModalContext';
 import { XykPoolDetailSkeleton } from '@/pages/skeletons/XykPoolDetailSkeleton';
@@ -70,6 +71,21 @@ export default function XykPoolDetail() {
     buyDecimals: number;
   } | null>(null);
   const hasPosition = lpBalance > BigInt(0);
+
+  const poolSharePct = useMemo(() => {
+    if (!poolData || !hasPosition || poolData.totalSupply === 0n) return null;
+    return (Number(lpBalance) / Number(poolData.totalSupply)) * 100;
+  }, [poolData, lpBalance, hasPosition]);
+
+  const [userToken0, userToken1] = useMemo(() => {
+    if (!poolData || !hasPosition) return [0n, 0n];
+    return computeExpectedWithdraw(
+      poolData.totalSupply,
+      lpBalance,
+      poolData.reserve0,
+      poolData.reserve1,
+    );
+  }, [poolData, lpBalance, hasPosition]);
 
   useEffect(() => {
     if (!isSwapLoading) setSwapProgressStep(null);
@@ -285,6 +301,72 @@ export default function XykPoolDetail() {
       />
       <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
         <div className='lg:col-span-1 space-y-6'>
+          {hasPosition && poolData && (
+            <Card className='rounded-xl'>
+              <CardHeader className='pb-2'>
+                <CardTitle className='text-base font-semibold'>Your Position</CardTitle>
+              </CardHeader>
+              <CardContent className='space-y-3'>
+                <div className='flex items-center justify-between text-sm'>
+                  <span className='text-muted-foreground'>LP Balance</span>
+                  <span className='font-medium tabular-nums'>
+                    {formatTokenAmount({ value: lpBalance, expo: 0 })}
+                  </span>
+                </div>
+                <div className='flex items-center justify-between text-sm'>
+                  <span className='text-muted-foreground'>Pool Share</span>
+                  <span className='font-medium tabular-nums'>
+                    {poolSharePct != null
+                      ? poolSharePct < 0.01
+                        ? `${poolSharePct.toFixed(6)}%`
+                        : `${poolSharePct.toFixed(2)}%`
+                      : '—'}
+                  </span>
+                </div>
+                <div className='border-t border-border pt-3 space-y-2'>
+                  <p className='text-xs font-medium text-muted-foreground uppercase tracking-wide'>
+                    Underlying Assets
+                  </p>
+                  <div className='flex items-center justify-between text-sm'>
+                    <span className='inline-flex items-center gap-1.5'>
+                      <AssetIcon symbol={poolData.token0.symbol} size={20} />
+                      <span className='text-muted-foreground'>{poolData.token0.symbol}</span>
+                    </span>
+                    <span className='font-medium tabular-nums'>
+                      {prettyBigintFormat({ value: userToken0, expo: poolData.token0.decimals })}
+                    </span>
+                  </div>
+                  <div className='flex items-center justify-between text-sm'>
+                    <span className='inline-flex items-center gap-1.5'>
+                      <AssetIcon symbol={poolData.token1.symbol} size={20} />
+                      <span className='text-muted-foreground'>{poolData.token1.symbol}</span>
+                    </span>
+                    <span className='font-medium tabular-nums'>
+                      {prettyBigintFormat({ value: userToken1, expo: poolData.token1.decimals })}
+                    </span>
+                  </div>
+                </div>
+                <div className='flex gap-2 pt-1'>
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    className='flex-1'
+                    onClick={() => openXykModal('Deposit')}
+                  >
+                    Deposit
+                  </Button>
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    className='flex-1'
+                    onClick={() => openXykModal('Withdraw')}
+                  >
+                    Withdraw
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
           <PoolCompositionCard
             variant='xyk'
             token0Symbol={poolData.token0.symbol}
