@@ -7,11 +7,13 @@ import { PoolDetailHeader } from '@/components/PoolDetailHeader';
 import { PoolDetailLayout } from '@/components/PoolDetailLayout';
 import { PoolDetailStats } from '@/components/PoolDetailStats';
 import { PoolInfoCard } from '@/components/PoolInfoCard';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useLPBalances } from '@/hooks/useLPBalances';
 import { usePoolsBalances } from '@/hooks/usePoolsBalances';
 import { type PoolInfo, usePoolsInfo } from '@/hooks/usePoolsInfo';
 import { useOrderUpdates } from '@/hooks/useWebSocket';
-import { fullNumberBigintFormat } from '@/lib/format';
+import { formatTokenAmount, fullNumberBigintFormat } from '@/lib/format';
 import { ModalContext } from '@/providers/ModalContext';
 import { ZoroContext } from '@/providers/ZoroContext';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
@@ -64,6 +66,11 @@ export default function HfPoolDetail() {
 
   const lpBalance = pool ? lpBalances[pool.faucetIdBech32] ?? BigInt(0) : BigInt(0);
   const hasPosition = lpBalance > BigInt(0);
+
+  const poolSharePct = useMemo(() => {
+    if (!pool || !poolBalance || !hasPosition || poolBalance.totalLiabilities === 0n) return null;
+    return (Number(lpBalance) / Number(poolBalance.totalLiabilities)) * 100;
+  }, [pool, poolBalance, lpBalance, hasPosition]);
 
   const openOrderStatusModal = useCallback((noteId: string) => {
     lastShownNoteId.current = noteId;
@@ -144,6 +151,60 @@ export default function HfPoolDetail() {
 
       <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
         <div className='lg:col-span-1 space-y-6'>
+          {hasPosition && pool && (
+            <Card className='rounded-xl'>
+              <CardHeader className='pb-2'>
+                <CardTitle className='text-base font-semibold'>Your Position</CardTitle>
+              </CardHeader>
+              <CardContent className='space-y-3'>
+                <div className='flex items-center justify-between text-sm'>
+                  <span className='text-muted-foreground'>LP Balance</span>
+                  <span className='font-medium tabular-nums'>
+                    {formatTokenAmount({ value: lpBalance, expo: decimals })}
+                  </span>
+                </div>
+                <div className='flex items-center justify-between text-sm'>
+                  <span className='text-muted-foreground'>Pool Share</span>
+                  <span className='font-medium tabular-nums'>
+                    {poolSharePct != null
+                      ? poolSharePct < 0.01
+                        ? `${poolSharePct.toFixed(6)}%`
+                        : `${poolSharePct.toFixed(2)}%`
+                      : '—'}
+                  </span>
+                </div>
+                <div className='border-t border-border pt-3 space-y-2'>
+                  <div className='flex items-center justify-between text-sm'>
+                    <span className='inline-flex items-center gap-1.5'>
+                      <AssetIcon symbol={pool.symbol} size={20} />
+                      <span className='text-muted-foreground'>{pool.symbol}</span>
+                    </span>
+                    <span className='font-medium tabular-nums'>
+                      {formatTokenAmount({ value: lpBalance, expo: decimals })}
+                    </span>
+                  </div>
+                </div>
+                <div className='flex gap-2 pt-1'>
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    className='flex-1'
+                    onClick={() => openPoolModal(pool, 'Deposit')}
+                  >
+                    Deposit
+                  </Button>
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    className='flex-1'
+                    onClick={() => openPoolModal(pool, 'Withdraw')}
+                  >
+                    Withdraw
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
           <PoolCompositionCard variant='hf' symbol={pool.symbol} />
           <PoolInfoCard
             tvlFormatted={tvlFormatted}

@@ -4,6 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { UnifiedWalletButton } from '@/components/UnifiedWalletButton';
 import useTokensWithBalance from '@/hooks/useTokensWithBalance';
 import { useUnifiedWallet } from '@/hooks/useUnifiedWallet';
+import { useXykPools } from '@/hooks/useXykPools';
 import { deployNewPool, registerPool } from '@/lib/DeployXykPool';
 import { accountIdToBech32 } from '@/lib/utils';
 import { compileXykDepositTransaction } from '@/lib/XykDepositNote';
@@ -138,17 +139,58 @@ export interface XykStepProps {
   restart: () => void;
   /** Set after successful deploy; used by step 4 for "View pool" link. */
   lastDeployedPoolIdBech32?: string;
+  /** bech32 IDs of hfAMM tokens — pairing two of these is forbidden. */
+  hfAmmBech32s?: ReadonlySet<string>;
+  /** Set of "tokenA|tokenB" keys (both orderings) for existing XYK pool pairs. */
+  registeredPairs?: ReadonlySet<string>;
+  /** Validation error for the current token pair selection. */
+  pairError?: string;
 }
 
 const XykWizard = () => {
   const { connected, requestTransaction } = useUnifiedWallet();
-  const { client, accountId } = useContext(ZoroContext);
+  const { client, accountId, tokens: hfAmmTokens } = useContext(ZoroContext);
   const [form, setForm] = useState<XykWizardForm>(() => readPersistedWizard().form);
   const [step, setStep] = useState<number>(() => readPersistedWizard().step);
   const [lastDeployedPoolIdBech32, setLastDeployedPoolIdBech32] = useState<
     string | undefined
   >(undefined);
   const tokensWithBalance = useTokensWithBalance();
+  const { xykPools } = useXykPools();
+
+  const hfAmmBech32s = useMemo(() => {
+    const s = new Set<string>();
+    for (const t of Object.values(hfAmmTokens)) {
+      if (t.oracleId && t.oracleId !== '0x' && t.oracleId !== '') {
+        s.add(t.faucetIdBech32);
+      }
+    }
+    return s;
+  }, [hfAmmTokens]);
+
+  const registeredPairs = useMemo(() => {
+    const s = new Set<string>();
+    for (const pool of xykPools) {
+      const t0 = accountIdToBech32(pool.token0);
+      const t1 = accountIdToBech32(pool.token1);
+      s.add(`${t0}|${t1}`);
+      s.add(`${t1}|${t0}`);
+    }
+    return s;
+  }, [xykPools]);
+
+  const pairError = useMemo(() => {
+    if (!form.tokenA || !form.tokenB) return undefined;
+    const aBech = accountIdToBech32(form.tokenA);
+    const bBech = accountIdToBech32(form.tokenB);
+    if (hfAmmBech32s.has(aBech) && hfAmmBech32s.has(bBech)) {
+      return 'Two hfAMM tokens cannot be paired together. Use one hfAMM token with one non-hfAMM token.';
+    }
+    if (registeredPairs.has(`${aBech}|${bBech}`)) {
+      return 'This pair already exists in the registry. You cannot create a duplicate pool.';
+    }
+    return undefined;
+  }, [form.tokenA, form.tokenB, hfAmmBech32s, registeredPairs]);
 
   useEffect(() => {
     writePersistedWizard(step, form);
@@ -169,7 +211,7 @@ const XykWizard = () => {
     switch (step) {
       case 0:
         return form.tokenA != null && form.tokenB != null && form.tokenA != form.tokenB
-          && form.feeBps != null && form.feeBps > 0;
+          && form.feeBps != null && form.feeBps > 0 && !pairError;
       case 1:
         return form.amountA != null && form.amountA > BigInt(0) && form.amountB != null
           && form.amountB > BigInt(0);
@@ -178,7 +220,7 @@ const XykWizard = () => {
       default:
         return false;
     }
-  }, [step, form]);
+  }, [step, form, pairError]);
 
   const canGoBackInWizard = useMemo(() => step > 0 && step < wizardSteps.length - 1, [
     step,
@@ -336,9 +378,12 @@ const XykWizard = () => {
         loading={tokensWithBalance.loading}
         restart={restart}
         lastDeployedPoolIdBech32={lastDeployedPoolIdBech32}
+        hfAmmBech32s={hfAmmBech32s}
+        registeredPairs={registeredPairs}
+        pairError={pairError}
       />
     );
-  }, [step, form, tokensWithBalance, restart, lastDeployedPoolIdBech32]);
+  }, [step, form, tokensWithBalance, restart, lastDeployedPoolIdBech32, hfAmmBech32s, registeredPairs, pairError]);
 
   if (!connected) {
     return (

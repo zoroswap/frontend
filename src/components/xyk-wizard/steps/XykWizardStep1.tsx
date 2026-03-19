@@ -1,7 +1,7 @@
 import { TokenAutocomplete } from '@/components/TokenAutocomplete';
 import { accountIdToBech32, cn } from '@/lib/utils';
 import { AccountId } from '@miden-sdk/miden-sdk';
-import { ArrowRight, Info } from 'lucide-react';
+import { AlertCircle, ArrowRight, Info } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
 import type { XykStepProps } from '../XykWizard';
 
@@ -20,11 +20,62 @@ const FEE_TIERS = [
 ] as const;
 
 const XykStep1 = (
-  { tokensWithBalance, tokenMetadata, form, setForm, loading }: XykStepProps,
+  {
+    tokensWithBalance,
+    tokenMetadata,
+    form,
+    setForm,
+    loading,
+    hfAmmBech32s,
+    registeredPairs,
+    pairError,
+  }: XykStepProps,
 ) => {
   const availableTokens = useMemo(() => {
     return Object.values(tokenMetadata ?? {});
   }, [tokenMetadata]);
+
+  // For B: disable tokens that would form a duplicate pair with A,
+  // or other hfAMM tokens when A is hfAMM.
+  const disabledForB = useMemo(() => {
+    const disabled = new Set<string>();
+    if (!form.tokenA) return disabled;
+    const aBech = accountIdToBech32(form.tokenA);
+    if (hfAmmBech32s?.has(aBech)) {
+      for (const b of hfAmmBech32s) {
+        if (b !== aBech) disabled.add(b);
+      }
+    }
+    if (registeredPairs) {
+      for (const t of availableTokens) {
+        if (registeredPairs.has(`${aBech}|${t.faucetIdBech32}`)) {
+          disabled.add(t.faucetIdBech32);
+        }
+      }
+    }
+    return disabled;
+  }, [form.tokenA, hfAmmBech32s, registeredPairs, availableTokens]);
+
+  // For A: disable tokens that would form a duplicate pair with B,
+  // or other hfAMM tokens when B is hfAMM.
+  const disabledForA = useMemo(() => {
+    const disabled = new Set<string>();
+    if (!form.tokenB) return disabled;
+    const bBech = accountIdToBech32(form.tokenB);
+    if (hfAmmBech32s?.has(bBech)) {
+      for (const a of hfAmmBech32s) {
+        if (a !== bBech) disabled.add(a);
+      }
+    }
+    if (registeredPairs) {
+      for (const t of availableTokens) {
+        if (registeredPairs.has(`${t.faucetIdBech32}|${bBech}`)) {
+          disabled.add(t.faucetIdBech32);
+        }
+      }
+    }
+    return disabled;
+  }, [form.tokenB, hfAmmBech32s, registeredPairs, availableTokens]);
 
   const setToken = useCallback((which: 'a' | 'b', id: AccountId) => {
     setForm({ ...form, ...(which === 'a' ? { tokenA: id } : { tokenB: id }) });
@@ -69,45 +120,55 @@ const XykStep1 = (
             </p>
           )
           : (
-            <div className='flex items-center gap-3 mt-3'>
-              <div className='flex-1 min-w-0'>
-                <label className='text-xs text-muted-foreground sr-only'>
-                  Token A
-                </label>
-                <TokenAutocomplete
-                  tokens={availableTokens}
-                  value={form.tokenA && tokenMetadata
-                    ? tokenMetadata[accountIdToBech32(form.tokenA)]
-                    : undefined}
-                  onChange={(val) => setToken('a', AccountId.fromBech32(val))}
-                  excludeFaucetIdBech32={form.tokenB
-                    ? accountIdToBech32(form.tokenB)
-                    : undefined}
-                  placeholder='Select a token'
-                  className='w-full'
-                />
+            <>
+              <div className='flex items-center gap-3 mt-3'>
+                <div className='flex-1 min-w-0'>
+                  <label className='text-xs text-muted-foreground sr-only'>
+                    Token A
+                  </label>
+                  <TokenAutocomplete
+                    tokens={availableTokens}
+                    value={form.tokenA && tokenMetadata
+                      ? tokenMetadata[accountIdToBech32(form.tokenA)]
+                      : undefined}
+                    onChange={(val) => setToken('a', AccountId.fromBech32(val))}
+                    excludeFaucetIdBech32={form.tokenB
+                      ? accountIdToBech32(form.tokenB)
+                      : undefined}
+                    disabledBech32s={disabledForA}
+                    placeholder='Select a token'
+                    className='w-full'
+                  />
+                </div>
+                <span className='text-muted-foreground shrink-0' aria-hidden>
+                  <ArrowRight className='h-5 w-5' />
+                </span>
+                <div className='flex-1 min-w-0'>
+                  <label className='text-xs text-muted-foreground sr-only'>
+                    Token B
+                  </label>
+                  <TokenAutocomplete
+                    tokens={availableTokens}
+                    value={form.tokenB && tokenMetadata
+                      ? tokenMetadata[accountIdToBech32(form.tokenB)]
+                      : undefined}
+                    onChange={(val) => setToken('b', AccountId.fromBech32(val))}
+                    excludeFaucetIdBech32={form.tokenA
+                      ? accountIdToBech32(form.tokenA)
+                      : undefined}
+                    disabledBech32s={disabledForB}
+                    placeholder='Select a token'
+                    className='w-full'
+                  />
+                </div>
               </div>
-              <span className='text-muted-foreground shrink-0' aria-hidden>
-                <ArrowRight className='h-5 w-5' />
-              </span>
-              <div className='flex-1 min-w-0'>
-                <label className='text-xs text-muted-foreground sr-only'>
-                  Token B
-                </label>
-                <TokenAutocomplete
-                  tokens={availableTokens}
-                  value={form.tokenB && tokenMetadata
-                    ? tokenMetadata[accountIdToBech32(form.tokenB)]
-                    : undefined}
-                  onChange={(val) => setToken('b', AccountId.fromBech32(val))}
-                  excludeFaucetIdBech32={form.tokenA
-                    ? accountIdToBech32(form.tokenA)
-                    : undefined}
-                  placeholder='Select a token'
-                  className='w-full'
-                />
-              </div>
-            </div>
+              {pairError && (
+                <div className='flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive mt-2'>
+                  <AlertCircle className='h-4 w-4 shrink-0' />
+                  <span>{pairError}</span>
+                </div>
+              )}
+            </>
           )}
         <div className='flex items-start gap-2 rounded-lg border text-xs border-border/80 bg-muted/40 px-3 py-2 text-sm text-muted-foreground'>
           <Info className='h-4 w-4 shrink-0 mt-0.5' aria-hidden />

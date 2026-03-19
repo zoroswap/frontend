@@ -511,20 +511,28 @@ function Swap() {
                       )
                       : !isXykSwap ? '$0' : ''}
                   </div>
-                  {accountId && balanceSell !== null && balanceSell !== undefined
-                    && (
-                      <button
-                        onClick={handleMaxClick}
-                        disabled={balanceSell === BigInt(0)}
-                        className={`hover:text-foreground transition-colors cursor-pointer ${
-                          sellInputError
-                            ? 'text-orange-600 hover:text-destructive'
-                            : 'text-muted-foreground hover:text-foreground'
-                        }`}
-                      >
-                        {balanceSellFmt} {selectedAssetSell?.symbol ?? ''}
-                      </button>
-                    )}
+                  {accountId && selectedAssetSell && (
+                    balanceSell === null
+                      ? (
+                        <span className='text-muted-foreground/60 text-xs inline-flex items-center gap-1.5 animate-pulse'>
+                          <span className='inline-block h-3 w-12 rounded bg-muted-foreground/15' />
+                          {selectedAssetSell.symbol}
+                        </span>
+                      )
+                      : (
+                        <button
+                          onClick={handleMaxClick}
+                          disabled={balanceSell === BigInt(0)}
+                          className={`hover:text-foreground transition-colors cursor-pointer ${
+                            sellInputError
+                              ? 'text-orange-600 hover:text-destructive'
+                              : 'text-muted-foreground hover:text-foreground'
+                          }`}
+                        >
+                          {balanceSellFmt} {selectedAssetSell.symbol}
+                        </button>
+                      )
+                  )}
                 </div>
               </div>
             </CardContent>
