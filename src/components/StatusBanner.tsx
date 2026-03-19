@@ -82,7 +82,7 @@ export function StatusBanner() {
 
   return (
     <div className={`w-full ${styles.bg} border-b ${styles.border}`}>
-      <div className='max-w-7xl mx-auto px-4 py-2 flex items-center gap-3'>
+      <div className='max-w-5xl mx-auto px-4 py-2 flex items-center gap-3'>
         <Icon className={`h-4 w-4 shrink-0 ${styles.text}`} />
         <p className={`flex-1 text-xs font-light ${styles.text}`}>
           {banner.text}

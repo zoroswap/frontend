@@ -25,7 +25,6 @@ export function Header() {
 
   return (
     <>
-      <StatusBanner />
       <header className='px-4 sm:px-6 py-4 sm:py-6 border-b border-border bg-background'>
         {/* Desktop */}
         <div className='hidden md:grid grid-cols-[1fr_auto_1fr] items-center gap-4'>
@@ -121,6 +120,7 @@ export function Header() {
           </nav>
         )}
       </header>
+      <StatusBanner />
     </>
   );
 }
