@@ -7,31 +7,53 @@
 // A Word is 4 felts, each represented as a bigint string for serialization
 export type SerializedWord = [string, string, string, string];
 
-// --- Requests ---
+// --- Slot query descriptors for batch reads ---
 
-export interface GetStorageMapItemRequest {
-  type: 'getStorageMapItem';
-  id: number;
-  rpcEndpoint: string;
-  accountBech32: string;
+export interface SlotItemQuery {
+  kind: 'item';
+  slotName: string;
+}
+
+export interface SlotMapItemQuery {
+  kind: 'mapItem';
   slotName: string;
   key: SerializedWord;
 }
 
-export interface GetStorageItemRequest {
-  type: 'getStorageItem';
-  id: number;
-  rpcEndpoint: string;
-  accountBech32: string;
+export interface SlotMapEntriesQuery {
+  kind: 'mapEntries';
   slotName: string;
 }
 
-export interface GetStorageMapEntriesRequest {
-  type: 'getStorageMapEntries';
+export type SlotQuery = SlotItemQuery | SlotMapItemQuery | SlotMapEntriesQuery;
+
+// --- Slot result types ---
+
+export interface SlotItemResult {
+  kind: 'item';
+  value: SerializedWord | null;
+}
+
+export interface SlotMapItemResult {
+  kind: 'mapItem';
+  value: SerializedWord | null;
+}
+
+export interface SlotMapEntriesResult {
+  kind: 'mapEntries';
+  entries: { key: string; value: string }[];
+}
+
+export type SlotResult = SlotItemResult | SlotMapItemResult | SlotMapEntriesResult;
+
+// --- Requests ---
+
+export interface GetAccountStorageRequest {
+  type: 'getAccountStorage';
   id: number;
   rpcEndpoint: string;
   accountBech32: string;
-  slotName: string;
+  queries: SlotQuery[];
 }
 
 export interface GetFaucetInfoRequest {
@@ -42,29 +64,15 @@ export interface GetFaucetInfoRequest {
 }
 
 export type WorkerRequest =
-  | GetStorageMapItemRequest
-  | GetStorageItemRequest
-  | GetStorageMapEntriesRequest
+  | GetAccountStorageRequest
   | GetFaucetInfoRequest;
 
 // --- Responses ---
 
-export interface GetStorageMapItemResponse {
-  type: 'getStorageMapItem';
+export interface GetAccountStorageResponse {
+  type: 'getAccountStorage';
   id: number;
-  result: SerializedWord | null;
-}
-
-export interface GetStorageItemResponse {
-  type: 'getStorageItem';
-  id: number;
-  result: SerializedWord | null;
-}
-
-export interface GetStorageMapEntriesResponse {
-  type: 'getStorageMapEntries';
-  id: number;
-  result: { key: string; value: string }[];
+  results: SlotResult[];
 }
 
 export interface GetFaucetInfoResponse {
@@ -84,9 +92,7 @@ export interface RpcReady {
 }
 
 export type WorkerResponse =
-  | GetStorageMapItemResponse
-  | GetStorageItemResponse
-  | GetStorageMapEntriesResponse
+  | GetAccountStorageResponse
   | GetFaucetInfoResponse
   | RpcErrorResponse;
 

@@ -1,5 +1,5 @@
 import { ZoroContext } from '@/providers/ZoroContext';
-import type { SerializedWord } from '@/workers/rpcWorkerTypes';
+import type { SlotMapItemResult } from '@/workers/rpcWorkerTypes';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useRpcWorker } from './useRpcWorker';
 
@@ -10,7 +10,7 @@ import { useRpcWorker } from './useRpcWorker';
  */
 export function useXykLpBalance(poolId: string | undefined) {
   const { accountId } = useContext(ZoroContext);
-  const { getStorageMapItem } = useRpcWorker();
+  const { getAccountStorage } = useRpcWorker();
   const [lpBalance, setLpBalance] = useState<bigint>(0n);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -21,20 +21,24 @@ export function useXykLpBalance(poolId: string | undefined) {
     }
     setIsLoading(true);
     try {
-      const key: SerializedWord = [
-        '0',
-        '0',
-        accountId.suffix().asInt().toString(),
-        accountId.prefix().asInt().toString(),
-      ];
-      const result = await getStorageMapItem(poolId, 'zoro::lp_local::user_deposits_mapping', key);
-      setLpBalance(result ? BigInt(result[0]) : 0n);
+      const results = await getAccountStorage(poolId, [{
+        kind: 'mapItem',
+        slotName: 'zoro::lp_local::user_deposits_mapping',
+        key: [
+          '0',
+          '0',
+          accountId.suffix().asInt().toString(),
+          accountId.prefix().asInt().toString(),
+        ],
+      }]);
+      const word = (results[0] as SlotMapItemResult).value;
+      setLpBalance(word ? BigInt(word[0]) : 0n);
     } catch {
       setLpBalance(0n);
     } finally {
       setIsLoading(false);
     }
-  }, [poolId, accountId, getStorageMapItem]);
+  }, [poolId, accountId, getAccountStorage]);
 
   useEffect(() => {
     refetch();

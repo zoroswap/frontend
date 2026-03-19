@@ -9,6 +9,7 @@ import {
 import type {
   RpcReady,
   SerializedWord,
+  SlotResult,
   WorkerOutgoing,
   WorkerRequest,
 } from './rpcWorkerTypes';
@@ -33,56 +34,62 @@ function serializedToWord(s: SerializedWord): Word {
   return Word.newFromFelts([new Felt(BigInt(s[0])), new Felt(BigInt(s[1])), new Felt(BigInt(s[2])), new Felt(BigInt(s[3]))]);
 }
 
-function getAccountStorage(client: RpcClient, bech32: string) {
-  return client.getAccountDetails(Address.fromBech32(bech32).accountId())
-    .then(f => f.account()?.storage());
+const faucetCache = new Map<string, { symbol: string; decimals: number }>();
+
+async function handleMessage(msg: WorkerRequest): Promise<WorkerOutgoing> {
+  const client = getClient(msg.rpcEndpoint);
+
+  switch (msg.type) {
+    case 'getAccountStorage': {
+      const fetched = await client.getAccountDetails(Address.fromBech32(msg.accountBech32).accountId());
+      const storage = fetched.account()?.storage();
+      const results: SlotResult[] = msg.queries.map((q) => {
+        switch (q.kind) {
+          case 'item': {
+            const value = storage?.getItem(q.slotName);
+            return { kind: 'item', value: value ? wordToSerialized(value) : null };
+          }
+          case 'mapItem': {
+            const value = storage?.getMapItem(q.slotName, serializedToWord(q.key));
+            return { kind: 'mapItem', value: value ? wordToSerialized(value) : null };
+          }
+          case 'mapEntries': {
+            const entries = storage?.getMapEntries(q.slotName) ?? [];
+            return { kind: 'mapEntries', entries: entries.map(e => ({ key: e.key, value: e.value })) };
+          }
+        }
+      });
+      return { type: 'getAccountStorage', id: msg.id, results };
+    }
+    case 'getFaucetInfo': {
+      const cached = faucetCache.get(msg.accountBech32);
+      if (cached) {
+        return { type: 'getFaucetInfo', id: msg.id, result: cached };
+      }
+      const fetched = await client.getAccountDetails(Address.fromBech32(msg.accountBech32).accountId());
+      const account = fetched.account();
+      if (!account) {
+        return { type: 'getFaucetInfo', id: msg.id, result: null };
+      }
+      const faucet = BasicFungibleFaucetComponent.fromAccount(account);
+      const info = { symbol: faucet.symbol().toString(), decimals: faucet.decimals() };
+      faucetCache.set(msg.accountBech32, info);
+      return { type: 'getFaucetInfo', id: msg.id, result: info };
+    }
+    default:
+      return { type: 'error', id: msg.id, message: `Unknown request type: ${(msg as { type: string }).type}` };
+  }
 }
 
-self.onmessage = async (e: MessageEvent<WorkerRequest>) => {
-  const msg = e.data;
-  let response: WorkerOutgoing;
-
-  try {
-    const client = getClient(msg.rpcEndpoint);
-
-    switch (msg.type) {
-      case 'getStorageMapItem': {
-        const storage = await getAccountStorage(client, msg.accountBech32);
-        const value = storage?.getMapItem(msg.slotName, serializedToWord(msg.key));
-        response = { type: 'getStorageMapItem', id: msg.id, result: value ? wordToSerialized(value) : null };
-        break;
-      }
-      case 'getStorageItem': {
-        const storage = await getAccountStorage(client, msg.accountBech32);
-        const value = storage?.getItem(msg.slotName);
-        response = { type: 'getStorageItem', id: msg.id, result: value ? wordToSerialized(value) : null };
-        break;
-      }
-      case 'getStorageMapEntries': {
-        const storage = await getAccountStorage(client, msg.accountBech32);
-        const entries = storage?.getMapEntries(msg.slotName) ?? [];
-        response = { type: 'getStorageMapEntries', id: msg.id, result: entries.map(e => ({ key: e.key, value: e.value })) };
-        break;
-      }
-      case 'getFaucetInfo': {
-        const fetched = await client.getAccountDetails(Address.fromBech32(msg.accountBech32).accountId());
-        const account = fetched.account();
-        if (!account) {
-          response = { type: 'getFaucetInfo', id: msg.id, result: null };
-        } else {
-          const faucet = BasicFungibleFaucetComponent.fromAccount(account);
-          response = { type: 'getFaucetInfo', id: msg.id, result: { symbol: faucet.symbol().toString(), decimals: faucet.decimals() } };
-        }
-        break;
-      }
-      default:
-        response = { type: 'error', id: msg.id, message: `Unknown request type: ${(msg as { type: string }).type}` };
-    }
-  } catch (err) {
-    response = { type: 'error', id: msg.id, message: err instanceof Error ? err.message : String(err) };
-  }
-
-  self.postMessage(response);
+self.onmessage = (e: MessageEvent<WorkerRequest>) => {
+  handleMessage(e.data).then(
+    (response) => self.postMessage(response),
+    (err) => self.postMessage({
+      type: 'error',
+      id: e.data.id,
+      message: err instanceof Error ? err.message : String(err),
+    }),
+  );
 };
 
 self.postMessage({ type: 'ready' } satisfies RpcReady);

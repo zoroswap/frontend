@@ -1,6 +1,7 @@
 import { XYK_REGISTRY_BECH32 } from '@/lib/config';
 import { accountIdFromPrefixSuffix } from '@/lib/utils';
 import { AccountId, Word } from '@miden-sdk/miden-sdk';
+import type { SlotMapEntriesResult } from '@/workers/rpcWorkerTypes';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRpcWorker } from './useRpcWorker';
 
@@ -11,13 +12,18 @@ export interface XykPool {
 }
 
 export const useXykPools = () => {
-  const { getStorageMapEntries } = useRpcWorker();
+  const { getAccountStorage } = useRpcWorker();
   const [xykPools, setXykPools] = useState<XykPool[]>([]);
 
   const refetch = useCallback(async () => {
     try {
       if (!XYK_REGISTRY_BECH32) return;
-      const entries = await getStorageMapEntries(XYK_REGISTRY_BECH32, 'zoro::registry::assets_to_pool_mapping');
+
+      const results = await getAccountStorage(XYK_REGISTRY_BECH32, [
+        { kind: 'mapEntries', slotName: 'zoro::registry::assets_to_pool_mapping' },
+      ]);
+
+      const entries = (results[0] as SlotMapEntriesResult).entries;
       const pools: XykPool[] = [];
 
       for (const entry of entries) {
@@ -37,7 +43,7 @@ export const useXykPools = () => {
     } catch (e) {
       console.error(e);
     }
-  }, [getStorageMapEntries]);
+  }, [getAccountStorage]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect

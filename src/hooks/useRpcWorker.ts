@@ -1,10 +1,9 @@
 import { NETWORK } from '@/lib/config';
 import type {
+  GetAccountStorageResponse,
   GetFaucetInfoResponse,
-  GetStorageItemResponse,
-  GetStorageMapEntriesResponse,
-  GetStorageMapItemResponse,
-  SerializedWord,
+  SlotQuery,
+  SlotResult,
   WorkerOutgoing,
   WorkerRequest,
   WorkerResponse,
@@ -67,49 +66,17 @@ async function send<T extends WorkerResponse>(
 }
 
 export function useRpcWorker() {
-  const getStorageMapItem = useCallback(
+  const getAccountStorage = useCallback(
     async (
       accountBech32: string,
-      slotName: string,
-      key: SerializedWord,
-    ): Promise<SerializedWord | null> => {
-      const res = await send<GetStorageMapItemResponse>({
-        type: 'getStorageMapItem',
+      queries: SlotQuery[],
+    ): Promise<SlotResult[]> => {
+      const res = await send<GetAccountStorageResponse>({
+        type: 'getAccountStorage',
         accountBech32,
-        slotName,
-        key,
+        queries,
       });
-      return res.result;
-    },
-    [],
-  );
-
-  const getStorageItem = useCallback(
-    async (
-      accountBech32: string,
-      slotName: string,
-    ): Promise<SerializedWord | null> => {
-      const res = await send<GetStorageItemResponse>({
-        type: 'getStorageItem',
-        accountBech32,
-        slotName,
-      });
-      return res.result;
-    },
-    [],
-  );
-
-  const getStorageMapEntries = useCallback(
-    async (
-      accountBech32: string,
-      slotName: string,
-    ): Promise<{ key: string; value: string }[]> => {
-      const res = await send<GetStorageMapEntriesResponse>({
-        type: 'getStorageMapEntries',
-        accountBech32,
-        slotName,
-      });
-      return res.result;
+      return res.results;
     },
     [],
   );
@@ -127,5 +94,5 @@ export function useRpcWorker() {
     [],
   );
 
-  return { getStorageMapItem, getStorageItem, getStorageMapEntries, getFaucetInfo };
+  return { getAccountStorage, getFaucetInfo };
 }
