@@ -1,15 +1,17 @@
-import type { XykPool } from '@/hooks/useXykPools';
 import { useXykPool } from '@/hooks/useXykPool';
+import type { XykPool } from '@/hooks/useXykPools';
 import { prettyBigintFormat } from '@/lib/format';
 import { accountIdToBech32 } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import AssetIcon from '../AssetIcon';
 import { useNavigate } from 'react-router-dom';
+import AssetIcon from '../AssetIcon';
 import { Skeleton } from '../ui/skeleton';
 
 const truncateId = (bech32: string, head = 6, tail = 4) =>
-  bech32.length <= head + tail ? bech32 : `${bech32.slice(0, head)}…${bech32.slice(-tail)}`;
+  bech32.length <= head + tail
+    ? bech32
+    : `${bech32.slice(0, head)}…${bech32.slice(-tail)}`;
 
 export interface XykPoolTableRowProps {
   pool: XykPool;
@@ -48,7 +50,9 @@ const XykPoolTableRow = ({ pool, token0Symbol, token1Symbol }: XykPoolTableRowPr
     : '—';
 
   const priceDisplay = poolData && poolData.priceToken0InToken1 > 0
-    ? `1 ${poolData.token0.symbol} = ${poolData.priceToken0InToken1.toFixed(6)} ${poolData.token1.symbol}`
+    ? `1 ${poolData.token0.symbol} = ${
+      poolData.priceToken0InToken1.toFixed(6)
+    } ${poolData.token1.symbol}`
     : '—';
 
   const onOpen = () => {
@@ -83,9 +87,6 @@ const XykPoolTableRow = ({ pool, token0Symbol, token1Symbol }: XykPoolTableRowPr
           </div>
           <div className='flex items-center gap-1.5 flex-wrap'>
             <span className='font-medium'>{pairLabel}</span>
-            <span className='text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground'>
-              XYK
-            </span>
             {isLoading && (
               <span className='inline-flex items-center text-muted-foreground'>
                 <Loader2 className='h-3.5 w-3.5 animate-spin' />
@@ -100,10 +101,14 @@ const XykPoolTableRow = ({ pool, token0Symbol, token1Symbol }: XykPoolTableRowPr
           : (
             <>
               <span className='tabular-nums'>{reserve0Str}</span>
-              {sym0 ? <span className='text-muted-foreground text-xs ml-1'>{sym0}</span> : null}
+              {sym0
+                ? <span className='text-muted-foreground text-xs ml-1'>{sym0}</span>
+                : null}
               <span className='text-muted-foreground text-xs mx-1'>/</span>
               <span className='tabular-nums'>{reserve1Str}</span>
-              {sym1 ? <span className='text-muted-foreground text-xs ml-1'>{sym1}</span> : null}
+              {sym1
+                ? <span className='text-muted-foreground text-xs ml-1'>{sym1}</span>
+                : null}
             </>
           )}
       </td>
@@ -116,10 +121,14 @@ const XykPoolTableRow = ({ pool, token0Symbol, token1Symbol }: XykPoolTableRowPr
         {isLoading && !poolData ? <Loader2 className='h-4 w-4 animate-spin' /> : '—'}
       </td>
       <td className='py-3 px-4'>
-        {isLoading && !poolData ? <Loader2 className='h-4 w-4 animate-spin text-muted-foreground' /> : '—'}
+        {isLoading && !poolData
+          ? <Loader2 className='h-4 w-4 animate-spin text-muted-foreground' />
+          : '—'}
       </td>
       <td className='py-3 px-4'>
-        {isLoading && !poolData ? <Loader2 className='h-4 w-4 animate-spin text-muted-foreground' /> : '—'}
+        {isLoading && !poolData
+          ? <Loader2 className='h-4 w-4 animate-spin text-muted-foreground' />
+          : '—'}
       </td>
     </tr>
   );

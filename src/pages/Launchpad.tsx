@@ -22,7 +22,7 @@ import { parseUnits } from 'viem';
 const SYMBOL_MIN = 3;
 const SYMBOL_MAX = 6;
 const DECIMALS_MIN = 0;
-const DECIMALS_MAX = 6;
+const DECIMALS_MAX = 8;
 const TOTAL_SUPPLY_MAX = 100_000_000;
 
 const MAX_SUPPLY_DISPLAY = TOTAL_SUPPLY_MAX.toLocaleString('en-US');
@@ -48,16 +48,16 @@ function validateDecimals(n: number): string | null {
 }
 
 function validateInitialSupply(raw: string, decimals: number): string | null {
-  if (!raw.trim()) return 'Initial supply is required';
+  if (!raw.trim()) return 'Total supply is required';
   let amount: bigint;
   try {
     amount = parseUnits(raw.trim(), decimals);
   } catch {
     return 'Invalid amount';
   }
-  if (amount <= 0n) return 'Initial supply must be greater than 0';
+  if (amount <= 0n) return 'Total supply must be greater than 0';
   if (amount > TOTAL_SUPPLY_MAX) {
-    return `Initial supply must not exceed ${MAX_SUPPLY_DISPLAY} (raw units)`;
+    return `Total supply must not exceed ${MAX_SUPPLY_DISPLAY} (raw units)`;
   }
   return null;
 }
@@ -170,8 +170,8 @@ export default function Launchpad() {
             Token launchpad
           </h1>
           <p className={`mt-3 max-w-md mx-auto ${bodyClass}`}>
-            Deploy a new faucet token on Miden and mint the initial supply to your
-            account. You’ll confirm the transaction in your wallet.
+            Deploy a new faucet token on Miden and mint the whole initial supply to your
+            account. You will need to consume the tokens in your wallet.
           </p>
         </div>
 
@@ -191,7 +191,9 @@ export default function Launchpad() {
                 <div className='rounded-xl border border-green-500/40 bg-green-500/5 dark:bg-green-500/10 p-5 sm:p-6 space-y-5'>
                   <div className='flex items-center gap-2.5 text-green-700 dark:text-green-400'>
                     <CheckCircle className='h-5 w-5 shrink-0' />
-                    <span className='text-sm font-semibold'>Token launched successfully</span>
+                    <span className='text-sm font-semibold'>
+                      Token launched successfully
+                    </span>
                   </div>
                   <p className={bodyClass}>
                     Claim the note in your wallet to receive your tokens. You can launch
@@ -298,7 +300,9 @@ export default function Launchpad() {
                       onBlur={() =>
                         setTouched((t) => ({ ...t, symbol: true }))}
                       maxLength={SYMBOL_MAX}
-                      className={`h-11 rounded-xl text-sm ${symbolError ? 'border-destructive' : ''}`}
+                      className={`h-11 rounded-xl text-sm ${
+                        symbolError ? 'border-destructive' : ''
+                      }`}
                       aria-invalid={!!symbolError}
                       aria-describedby={symbolError
                         ? 'launchpad-symbol-error'
@@ -329,14 +333,16 @@ export default function Launchpad() {
                         if (error) clearError();
                       }}
                       onBlur={() => setTouched((t) => ({ ...t, decimals: true }))}
-                      className={`h-11 rounded-xl text-sm ${decimalsError ? 'border-destructive' : ''}`}
+                      className={`h-11 rounded-xl text-sm ${
+                        decimalsError ? 'border-destructive' : ''
+                      }`}
                       aria-invalid={!!decimalsError}
                     />
                     {decimalsError && (
                       <p className='text-sm text-destructive'>{decimalsError}</p>
                     )}
                     <p className={hintClass}>
-                      Between {DECIMALS_MIN} and {DECIMALS_MAX}. Standard is often 4–6.
+                      Between {DECIMALS_MIN} and {DECIMALS_MAX}.
                     </p>
                   </div>
 
@@ -355,15 +361,16 @@ export default function Launchpad() {
                         if (error) clearError();
                       }}
                       onBlur={() => setTouched((t) => ({ ...t, supply: true }))}
-                      className={`h-11 rounded-xl text-sm ${supplyError ? 'border-destructive' : ''}`}
+                      className={`h-11 rounded-xl text-sm ${
+                        supplyError ? 'border-destructive' : ''
+                      }`}
                       aria-invalid={!!supplyError}
                     />
                     {supplyError && (
                       <p className='text-sm text-destructive'>{supplyError}</p>
                     )}
                     <p className={hintClass}>
-                      Whole tokens to mint (decimals apply on-chain). Max{' '}
-                      {MAX_SUPPLY_DISPLAY} raw units.
+                      Whole number of tokens to mint (without decimals)
                     </p>
                   </div>
 
@@ -409,18 +416,14 @@ export default function Launchpad() {
               role='note'
             >
               <Info className='h-5 w-5 shrink-0 text-blue-600 dark:text-blue-400 mt-0.5' />
-              <p className={`${bodyClass} text-foreground/90`}>
-                <span className='font-medium text-foreground'>Supply & Miden math.</span>{' '}
-                This launchpad caps initial mint at{' '}
+              <p className='text-xs text-foreground/90 leading-relaxed'>
+                <span className='font-medium text-foreground'>Token supply</span>{' '}
+                is capped at{' '}
                 <span className='font-mono tabular-nums text-foreground'>
                   {MAX_SUPPLY_DISPLAY}
                 </span>{' '}
-                raw units (before decimals). Because of current Miden field arithmetic
-                limits, tokens whose <em>total supply</em> (especially with many decimals)
-                grows beyond what the protocol can represent safely may show rounding
-                issues, failed operations, or other unexpected behaviour—even when below
-                this UI cap. Prefer conservative supplies and decimals until those limits
-                evolve.
+                raw units. Operations with large token amounts paired with high decimals
+                may fail due to current Miden limitations.
               </p>
             </div>
           </CardContent>
