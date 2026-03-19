@@ -55,11 +55,11 @@ const XykPoolTable = ({ search }: XykPoolTableProps) => {
             <thead>
               <tr className='border-b border-border text-muted-foreground uppercase tracking-wide text-xs'>
                 <th className='py-3 px-4 font-medium'>Pool</th>
-                <th className='py-3 px-4 font-medium'>TVL ↑</th>
+                <th className='py-3 px-4 font-medium'>TVL</th>
                 <th className='py-3 px-4 font-medium'>Price</th>
-                <th className='py-3 px-4 font-medium'>APR ↑</th>
-                <th className='py-3 px-4 font-medium'>1D VOL ↑</th>
-                <th className='py-3 px-4 font-medium'>7D VOL ↑</th>
+                <th className='py-3 px-4 font-medium'>APR</th>
+                <th className='py-3 px-4 font-medium'>1D VOL</th>
+                <th className='py-3 px-4 font-medium'>7D VOL</th>
               </tr>
             </thead>
             <tbody>

@@ -149,11 +149,11 @@ const LiquidityPoolsTable = ({
                 <thead>
                   <tr className='border-b border-border text-muted-foreground uppercase tracking-wide text-xs'>
                     <th className='py-3 px-4 font-medium'>Pool</th>
-                    <th className='py-3 px-4 font-medium'>TVL ↑</th>
+                    <th className='py-3 px-4 font-medium'>TVL</th>
                     <th className='py-3 px-4 font-medium'>Saturation</th>
-                    <th className='py-3 px-4 font-medium'>APR ↑</th>
-                    <th className='py-3 px-4 font-medium'>1D VOL ↑</th>
-                    <th className='py-3 px-4 font-medium'>7D VOL ↑</th>
+                    <th className='py-3 px-4 font-medium'>APR</th>
+                    <th className='py-3 px-4 font-medium'>1D VOL</th>
+                    <th className='py-3 px-4 font-medium'>7D VOL</th>
                     <th className='py-3 px-4 font-medium text-right sticky right-0 bg-card'>
                     </th>
                   </tr>

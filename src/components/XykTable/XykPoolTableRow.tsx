@@ -3,9 +3,10 @@ import { useXykPool } from '@/hooks/useXykPool';
 import { prettyBigintFormat } from '@/lib/format';
 import { accountIdToBech32 } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import AssetIcon from '../AssetIcon';
 import { useNavigate } from 'react-router-dom';
+import { Skeleton } from '../ui/skeleton';
 
 const truncateId = (bech32: string, head = 6, tail = 4) =>
   bech32.length <= head + tail ? bech32 : `${bech32.slice(0, head)}…${bech32.slice(-tail)}`;
@@ -22,6 +23,13 @@ const XykPoolTableRow = ({ pool, token0Symbol, token1Symbol }: XykPoolTableRowPr
   const navigate = useNavigate();
   const poolIdBech32 = useMemo(() => accountIdToBech32(pool.xykPoolId), [pool.xykPoolId]);
   const { data: poolData, isLoading } = useXykPool(poolIdBech32);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+
+  useEffect(() => {
+    if (!isLoading && !hasLoadedOnce) {
+      setHasLoadedOnce(true);
+    }
+  }, [isLoading, hasLoadedOnce]);
 
   const fallbackId0 = accountIdToBech32(pool.token0);
   const fallbackId1 = accountIdToBech32(pool.token1);
@@ -46,6 +54,9 @@ const XykPoolTableRow = ({ pool, token0Symbol, token1Symbol }: XykPoolTableRowPr
   const onOpen = () => {
     navigate(`/pools/xyk/${encodeURIComponent(poolIdBech32)}`);
   };
+
+  const showInitialSkeleton = !hasLoadedOnce && isLoading && !poolData;
+  if (showInitialSkeleton) return <XykPoolTableRowSkeleton />;
 
   return (
     <tr
@@ -113,5 +124,37 @@ const XykPoolTableRow = ({ pool, token0Symbol, token1Symbol }: XykPoolTableRowPr
     </tr>
   );
 };
+
+export const XykPoolTableRowSkeleton = () => (
+  <tr className='border-b border-border'>
+    <td className='py-3 px-4'>
+      <div className='flex items-center gap-2'>
+        <div className='flex -space-x-2'>
+          <Skeleton className='h-6 w-6 rounded-full border-2 border-card' />
+          <Skeleton className='h-6 w-6 rounded-full border-2 border-card' />
+        </div>
+        <div className='flex items-center gap-2'>
+          <Skeleton className='h-4 w-28' />
+          <Skeleton className='h-5 w-10 rounded-full' />
+        </div>
+      </div>
+    </td>
+    <td className='py-3 px-4'>
+      <Skeleton className='h-4 w-40' />
+    </td>
+    <td className='py-3 px-4'>
+      <Skeleton className='h-4 w-44' />
+    </td>
+    <td className='py-3 px-4'>
+      <Skeleton className='h-4 w-12' />
+    </td>
+    <td className='py-3 px-4'>
+      <Skeleton className='h-4 w-12' />
+    </td>
+    <td className='py-3 px-4'>
+      <Skeleton className='h-4 w-12' />
+    </td>
+  </tr>
+);
 
 export default XykPoolTableRow;

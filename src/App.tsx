@@ -5,7 +5,7 @@ import {
   WalletProvider,
 } from '@demox-labs/miden-wallet-adapter';
 import { useMemo } from 'react';
-import { BrowserRouter as Router, Navigate, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import NotFound from './pages/404';
 import FaucetPage from './pages/Faucet';
 import SwapPage from './pages/Swap';
@@ -36,7 +36,6 @@ function AppRouter() {
         <Route path='/explore' element={<Explore />} />
         <Route path='/pools/hf/:poolId' element={<HfPoolDetail />} />
         <Route path='/pools/xyk/:poolId' element={<XykPoolDetail />} />
-        <Route path='/pools' element={<Navigate to='/explore' replace />} />
         <Route path='/new-xyk-pool' element={<NewXykPool />} />
         <Route path='*' element={<NotFound />} />
       </Routes>
