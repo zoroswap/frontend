@@ -218,7 +218,7 @@ export default function XykPoolDetail() {
 
   if (poolError || !poolData) {
     return (
-      <PoolDetailLayout backTo='/pools' title='Pool'>
+      <PoolDetailLayout backTo='/explore' title='Pool'>
         <p className='text-muted-foreground'>
           {poolError ? poolError.message : 'Pool not found.'}
         </p>
@@ -255,7 +255,7 @@ export default function XykPoolDetail() {
 
   return (
     <PoolDetailLayout
-      backTo='/pools'
+      backTo='/explore'
       backLabel='Back to pools'
       title={pairLabel}
     >

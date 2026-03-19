@@ -4,13 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { UnifiedWalletButton } from '@/components/UnifiedWalletButton';
 import useTokensWithBalance from '@/hooks/useTokensWithBalance';
 import { useUnifiedWallet } from '@/hooks/useUnifiedWallet';
-import { deployNewPool } from '@/lib/DeployXykPool';
-import {
-  type CreatedPoolDraft,
-  readCreatedPools,
-  updateCreatedPool,
-  writeCreatedPools,
-} from '@/lib/poolUtils';
+import { deployNewPool, registerPool } from '@/lib/DeployXykPool';
 import { accountIdToBech32 } from '@/lib/utils';
 import { compileXykDepositTransaction } from '@/lib/XykDepositNote';
 import { type TokenConfigWithBalance, ZoroContext } from '@/providers/ZoroContext';
@@ -226,7 +220,11 @@ const XykWizard = () => {
         }
 
         onProgress?.(0);
-        const { newPoolId } = await deployNewPool({ client, token0, token1 });
+        const { newPoolId } = await deployNewPool({
+          client,
+          token0,
+          token1,
+        });
 
         onProgress?.(1);
         const { tx } = await compileXykDepositTransaction({
@@ -238,12 +236,24 @@ const XykWizard = () => {
           poolAccountId: newPoolId,
           client,
         });
+
+        console.log('First deposit');
+
         await requestTransaction({
           type: TransactionType.Custom,
           payload: tx,
         });
         onProgress?.(2);
-        await client.syncState();
+
+        console.log('First deposit sent');
+
+        await registerPool({
+          token0,
+          token1,
+          pool_acc: newPoolId,
+          requestTransaction,
+          client,
+        });
 
         await client.syncState();
         return newPoolId;
@@ -262,37 +272,16 @@ const XykWizard = () => {
     ) {
       return;
     }
-    const metadata = tokensWithBalance.metadata;
-    const tokenAMeta = metadata[accountIdToBech32(form.tokenA)];
-    const tokenBMeta = metadata[accountIdToBech32(form.tokenB)];
-    const draft: CreatedPoolDraft = {
-      id: crypto.randomUUID(),
-      type: 'xyk',
-      tokenA: {
-        symbol: tokenAMeta.symbol,
-        name: tokenAMeta.name,
-        faucetIdBech32: tokenAMeta.faucetIdBech32,
-      },
-      tokenB: {
-        symbol: tokenBMeta.symbol,
-        name: tokenBMeta.name,
-        faucetIdBech32: tokenBMeta.faucetIdBech32,
-      },
-      feeBps: form.feeBps,
-      createdAt: Date.now(),
-      status: 'draft',
-    };
-    const existing = readCreatedPools();
-    writeCreatedPools([draft, ...existing]);
-
     setCreateError(null);
     setIsCreating(true);
     setCreateStep(null);
     const [token0, token1] = orderPairByHex(form.tokenA, form.tokenB);
-    const amount0 =
-      form.tokenA.toString() === token0.toString() ? form.amountA : form.amountB;
-    const amount1 =
-      form.tokenA.toString() === token0.toString() ? form.amountB : form.amountA;
+    const amount0 = form.tokenA.toString() === token0.toString()
+      ? form.amountA
+      : form.amountB;
+    const amount1 = form.tokenA.toString() === token0.toString()
+      ? form.amountB
+      : form.amountA;
     try {
       const newPoolId = await launchXykPool(
         {
@@ -310,10 +299,6 @@ const XykWizard = () => {
       }
       const poolIdBech32 = accountIdToBech32(newPoolId);
       setLastDeployedPoolIdBech32(poolIdBech32);
-      updateCreatedPool(draft.id, {
-        status: 'deployed',
-        poolIdBech32,
-      });
       setStep(3);
     } catch (err) {
       const message = err instanceof Error
@@ -324,7 +309,7 @@ const XykWizard = () => {
       setIsCreating(false);
       setCreateStep(null);
     }
-  }, [form, tokensWithBalance, launchXykPool]);
+  }, [form, launchXykPool]);
 
   const stepTitle = step === 0
     ? 'Create a new Liquidity Pool'

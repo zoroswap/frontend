@@ -4,7 +4,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 export function XykPoolDetailSkeleton() {
   return (
-    <PoolDetailLayout backTo='/pools' backLabel='Back to pools' title='Pool'>
+    <PoolDetailLayout backTo='/explore' backLabel='Back to pools' title='Pool'>
       <div className='flex flex-wrap items-start justify-between gap-4 mb-8'>
         <div className='flex items-center gap-3'>
           <Skeleton className='h-12 w-12 shrink-0 rounded-full' />

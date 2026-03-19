@@ -34,6 +34,8 @@ export const useXykPools = () => {
         const token1 = accountIdFromPrefixSuffix(valueword[3], valueword[2]);
         const xykPoolId = accountIdFromPrefixSuffix(keyword[1], keyword[0]);
 
+        console.log(xykPoolId);
+
         xykPools.push({ token0, token1, xykPoolId });
       }
 

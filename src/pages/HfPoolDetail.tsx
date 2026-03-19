@@ -99,9 +99,9 @@ export default function HfPoolDetail() {
 
   if (!pool || !poolBalance) {
     return (
-      <PoolDetailLayout backTo='/pools' title='Pool'>
+      <PoolDetailLayout backTo='/explore' title='Pool'>
         <p className='text-muted-foreground'>Pool not found.</p>
-        <Link to='/pools' className='text-primary hover:underline mt-2 inline-block'>
+        <Link to='/explore' className='text-primary hover:underline mt-2 inline-block'>
           ← Back to pools
         </Link>
       </PoolDetailLayout>
@@ -119,7 +119,7 @@ export default function HfPoolDetail() {
 
   return (
     <PoolDetailLayout
-      backTo='/pools'
+      backTo='/explore'
       backLabel='Back to pools'
       title={pairLabel}
     >

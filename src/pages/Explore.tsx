@@ -19,7 +19,7 @@ import { ModalContext } from '@/providers/ModalContext';
 import { ZoroContext } from '@/providers/ZoroContext';
 import { Search } from 'lucide-react';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 function Explore() {
   const navigate = useNavigate();
@@ -185,9 +185,18 @@ function Explore() {
           <div className='flex justify-center mt-6'>
             {poweredByMiden}
           </div>
-          <h2 className='text-2xl font-bold font-cal-sans text-foreground mt-12 mb-4'>
-            Community pools
-          </h2>
+          <div className='flex flex-wrap items-center justify-between gap-4 mt-12 mb-4'>
+            <h2 className='text-2xl font-bold font-cal-sans text-foreground'>
+              Community pools
+            </h2>
+            <Button
+              size='sm'
+              className='rounded-lg bg-primary text-primary-foreground'
+              asChild
+            >
+              <Link to='/new-xyk-pool'>Create pool</Link>
+            </Button>
+          </div>
           <div className='relative mb-4'>
             <Search className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground' />
             <Input
