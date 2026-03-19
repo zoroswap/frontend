@@ -12,7 +12,6 @@ const useTokensWithBalance = () => {
   const refresh = useCallback(async () => {
     setLoading(true);
     const tokens = await getAvailableTokens();
-    console.log(tokens);
     setTokensWithBalance(tokens);
     setLoading(false);
   }, [getAvailableTokens]);

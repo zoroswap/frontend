@@ -280,15 +280,11 @@ const XykWizard = () => {
           client,
         });
 
-        console.log('First deposit');
-
         await requestTransaction({
           type: TransactionType.Custom,
           payload: tx,
         });
         onProgress?.(2);
-
-        console.log('First deposit sent');
 
         await registerPool({
           token0,
@@ -298,10 +294,10 @@ const XykWizard = () => {
           client,
           sender: accountId,
         });
-
+        await client.syncState();
+        await new Promise(r => setTimeout(r, 5000));
         onProgress?.(3);
 
-        await client.syncState();
         return newPoolId;
       } catch (e) {
         console.error(e);
@@ -346,6 +342,7 @@ const XykWizard = () => {
       const poolIdBech32 = accountIdToBech32(newPoolId);
       setLastDeployedPoolIdBech32(poolIdBech32);
       setStep(3);
+      clearPersistedWizard();
     } catch (err) {
       const message = err instanceof Error
         ? err.message

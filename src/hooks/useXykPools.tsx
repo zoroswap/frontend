@@ -23,8 +23,6 @@ export const useXykPools = () => {
         { kind: 'mapEntries', slotName: 'zoro::registry::assets_to_pool_mapping' },
       ]);
 
-      console.log(results);
-
       const entries = (results[0] as SlotMapEntriesResult).entries;
       const pools: XykPool[] = [];
 
@@ -48,7 +46,7 @@ export const useXykPools = () => {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     refetch();
-    const refresh = setInterval(refetch, 180000);
+    const refresh = setInterval(refetch, 60000);
     return () => clearInterval(refresh);
   }, [refetch]);
 

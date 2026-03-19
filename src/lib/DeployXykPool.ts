@@ -234,7 +234,6 @@ export async function deployNewPool({
   await client.newAccount(contract.account, true);
   await client.syncState();
   console.log('Deployed new XYK pool at: ', accountIdToBech32(contract.account.id()));
-  console.log('???');
   const initTx = new TransactionRequestBuilder()
     .build();
   await client.submitNewTransaction(contract.account.id(), initTx);
