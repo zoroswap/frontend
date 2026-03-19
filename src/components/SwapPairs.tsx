@@ -1,9 +1,18 @@
+import { useState } from 'react';
+
 export const SwapPairs = (
   { swapPairs, disabled }: { swapPairs: () => void; disabled: boolean },
 ) => {
+  const [rotation, setRotation] = useState(0);
+
+  const handleClick = () => {
+    setRotation((r) => r + 180);
+    swapPairs();
+  };
+
   return (
     <button
-      onClick={swapPairs}
+      onClick={handleClick}
       disabled={disabled}
       className='p-3 bg-muted border border-border/40 rounded-xl cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted/80 transition-colors'
     >

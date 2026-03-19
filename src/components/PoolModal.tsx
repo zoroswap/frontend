@@ -347,62 +347,57 @@ export default function PoolModal({
           {isHfAmm
             ? (
               <span className='inline-block rounded-full border-2 border-background overflow-hidden bg-muted'>
-                <AssetIcon symbol={pool.symbol} size={28} />
+                <AssetIcon symbol={pool.symbol} size={32} />
               </span>
             )
             : (
               <div className='flex -space-x-2'>
                 <span className='inline-block rounded-full border-2 border-background overflow-hidden bg-muted'>
-                  <AssetIcon symbol={pool.symbol} size={28} />
+                  <AssetIcon symbol={pool.symbol} size={32} />
                 </span>
                 <span className='inline-block rounded-full border-2 border-background overflow-hidden bg-muted'>
-                  <AssetIcon symbol='USDC' size={28} />
+                  <AssetIcon symbol='USDC' size={32} />
                 </span>
               </div>
             )}
-          <span className='font-semibold text-lg'>
-            {mode === 'Withdraw' ? `Withdraw from ${poolLabel}` : poolLabel}
-          </span>
+          <span className='font-cal-sans text-lg tracking-tight'>{poolLabel}</span>
         </div>
         <Button
           variant='ghost'
           size='icon'
           onClick={handleClose}
-          className='h-8 w-8 rounded-full shrink-0'
+          className='h-8 w-8 rounded-full shrink-0 text-muted-foreground hover:text-foreground'
         >
           <X className='h-4 w-4' />
         </Button>
       </div>
 
-      <div className='flex rounded-lg bg-muted/50 p-1'>
-        <button
-          type='button'
-          onClick={() => {
-            setMode('Deposit');
-            clearForm();
-          }}
-          className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
-            mode === 'Deposit'
-              ? 'bg-background text-foreground shadow-sm'
-              : 'text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          Deposit
-        </button>
-        <button
-          type='button'
-          onClick={() => {
-            setMode('Withdraw');
-            clearForm();
-          }}
-          className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
-            mode === 'Withdraw'
-              ? 'bg-background text-foreground shadow-sm'
-              : 'text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          Withdraw
-        </button>
+      {/* Tabs */}
+      <div className='flex items-center'>
+        <div className='flex flex-1 rounded-xl bg-muted p-1'>
+          <button
+            type='button'
+            onClick={() => { setMode('Deposit'); clearForm(); }}
+            className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
+              mode === 'Deposit'
+                ? 'bg-primary text-primary-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Deposit
+          </button>
+          <button
+            type='button'
+            onClick={() => { setMode('Withdraw'); clearForm(); }}
+            className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
+              mode === 'Withdraw'
+                ? 'bg-primary text-primary-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Withdraw
+          </button>
+        </div>
       </div>
 
       {mode === 'Deposit' && (
@@ -423,109 +418,143 @@ export default function PoolModal({
                   className='border-0 bg-transparent p-0 h-auto text-lg focus-visible:ring-0'
                   onChange={(e) => onInputChange(e.target.value)}
                 />
-                <div className='flex items-center gap-2 text-sm text-muted-foreground shrink-0'>
-                  <span>
-                    Balance: {formatTokenAmount({
-                      value: balance,
-                      expo: decimals,
-                    })}{' '}
-                    {isHfAmm
-                      ? (underlyingToken?.symbol ?? underlyingSymbol)
-                      : pool.symbol}
-                  </span>
-                  <span className='rounded-full overflow-hidden'>
-                    <AssetIcon
-                      symbol={isHfAmm
-                        ? (underlyingToken?.symbol ?? underlyingSymbol)
-                        : pool.symbol}
-                      size={24}
-                    />
-                  </span>
-                </div>
-              </div>
-              <div className='flex gap-2 mt-2'>
-                {PERCENTAGES.map((n) => (
-                  <Button
-                    key={n}
-                    variant={depositPct === n ? 'default' : 'outline'}
-                    size='sm'
-                    className='flex-1 rounded-lg text-xs'
-                    onClick={() => setAmountPercentage(n)}
-                  >
-                    {n}%
-                  </Button>
-                ))}
-              </div>
+              </span>
             </div>
-            <div className='flex items-center justify-between text-sm'>
-              <span className='text-muted-foreground'>Deposit percentage</span>
-              <span className='font-medium'>{depositPct}%</span>
+            <div className='flex items-center justify-end text-sm text-muted-foreground mb-4'>
+              <span>
+                Balance: {formatTokenAmount({ value: balance, expo: decimals })}{' '}
+                {isHfAmm ? (underlyingToken?.symbol ?? underlyingSymbol) : pool.symbol}
+              </span>
             </div>
-            <div className='h-2 rounded-full bg-muted overflow-hidden'>
-              <div
-                className='h-full rounded-full bg-primary transition-all'
-                style={{ width: `${depositPct}%` }}
-              />
+            <div className='flex gap-2'>
+              {PERCENTAGES.map((n) => (
+                <button
+                  key={n}
+                  type='button'
+                  onClick={() => setAmountPercentage(n)}
+                  className={`flex-1 py-2 text-xs font-medium rounded-lg border transition-all ${
+                    depositPct === n
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-transparent text-muted-foreground border-border/60 hover:border-foreground/20 hover:text-foreground'
+                  }`}
+                >
+                  {n}%
+                </button>
+              ))}
             </div>
           </div>
-          <div className='rounded-xl border border-input bg-muted/30 p-3 space-y-2'>
-            <p className='text-xs font-medium text-muted-foreground uppercase tracking-wide'>
-              You receive (min)
-            </p>
-            <div className='flex items-center justify-between text-sm'>
-              <div className='flex items-center gap-2'>
+
+          {inputError && <p className='text-sm text-destructive px-1'>{inputError}</p>}
+
+          {/* Details */}
+          <div className='rounded-2xl bg-muted p-4 space-y-3 text-sm'>
+            <div className='relative flex items-center justify-between'>
+              <span className='text-muted-foreground font-medium'>Max slippage</span>
+              <span className='flex items-center gap-1.5'>
+                <Slippage slippage={slippage} onSlippageChange={setSlippage} />
+                <span className='font-medium'>{slippage} %</span>
+              </span>
+            </div>
+            <div className='flex items-center justify-between'>
+              <span className='text-muted-foreground font-medium'>Balance</span>
+              <span className='font-medium'>
+                {formatTokenAmount({ value: balance, expo: decimals })}{' '}
+                {isHfAmm ? (underlyingToken?.symbol ?? underlyingSymbol) : pool.symbol}
+              </span>
+            </div>
+            <div className='flex items-center justify-between'>
+              <span className='text-muted-foreground font-medium'>My position</span>
+              <span className='font-medium'>
+                {formatTokenAmount({ value: lpBalance, expo: pool.decimals })}{' '}
+                {isHfAmm
+                  ? (pool.symbol.startsWith('z') ? pool.symbol : `z${pool.symbol}`)
+                  : pool.symbol}
+              </span>
+            </div>
+            <div className='flex items-center justify-between'>
+              <span className='text-muted-foreground font-medium'>Pool share</span>
+              <span className='font-medium'>{poolShareDisplay}</span>
+            </div>
+          </div>
+
+          {/* Receive row — inline with details */}
+          <div className='rounded-2xl bg-muted p-4 space-y-3 text-sm'>
+            <div className='flex items-center justify-between'>
+              <span className='text-muted-foreground font-medium'>You receive (min)</span>
+              <span className='flex items-center gap-2 font-semibold'>
+                {minLpFormatted ?? '0'}{' '}
                 <AssetIcon
                   symbol={isHfAmm
                     ? (pool.symbol.startsWith('z') ? pool.symbol : `z${pool.symbol}`)
                     : pool.symbol}
                   size={20}
                 />
-                <span>
-                  {isHfAmm
-                    ? (pool.symbol.startsWith('z') ? pool.symbol : `z${pool.symbol}`)
-                    : pool.symbol}
-                </span>
-              </div>
-              <span>{minLpFormatted ?? '0.00'}</span>
+              </span>
             </div>
             {expectedLpFormatted != null && expectedLpFormatted !== (minLpFormatted ?? '0.00') && (
               <p className='text-xs text-muted-foreground'>Expected: {expectedLpFormatted}</p>
             )}
             {isHfAmm && (
-              <div className='flex justify-between text-sm pt-1 border-t border-border'>
-                <span className='text-muted-foreground'>Total Value</span>
+              <div className='flex items-center justify-between'>
+                <span className='text-muted-foreground font-medium'>Total Value</span>
                 <span className='font-medium'>{formatUsd(totalValueUsd)}</span>
               </div>
             )}
           </div>
-          {inputError && <p className='text-sm text-destructive'>{inputError}</p>}
-          <div className='rounded-lg border border-border bg-muted/20 p-3 flex items-center gap-2'>
-            <Info className='h-4 w-4 text-muted-foreground shrink-0' />
-            <div className='flex justify-between w-full text-sm'>
-              <span className='text-muted-foreground'>Pool Share</span>
-              <span>{poolShareDisplay}</span>
-            </div>
-          </div>
+
+          {/* CTA */}
           <Button
             onClick={writeDeposit}
             disabled={rawValue === BigInt(0)}
-            className='w-full rounded-lg h-12 text-base'
+            className='w-full h-14 rounded-2xl font-bold text-base'
             size='lg'
           >
-            {isDepositLoading ? <Loader className='h-5 w-5 animate-spin' /> : (
-              'Deposit'
-            )}
+            {isDepositLoading
+              ? <Loader className='h-5 w-5 animate-spin' />
+              : 'Deposit'}
           </Button>
         </>
       )}
 
       {mode === 'Withdraw' && (
         <>
-          <div className='flex items-center justify-between gap-2'>
-            <p className='text-sm font-medium text-muted-foreground'>
-              Withdraw amount
-            </p>
-            <Slippage slippage={slippage} onSlippageChange={setSlippage} />
+          {/* Input card */}
+          <div className='rounded-2xl border border-border/50 bg-background p-5'>
+            <div className='flex items-center justify-between gap-3 mb-4'>
+              <Input
+                value={inputValue}
+                placeholder='0'
+                className='border-0 bg-transparent p-0 h-auto text-4xl font-semibold focus-visible:ring-0 no-spinner placeholder:text-muted-foreground/40 flex-1 min-w-0'
+                onChange={(e) => onInputChange(e.target.value)}
+              />
+              <span className='rounded-full overflow-hidden shrink-0'>
+                <AssetIcon symbol={pool.symbol} size={36} />
+              </span>
+            </div>
+            <div className='flex items-center justify-end text-sm text-muted-foreground mb-4'>
+              <span>
+                Balance: {formatTokenAmount({ value: lpBalance, expo: decimals })}{' '}
+                {isHfAmm
+                  ? (pool.symbol.startsWith('z') ? pool.symbol : `z${pool.symbol}`)
+                  : 'LP'}
+              </span>
+            </div>
+            <div className='flex gap-2'>
+              {PERCENTAGES.map((n) => (
+                <button
+                  key={n}
+                  type='button'
+                  onClick={() => setAmountPercentage(n)}
+                  className={`flex-1 py-2 text-xs font-medium rounded-lg border transition-all ${
+                    withdrawPct === n
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-transparent text-muted-foreground border-border/60 hover:border-foreground/20 hover:text-foreground'
+                  }`}
+                >
+                  {n}%
+                </button>
+              ))}
+            </div>
           </div>
           <div className='space-y-3'>
             <div className='rounded-xl border border-input bg-muted/30 p-3'>
@@ -565,15 +594,27 @@ export default function PoolModal({
                 ))}
               </div>
             </div>
-            <div className='flex items-center justify-between text-sm'>
-              <span className='text-muted-foreground'>Withdraw percentage</span>
-              <span className='font-medium'>{withdrawPct}%</span>
+            <div className='flex items-center justify-between'>
+              <span className='text-muted-foreground font-medium'>Balance</span>
+              <span className='font-medium'>
+                {formatTokenAmount({ value: lpBalance, expo: pool.decimals })}{' '}
+                {isHfAmm
+                  ? (pool.symbol.startsWith('z') ? pool.symbol : `z${pool.symbol}`)
+                  : 'LP'}
+              </span>
             </div>
-            <div className='h-2 rounded-full bg-muted overflow-hidden'>
-              <div
-                className='h-full rounded-full bg-primary transition-all'
-                style={{ width: `${withdrawPct}%` }}
-              />
+            <div className='flex items-center justify-between'>
+              <span className='text-muted-foreground font-medium'>My position</span>
+              <span className='font-medium'>
+                {formatTokenAmount({ value: lpBalance, expo: pool.decimals })}{' '}
+                {isHfAmm
+                  ? (pool.symbol.startsWith('z') ? pool.symbol : `z${pool.symbol}`)
+                  : pool.symbol}
+              </span>
+            </div>
+            <div className='flex items-center justify-between'>
+              <span className='text-muted-foreground font-medium'>Pool share after</span>
+              <span className='font-medium'>{withdrawPoolShareDisplay}</span>
             </div>
           </div>
           <div className='rounded-xl border border-input bg-muted/30 p-3 space-y-2'>
@@ -613,49 +654,29 @@ export default function PoolModal({
                 </>
               )}
             {isHfAmm && (
-              <div className='flex justify-between text-sm pt-1 border-t border-border'>
-                <span className='text-muted-foreground'>Total Value</span>
+              <div className='flex items-center justify-between'>
+                <span className='text-muted-foreground font-medium'>Total Value</span>
                 <span className='font-medium'>{formatUsd(totalValueUsd)}</span>
               </div>
             )}
           </div>
-          <div className='rounded-lg border border-border bg-muted/20 p-3 flex items-center gap-2'>
-            <Info className='h-4 w-4 text-muted-foreground shrink-0' />
-            <div className='flex justify-between w-full text-sm'>
-              <span className='text-muted-foreground'>Remaining pool share</span>
-              <span>{withdrawPoolShareDisplay}</span>
-            </div>
-          </div>
-          {!isHfAmm && (
-            <div className='rounded-lg border border-primary/40 bg-primary/5 p-3 flex gap-2'>
-              <AlertTriangle className='h-5 w-5 text-primary shrink-0 mt-0.5' />
-              <div className='text-sm'>
-                <p className='font-medium text-foreground mb-1'>
-                  Impermanent Loss Notice
-                </p>
-                <p className='text-muted-foreground'>
-                  Withdrawing now realizes any impermanent loss. Your position may have
-                  experienced IL since deposit. If you deposited at a different price
-                  ratio, you may receive fewer tokens than expected.
-                </p>
-              </div>
-            </div>
-          )}
+
+          {/* CTA */}
           <Button
             onClick={writeWithdraw}
             disabled={rawValue === BigInt(0)}
-            className='w-full rounded-lg h-12 text-base'
+            className='w-full h-14 rounded-2xl font-bold text-base'
             size='lg'
           >
-            {isWithdrawLoading ? <Loader className='h-5 w-5 animate-spin' /> : (
-              'Confirm Withdraw'
-            )}
+            {isWithdrawLoading
+              ? <Loader className='h-5 w-5 animate-spin' />
+              : 'Withdraw'}
           </Button>
         </>
       )}
 
       {(depositError || withdrawError) && (
-        <p className='text-sm text-destructive'>
+        <p className='text-sm text-destructive px-1'>
           {depositError ?? withdrawError}
         </p>
       )}

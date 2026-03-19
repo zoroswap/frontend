@@ -144,7 +144,7 @@ export function UnifiedWalletButton({ className }: UnifiedWalletButtonProps) {
         onClick={handleOpenSelectionModal}
         className={`flex items-center gap-2 p-3 rounded-xl font-medium text-sm text-muted-foreground border-none hover:text-foreground hover:bg-gray-500/10 dark:bg-muted/30 dark:hover:bg-muted/70 ${className}`}
       >
-        <Wallet className='h-4 w-4' />
+        <Wallet className='h-5 w-5' strokeWidth={2.5} />
         Connect Wallet
       </button>
 

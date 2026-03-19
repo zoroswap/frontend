@@ -96,7 +96,7 @@ export function Header() {
           <Link to='/explore' className={mobileNavLinkClass('/explore')} onClick={() => setMobileMenuOpen(false)}>
             Explore
           </Link>
-          <Link to='/explore' className={mobileNavLinkClass('/explore')} onClick={() => setMobileMenuOpen(false)}>
+          <Link to='/pools' className={mobileNavLinkClass('/pools')} onClick={() => setMobileMenuOpen(false)}>
             Pools
           </Link>
           <Link to='/faucet' className={mobileNavLinkClass('/faucet')} onClick={() => setMobileMenuOpen(false)}>
