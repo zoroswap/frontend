@@ -1,10 +1,10 @@
 import { Footer } from '@/components/Footer';
 import { Header } from '@/components/Header';
+import { ProgressBar } from '@/components/ProgressBar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { UnifiedWalletButton } from '@/components/UnifiedWalletButton';
-import { ProgressBar } from '@/components/ProgressBar';
 import useLaunchpad, {
   getMidenscanAccountUrl,
   getMidenscanTxUrl,
@@ -14,7 +14,7 @@ import useLaunchpad, {
 } from '@/hooks/useLaunchpad';
 import { useUnifiedWallet } from '@/hooks/useUnifiedWallet';
 import { truncateId } from '@/lib/format';
-import { ArrowLeft, CheckCircle, ExternalLink, Loader2 } from 'lucide-react';
+import { ArrowLeft, CheckCircle, ExternalLink, Info, Loader2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { parseUnits } from 'viem';
@@ -22,8 +22,10 @@ import { parseUnits } from 'viem';
 const SYMBOL_MIN = 3;
 const SYMBOL_MAX = 6;
 const DECIMALS_MIN = 0;
-const DECIMALS_MAX = 4;
-const TOTAL_SUPPLY_MAX = 1_000_000;
+const DECIMALS_MAX = 6;
+const TOTAL_SUPPLY_MAX = 100_000_000;
+
+const MAX_SUPPLY_DISPLAY = TOTAL_SUPPLY_MAX.toLocaleString('en-US');
 
 function validateSymbol(s: string): string | null {
   const trimmed = s.trim().toUpperCase();
@@ -55,10 +57,14 @@ function validateInitialSupply(raw: string, decimals: number): string | null {
   }
   if (amount <= 0n) return 'Initial supply must be greater than 0';
   if (amount > TOTAL_SUPPLY_MAX) {
-    return `Initial supply should be lower than ${TOTAL_SUPPLY_MAX}`;
+    return `Initial supply must not exceed ${MAX_SUPPLY_DISPLAY} (raw units)`;
   }
   return null;
 }
+
+const bodyClass = 'text-sm text-muted-foreground leading-relaxed';
+const labelClass = 'text-sm font-medium text-foreground';
+const hintClass = 'text-sm text-muted-foreground';
 
 export default function Launchpad() {
   const { connected } = useUnifiedWallet();
@@ -150,51 +156,56 @@ export default function Launchpad() {
       <title>Launchpad - ZoroSwap | DeFi on Miden</title>
       <meta name='description' content='Launch a new token on Miden testnet.' />
       <Header />
-      <main className='flex-1 w-full max-w-lg mx-auto px-6 py-8'>
+      <main className='flex-1 w-full max-w-xl mx-auto px-4 sm:px-6 py-8 sm:py-12'>
         <Link
           to='/'
-          className='inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-6'
+          className={`inline-flex items-center gap-2 ${bodyClass} hover:text-foreground transition-colors mb-8`}
         >
-          <ArrowLeft className='h-4 w-4' />
+          <ArrowLeft className='h-4 w-4 shrink-0' />
           Back to Swap
         </Link>
 
-        <Card className='rounded-xl border border-border bg-card'>
-          <CardHeader className='pb-2'>
-            <CardTitle className='text-xl font-cal-sans font-bold'>
-              Token Launchpad
+        <div className='text-center mb-8 sm:mb-10'>
+          <h1 className='text-2xl sm:text-3xl font-cal-sans font-bold text-foreground tracking-tight'>
+            Token launchpad
+          </h1>
+          <p className={`mt-3 max-w-md mx-auto ${bodyClass}`}>
+            Deploy a new faucet token on Miden and mint the initial supply to your
+            account. You’ll confirm the transaction in your wallet.
+          </p>
+        </div>
+
+        <Card className='rounded-2xl border border-border/80 bg-card shadow-sm overflow-hidden'>
+          <CardHeader className='space-y-3 pb-4 px-5 sm:px-8 pt-6 sm:pt-8 border-b border-border/60 bg-muted/20'>
+            <CardTitle className='text-lg sm:text-xl font-cal-sans font-semibold text-foreground'>
+              Configure your token
             </CardTitle>
-            <p className='text-sm text-muted-foreground mt-1'>
-              Create a new faucet token and mint initial supply to your wallet.
-            </p>
-            <p className='text-xs text-muted-foreground mt-2'>
-              Launching a new token can take a couple of seconds. Please wait until the
-              process completes.
+            <p className={bodyClass}>
+              Choose a symbol, decimals, and how many whole tokens to mint at launch.
+              Launch usually takes a few seconds—keep this tab open until it finishes.
             </p>
           </CardHeader>
-          <CardContent className='space-y-4'>
+          <CardContent className='space-y-6 px-5 sm:px-8 py-6 sm:py-8'>
             {successResult
               ? (
-                <div className='rounded-xl border-2 border-green-500/50 bg-green-500/10 p-4 space-y-4'>
-                  <div className='flex items-center gap-2 text-green-600 dark:text-green-400'>
+                <div className='rounded-xl border border-green-500/40 bg-green-500/5 dark:bg-green-500/10 p-5 sm:p-6 space-y-5'>
+                  <div className='flex items-center gap-2.5 text-green-700 dark:text-green-400'>
                     <CheckCircle className='h-5 w-5 shrink-0' />
-                    <span className='font-semibold'>Token launched successfully</span>
+                    <span className='text-sm font-semibold'>Token launched successfully</span>
                   </div>
-                  <p className='text-sm text-muted-foreground'>
-                    Claim the note with your token supply in your wallet to receive the
-                    tokens. You can launch another token below.
+                  <p className={bodyClass}>
+                    Claim the note in your wallet to receive your tokens. You can launch
+                    another token using the form below when you’re ready.
                   </p>
-                  <div className='space-y-3'>
-                    <div className='space-y-1.5'>
-                      <label className='text-xs text-muted-foreground block'>
-                        Faucet ID (new token)
-                      </label>
-                      <div className='flex items-center gap-2 p-2 rounded-lg bg-muted/50 border border-border'>
+                  <div className='space-y-5'>
+                    <div className='space-y-2'>
+                      <span className={`${labelClass} block`}>Faucet ID</span>
+                      <div className='flex items-center gap-2 p-3 rounded-xl bg-muted/60 border border-border'>
                         <button
                           type='button'
                           onClick={() =>
                             copyToClipboard(successResult.faucetIdBech32, 'faucet')}
-                          className='flex-1 text-left text-sm font-mono truncate hover:text-foreground'
+                          className='flex-1 text-left text-sm font-mono truncate hover:text-foreground text-muted-foreground'
                         >
                           {copiedId === 'faucet'
                             ? 'Copied!'
@@ -204,7 +215,7 @@ export default function Launchpad() {
                           href={getMidenscanAccountUrl(successResult.faucetIdBech32)}
                           target='_blank'
                           rel='noopener noreferrer'
-                          className='shrink-0 text-muted-foreground hover:text-foreground'
+                          className='shrink-0 text-muted-foreground hover:text-foreground p-1'
                           aria-label='View faucet on MidenScan'
                         >
                           <ExternalLink className='h-4 w-4' />
@@ -214,21 +225,19 @@ export default function Launchpad() {
                         href={getMidenscanAccountUrl(successResult.faucetIdBech32)}
                         target='_blank'
                         rel='noopener noreferrer'
-                        className='inline-flex items-center justify-center gap-2 w-full rounded-lg border border-border py-2 text-sm font-medium hover:bg-muted/50'
+                        className='inline-flex items-center justify-center gap-2 w-full rounded-xl border border-border py-2.5 text-sm font-medium hover:bg-muted/50 transition-colors'
                       >
                         <ExternalLink className='h-4 w-4' />
                         View faucet on MidenScan
                       </a>
                     </div>
-                    <div className='space-y-1.5'>
-                      <label className='text-xs text-muted-foreground block'>
-                        Transaction ID
-                      </label>
-                      <div className='flex items-center gap-2 p-2 rounded-lg bg-muted/50 border border-border'>
+                    <div className='space-y-2'>
+                      <span className={`${labelClass} block`}>Transaction ID</span>
+                      <div className='flex items-center gap-2 p-3 rounded-xl bg-muted/60 border border-border'>
                         <button
                           type='button'
                           onClick={() => copyToClipboard(successResult.txId, 'tx')}
-                          className='flex-1 text-left text-sm font-mono truncate hover:text-foreground'
+                          className='flex-1 text-left text-sm font-mono truncate hover:text-foreground text-muted-foreground'
                         >
                           {copiedId === 'tx' ? 'Copied!' : truncateId(successResult.txId)}
                         </button>
@@ -236,7 +245,7 @@ export default function Launchpad() {
                           href={getMidenscanTxUrl(successResult.txId)}
                           target='_blank'
                           rel='noopener noreferrer'
-                          className='shrink-0 text-muted-foreground hover:text-foreground'
+                          className='shrink-0 text-muted-foreground hover:text-foreground p-1'
                           aria-label='View tx on MidenScan'
                         >
                           <ExternalLink className='h-4 w-4' />
@@ -246,17 +255,16 @@ export default function Launchpad() {
                         href={getMidenscanTxUrl(successResult.txId)}
                         target='_blank'
                         rel='noopener noreferrer'
-                        className='inline-flex items-center justify-center gap-2 w-full rounded-lg border border-border py-2.5 text-sm font-medium hover:bg-muted/50'
+                        className='inline-flex items-center justify-center gap-2 w-full rounded-xl border border-border py-2.5 text-sm font-medium hover:bg-muted/50 transition-colors'
                       >
                         <ExternalLink className='h-4 w-4' />
                         View transaction on MidenScan
                       </a>
                     </div>
-                    <div className='rounded-lg border border-amber-500/40 bg-amber-500/10 p-3'>
-                      <p className='text-sm text-amber-700 dark:text-amber-400'>
-                        Go to your{' '}
-                        wallet and claim the pending note to receive your token supply in
-                        your wallet.
+                    <div className='rounded-xl border border-amber-500/35 bg-amber-500/8 dark:bg-amber-500/10 p-4'>
+                      <p className={`${bodyClass} text-amber-900 dark:text-amber-200`}>
+                        Open your wallet and claim the pending note so the minted supply
+                        appears in your balance.
                       </p>
                     </div>
                   </div>
@@ -266,17 +274,17 @@ export default function Launchpad() {
 
             {!connected
               ? (
-                <div className='rounded-lg border border-border bg-muted/30 p-4 text-center'>
-                  <p className='text-sm text-muted-foreground mb-3'>
-                    Connect your wallet to launch a token.
+                <div className='rounded-xl border border-dashed border-border bg-muted/25 p-8 text-center space-y-4'>
+                  <p className={bodyClass}>
+                    Connect your wallet to deploy a token on Miden testnet.
                   </p>
-                  <UnifiedWalletButton className='w-full rounded-lg h-11' />
+                  <UnifiedWalletButton className='w-full max-w-sm mx-auto rounded-xl h-12 font-medium' />
                 </div>
               )
               : (
-                <form onSubmit={handleSubmit} className='space-y-4'>
+                <form onSubmit={handleSubmit} className='space-y-6'>
                   <div className='space-y-2'>
-                    <label htmlFor='launchpad-symbol' className='text-sm font-medium'>
+                    <label htmlFor='launchpad-symbol' className={labelClass}>
                       Symbol
                     </label>
                     <Input
@@ -290,24 +298,24 @@ export default function Launchpad() {
                       onBlur={() =>
                         setTouched((t) => ({ ...t, symbol: true }))}
                       maxLength={SYMBOL_MAX}
-                      className={symbolError ? 'border-destructive' : ''}
+                      className={`h-11 rounded-xl text-sm ${symbolError ? 'border-destructive' : ''}`}
                       aria-invalid={!!symbolError}
                       aria-describedby={symbolError
                         ? 'launchpad-symbol-error'
                         : undefined}
                     />
                     {symbolError && (
-                      <p id='launchpad-symbol-error' className='text-xs text-destructive'>
+                      <p id='launchpad-symbol-error' className='text-sm text-destructive'>
                         {symbolError}
                       </p>
                     )}
-                    <p className='text-xs text-muted-foreground'>
-                      {SYMBOL_MIN}–{SYMBOL_MAX} characters, letters and numbers only
+                    <p className={hintClass}>
+                      {SYMBOL_MIN}–{SYMBOL_MAX} characters, letters and numbers only.
                     </p>
                   </div>
 
                   <div className='space-y-2'>
-                    <label htmlFor='launchpad-decimals' className='text-sm font-medium'>
+                    <label htmlFor='launchpad-decimals' className={labelClass}>
                       Decimals
                     </label>
                     <Input
@@ -321,35 +329,42 @@ export default function Launchpad() {
                         if (error) clearError();
                       }}
                       onBlur={() => setTouched((t) => ({ ...t, decimals: true }))}
-                      className={decimalsError ? 'border-destructive' : ''}
+                      className={`h-11 rounded-xl text-sm ${decimalsError ? 'border-destructive' : ''}`}
                       aria-invalid={!!decimalsError}
                     />
                     {decimalsError && (
-                      <p className='text-xs text-destructive'>{decimalsError}</p>
+                      <p className='text-sm text-destructive'>{decimalsError}</p>
                     )}
+                    <p className={hintClass}>
+                      Between {DECIMALS_MIN} and {DECIMALS_MAX}. Standard is often 4–6.
+                    </p>
                   </div>
 
                   <div className='space-y-2'>
-                    <label htmlFor='launchpad-supply' className='text-sm font-medium'>
+                    <label htmlFor='launchpad-supply' className={labelClass}>
                       Initial supply
                     </label>
                     <Input
                       id='launchpad-supply'
                       type='text'
                       inputMode='decimal'
-                      placeholder='e.g. 1000000'
+                      placeholder='e.g. 1 000 000'
                       value={initialSupply}
                       onChange={(e) => {
                         setInitialSupply(e.target.value);
                         if (error) clearError();
                       }}
                       onBlur={() => setTouched((t) => ({ ...t, supply: true }))}
-                      className={supplyError ? 'border-destructive' : ''}
+                      className={`h-11 rounded-xl text-sm ${supplyError ? 'border-destructive' : ''}`}
                       aria-invalid={!!supplyError}
                     />
                     {supplyError && (
-                      <p className='text-xs text-destructive'>{supplyError}</p>
+                      <p className='text-sm text-destructive'>{supplyError}</p>
                     )}
+                    <p className={hintClass}>
+                      Whole tokens to mint (decimals apply on-chain). Max{' '}
+                      {MAX_SUPPLY_DISPLAY} raw units.
+                    </p>
                   </div>
 
                   {isSubmitting && launchStep !== null && (
@@ -362,7 +377,7 @@ export default function Launchpad() {
 
                   {error && (
                     <div
-                      className='rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm text-red-600 dark:text-red-400'
+                      className='rounded-xl border border-red-500/40 bg-red-500/8 p-4 text-sm text-red-700 dark:text-red-400 leading-relaxed'
                       role='alert'
                     >
                       {error}
@@ -371,7 +386,7 @@ export default function Launchpad() {
 
                   <Button
                     type='submit'
-                    className='w-full rounded-lg h-11'
+                    className='w-full rounded-xl h-12 text-sm font-semibold'
                     size='lg'
                     disabled={!canSubmit || isSubmitting}
                   >
@@ -388,6 +403,26 @@ export default function Launchpad() {
                   </Button>
                 </form>
               )}
+
+            <div
+              className='flex gap-3 rounded-xl border border-blue-500/25 bg-blue-500/5 dark:bg-blue-500/10 px-4 py-3.5'
+              role='note'
+            >
+              <Info className='h-5 w-5 shrink-0 text-blue-600 dark:text-blue-400 mt-0.5' />
+              <p className={`${bodyClass} text-foreground/90`}>
+                <span className='font-medium text-foreground'>Supply & Miden math.</span>{' '}
+                This launchpad caps initial mint at{' '}
+                <span className='font-mono tabular-nums text-foreground'>
+                  {MAX_SUPPLY_DISPLAY}
+                </span>{' '}
+                raw units (before decimals). Because of current Miden field arithmetic
+                limits, tokens whose <em>total supply</em> (especially with many decimals)
+                grows beyond what the protocol can represent safely may show rounding
+                issues, failed operations, or other unexpected behaviour—even when below
+                this UI cap. Prefer conservative supplies and decimals until those limits
+                evolve.
+              </p>
+            </div>
           </CardContent>
         </Card>
       </main>
