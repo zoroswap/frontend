@@ -17,6 +17,14 @@ export const formatTokenAmount = (
   if (value == null) return undefined;
   return roundDown(formatUnits(BigInt(value), expo), digits);
 };
+
+/** Always returns a string for use in controlled inputs. formatTokenAmount may return number. */
+export const formatTokenAmountForInput = (
+  opts: { value?: bigint | null; expo: number; digits?: number },
+): string => {
+  const v = formatTokenAmount(opts);
+  return v != null ? String(v) : '';
+};
 export const prettyBigintFormat = (
   { value, expo }: { value?: bigint; expo: number },
 ) => {

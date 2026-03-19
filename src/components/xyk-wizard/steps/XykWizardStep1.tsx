@@ -1,9 +1,16 @@
 import { TokenAutocomplete } from '@/components/TokenAutocomplete';
 import { accountIdToBech32, cn } from '@/lib/utils';
 import { AccountId } from '@miden-sdk/miden-sdk';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Info } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
 import type { XykStepProps } from '../XykWizard';
+
+/** Order two account IDs by hex: lower hex = token0 (base), higher = token1 (quote). */
+export function orderPairByHex(a: AccountId, b: AccountId): [AccountId, AccountId] {
+  const hexA = a.toString();
+  const hexB = b.toString();
+  return hexA <= hexB ? [a, b] : [b, a];
+}
 
 const FEE_TIERS = [
   { bps: 1, label: '0.01%', hint: 'Best for stable pairs' },
@@ -25,6 +32,24 @@ const XykStep1 = (
   const setFeeBps = useCallback((feeBps: number) => {
     setForm({ ...form, feeBps });
   }, [form, setForm]);
+
+  const orderedPair = useMemo((): {
+    base: AccountId;
+    quote: AccountId;
+    baseMeta?: (typeof availableTokens)[number];
+    quoteMeta?: (typeof availableTokens)[number];
+  } | null => {
+    if (!form.tokenA || !form.tokenB || !tokenMetadata) return null;
+    const [base, quote] = orderPairByHex(form.tokenA, form.tokenB);
+    const baseBech = accountIdToBech32(base);
+    const quoteBech = accountIdToBech32(quote);
+    return {
+      base,
+      quote,
+      baseMeta: tokenMetadata[baseBech],
+      quoteMeta: tokenMetadata[quoteBech],
+    };
+  }, [form.tokenA, form.tokenB, tokenMetadata]);
 
   return (
     <div className='flex-col gap-8 flex w-full'>
@@ -84,6 +109,41 @@ const XykStep1 = (
               </div>
             </div>
           )}
+        <div className='flex items-start gap-2 rounded-lg border text-xs border-border/80 bg-muted/40 px-3 py-2 text-sm text-muted-foreground'>
+          <Info className='h-4 w-4 shrink-0 mt-0.5' aria-hidden />
+          <p>
+            Base and quote (token0 / token1) are determined by the token account ID hex
+            value: the token with the lower{' '}
+            hex is base (token0), the other is quote (token1).
+          </p>
+        </div>
+
+        {orderedPair && (
+          <div className='mt-4 flex flex-wrap items-center gap-2'>
+            <span className='text-xs font-medium text-muted-foreground uppercase tracking-wide'>
+              Pool order
+            </span>
+            <span
+              className={cn(
+                'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium',
+                'bg-primary/15 text-primary border border-primary/30',
+              )}
+            >
+              <span className='text-muted-foreground font-normal'>Base</span>
+              <span>{orderedPair.baseMeta?.symbol ?? '…'}</span>
+            </span>
+            <ArrowRight className='h-4 w-4 text-muted-foreground' aria-hidden />
+            <span
+              className={cn(
+                'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium',
+                'bg-muted text-foreground border border-border',
+              )}
+            >
+              <span className='text-muted-foreground font-normal'>Quote</span>
+              <span>{orderedPair.quoteMeta?.symbol ?? '…'}</span>
+            </span>
+          </div>
+        )}
       </section>
 
       {/* Fee tier */}
@@ -94,39 +154,47 @@ const XykStep1 = (
           tolerance and strategy.
         </p>
         <div className='grid grid-cols-2 gap-3 mt-3'>
-          {FEE_TIERS.map(({ bps, label, hint }) => (
-            <button
-              key={bps}
-              type='button'
-              onClick={() => setFeeBps(bps)}
-              className={cn(
-                'rounded-xl border-2 px-4 text-left transition-colors md:min-h-[150px] flex flex-col justify-center items-center',
-                form.feeBps === bps
-                  ? 'bg-primary text-primary-foreground border-primary shadow-none'
-                  : 'bg-card border-border text-foreground hover:border-muted-foreground/50',
-              )}
-            >
-              <span
+          {FEE_TIERS.map(({ bps, label, hint }) => {
+            const is30 = bps === 30;
+            return (
+              <button
+                key={bps}
+                type='button'
+                disabled={!is30}
+                onClick={() => is30 && setFeeBps(bps)}
                 className={cn(
-                  'font-bold text-xl block',
-                  form.feeBps === bps ? 'text-primary-foreground' : 'text-foreground',
-                )}
-              >
-                {label}
-              </span>
-              <span
-                className={cn(
-                  'text-base mt-1 block',
+                  'rounded-xl border-2 px-4 text-left transition-colors md:min-h-[150px] flex flex-col justify-center items-center',
                   form.feeBps === bps
-                    ? 'text-primary-foreground/90'
-                    : 'text-muted-foreground',
+                    ? 'bg-primary text-primary-foreground border-primary shadow-none'
+                    : 'bg-card border-border text-foreground hover:border-muted-foreground/50',
+                  !is30 && 'opacity-60 cursor-not-allowed',
                 )}
               >
-                {hint}
-              </span>
-            </button>
-          ))}
+                <span
+                  className={cn(
+                    'font-bold text-xl block',
+                    form.feeBps === bps ? 'text-primary-foreground' : 'text-foreground',
+                  )}
+                >
+                  {label}
+                </span>
+                <span
+                  className={cn(
+                    'text-base mt-1 block',
+                    form.feeBps === bps
+                      ? 'text-primary-foreground/90'
+                      : 'text-muted-foreground',
+                  )}
+                >
+                  {hint}
+                </span>
+              </button>
+            );
+          })}
         </div>
+        <p className='text-muted-foreground text-sm mt-3'>
+          Constant product pools are fixed to 30BP fee for the time being.
+        </p>
       </section>
     </div>
   );

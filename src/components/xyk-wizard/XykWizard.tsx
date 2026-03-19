@@ -1,15 +1,10 @@
+import { ProgressBar } from '@/components/ProgressBar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { UnifiedWalletButton } from '@/components/UnifiedWalletButton';
 import useTokensWithBalance from '@/hooks/useTokensWithBalance';
 import { useUnifiedWallet } from '@/hooks/useUnifiedWallet';
-import { deployNewPool } from '@/lib/DeployXykPool';
-import {
-  type CreatedPoolDraft,
-  readCreatedPools,
-  updateCreatedPool,
-  writeCreatedPools,
-} from '@/lib/poolUtils';
+import { deployNewPool, registerPool } from '@/lib/DeployXykPool';
 import { accountIdToBech32 } from '@/lib/utils';
 import { compileXykDepositTransaction } from '@/lib/XykDepositNote';
 import { type TokenConfigWithBalance, ZoroContext } from '@/providers/ZoroContext';
@@ -19,6 +14,7 @@ import { AccountId } from '@miden-sdk/miden-sdk';
 import { AlertCircle, ChevronLeft, Loader2 } from 'lucide-react';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { orderPairByHex } from './steps/XykWizardStep1';
 import XykStep1 from './steps/XykWizardStep1';
 import XykStep2 from './steps/XykWizardStep2';
 import XykStep3 from './steps/XykWizardStep3';
@@ -41,6 +37,7 @@ function readPersistedWizard(): {
   const defaultForm: XykWizardForm = {
     amountA: BigInt(0),
     amountB: BigInt(0),
+    feeBps: 30,
   };
   try {
     const raw = localStorage.getItem(XYK_WIZARD_STORAGE_KEY);
@@ -82,9 +79,7 @@ function readPersistedWizard(): {
         // ignore
       }
     }
-    if (typeof f.feeBps === 'number' && f.feeBps > 0) {
-      form.feeBps = f.feeBps;
-    }
+    form.feeBps = 30;
     return { step, form };
   } catch {
     return { step: 0, form: defaultForm };
@@ -117,6 +112,12 @@ function clearPersistedWizard() {
 }
 
 const wizardSteps = [XykStep1, XykStep2, XykStep3, XykStep4];
+
+export const XYK_CREATE_STEPS = [
+  'Deploying pool',
+  'Adding liquidity',
+  'Finalizing',
+] as const;
 
 export { XykPairIcon } from '@/components/XykPairIcon';
 
@@ -196,6 +197,7 @@ const XykWizard = () => {
   }, [canGoBackInWizard, step]);
 
   const [isCreating, setIsCreating] = useState(false);
+  const [createStep, setCreateStep] = useState<number | null>(null);
   const [createError, setCreateError] = useState<string | null>(null);
 
   const launchXykPool = useCallback(
@@ -206,7 +208,9 @@ const XykWizard = () => {
         amount0: bigint;
         amount1: bigint;
       },
+      options?: { onProgress?: (step: number) => void },
     ): Promise<AccountId | undefined> => {
+      const onProgress = options?.onProgress;
       try {
         if (!client) {
           throw new Error('Client not initialized');
@@ -215,7 +219,14 @@ const XykWizard = () => {
           throw new Error('User not logged in');
         }
 
-        const { newPoolId } = await deployNewPool({ client, token0, token1 });
+        onProgress?.(0);
+        const { newPoolId } = await deployNewPool({
+          client,
+          token0,
+          token1,
+        });
+
+        onProgress?.(1);
         const { tx } = await compileXykDepositTransaction({
           token0,
           token1,
@@ -225,12 +236,26 @@ const XykWizard = () => {
           poolAccountId: newPoolId,
           client,
         });
-        const txId = await requestTransaction({
+
+        console.log('First deposit');
+
+        await requestTransaction({
           type: TransactionType.Custom,
           payload: tx,
         });
+        onProgress?.(2);
+
+        console.log('First deposit sent');
+
+        await registerPool({
+          token0,
+          token1,
+          pool_acc: newPoolId,
+          requestTransaction,
+          client,
+        });
+
         await client.syncState();
-        console.log('Deposited, tx of deposit: ', txId);
         return newPoolId;
       } catch (e) {
         console.error(e);
@@ -247,38 +272,26 @@ const XykWizard = () => {
     ) {
       return;
     }
-    const metadata = tokensWithBalance.metadata;
-    const tokenAMeta = metadata[accountIdToBech32(form.tokenA)];
-    const tokenBMeta = metadata[accountIdToBech32(form.tokenB)];
-    const draft: CreatedPoolDraft = {
-      id: crypto.randomUUID(),
-      type: 'xyk',
-      tokenA: {
-        symbol: tokenAMeta.symbol,
-        name: tokenAMeta.name,
-        faucetIdBech32: tokenAMeta.faucetIdBech32,
-      },
-      tokenB: {
-        symbol: tokenBMeta.symbol,
-        name: tokenBMeta.name,
-        faucetIdBech32: tokenBMeta.faucetIdBech32,
-      },
-      feeBps: form.feeBps,
-      createdAt: Date.now(),
-      status: 'draft',
-    };
-    const existing = readCreatedPools();
-    writeCreatedPools([draft, ...existing]);
-
     setCreateError(null);
     setIsCreating(true);
+    setCreateStep(null);
+    const [token0, token1] = orderPairByHex(form.tokenA, form.tokenB);
+    const amount0 = form.tokenA.toString() === token0.toString()
+      ? form.amountA
+      : form.amountB;
+    const amount1 = form.tokenA.toString() === token0.toString()
+      ? form.amountB
+      : form.amountA;
     try {
-      const newPoolId = await launchXykPool({
-        token0: form.tokenA,
-        token1: form.tokenB,
-        amount0: form.amountA,
-        amount1: form.amountB,
-      });
+      const newPoolId = await launchXykPool(
+        {
+          token0,
+          token1,
+          amount0,
+          amount1,
+        },
+        { onProgress: (s) => setCreateStep(s) },
+      );
 
       if (newPoolId == null) {
         setCreateError('Pool creation failed. Please try again.');
@@ -286,10 +299,6 @@ const XykWizard = () => {
       }
       const poolIdBech32 = accountIdToBech32(newPoolId);
       setLastDeployedPoolIdBech32(poolIdBech32);
-      updateCreatedPool(draft.id, {
-        status: 'deployed',
-        poolIdBech32,
-      });
       setStep(3);
     } catch (err) {
       const message = err instanceof Error
@@ -298,8 +307,9 @@ const XykWizard = () => {
       setCreateError(message);
     } finally {
       setIsCreating(false);
+      setCreateStep(null);
     }
-  }, [form, tokensWithBalance, launchXykPool]);
+  }, [form, launchXykPool]);
 
   const stepTitle = step === 0
     ? 'Create a new Liquidity Pool'
@@ -417,7 +427,7 @@ const XykWizard = () => {
       <div className='flex items-center justify-center w-full'>
         {activeStep}
       </div>
-      <div className='flex flex-col gap-2 pt-8'>
+      <div className='flex flex-col gap-2'>
         {step !== 2 && step < wizardSteps.length - 1
           && (
             <Button
@@ -430,6 +440,15 @@ const XykWizard = () => {
           )}
         {step === 2 && (
           <>
+            {isCreating && createStep !== null && (
+              <div className='max-w-[780px] w-full mx-auto mb-8'>
+                <ProgressBar
+                  steps={XYK_CREATE_STEPS}
+                  currentStepIndex={createStep}
+                  title='Progress'
+                />
+              </div>
+            )}
             <Button
               className='w-full rounded-lg bg-primary text-primary-foreground h-16'
               onClick={() => onCreate()}

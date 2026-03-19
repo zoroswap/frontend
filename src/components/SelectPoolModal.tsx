@@ -25,7 +25,7 @@ export function SelectPoolModal({
   };
 
   return (
-    <div className="flex flex-col gap-4 max-h-[70vh]">
+    <div className="flex flex-col gap-4 max-h-[70vh] p-8">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold font-cal-sans text-foreground">
           Choose a pool to add liquidity

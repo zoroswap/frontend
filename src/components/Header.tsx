@@ -45,7 +45,7 @@ export function Header() {
           <Link to='/explore' className={navLinkClass('/explore')}>
             Explore
           </Link>
-          <Link to='/pools' className={navLinkClass('/pools')}>
+          <Link to='/explore' className={navLinkClass('/explore')}>
             Pools
           </Link>
           <Link to='/faucet' className={navLinkClass('/faucet')}>

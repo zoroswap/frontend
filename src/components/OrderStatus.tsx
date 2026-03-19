@@ -147,7 +147,7 @@ export function OrderStatus({
   return (
     <>
       <div
-        className={`fixed inset-0 bg-black/50 z-40 transition-all duration-300 ease-in-out ${
+        className={`fixed inset-0 bg-black/70 z-40 transition-all duration-300 ease-in-out ${
           isVisible && !isClosing
             ? 'opacity-100'
             : 'opacity-0'
@@ -155,7 +155,7 @@ export function OrderStatus({
         onClick={handleClose}
       />
 
-      <div className='fixed bottom-6 right-6 z-50'>
+      <div className='fixed top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%] z-50'>
         <div
           className={`w-80 max-w-[calc(100vw-2rem)] transition-all duration-300 ease-in-out ${
             isVisible && !isClosing

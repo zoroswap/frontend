@@ -65,7 +65,7 @@ const XykStep4 = ({
       <div className='flex flex-col gap-4'>
         {lastDeployedPoolIdBech32
           ? (
-            <Link to={`/explore/pool/${encodeURIComponent(lastDeployedPoolIdBech32)}`}>
+            <Link to={`/pools/xyk/${encodeURIComponent(lastDeployedPoolIdBech32)}`}>
               <Button
                 className='w-full rounded-lg bg-primary text-primary-foreground h-11 font-normal'
                 onClick={emptyFn}
@@ -75,12 +75,12 @@ const XykStep4 = ({
             </Link>
           )
           : (
-            <Link to='/pools'>
+            <Link to='/explore'>
               <Button
                 className='w-full rounded-lg bg-primary text-primary-foreground h-11 font-normal'
                 onClick={emptyFn}
               >
-                Your pools
+                Explore pools
               </Button>
             </Link>
           )}

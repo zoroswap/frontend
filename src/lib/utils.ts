@@ -1,11 +1,27 @@
 import {
-  type AccountId,
+  AccountId,
   AccountInterface,
   Address,
   Felt,
   WebClient,
   Word,
 } from '@miden-sdk/miden-sdk';
+
+export function accountIdFromPrefixSuffix(
+  prefix: Felt,
+  suffix: Felt,
+): AccountId {
+  const prefixHex = prefix.asInt().toString(16).padStart(16, '0');
+  const suffixHex = (suffix.asInt() >> 8n).toString(16).padStart(14, '0');
+  const accountId = AccountId.fromHex('0x' + prefixHex + suffixHex);
+
+  // const prefixValue = prefix.asInt();
+  // const suffixValue = suffix.asInt();
+  // const combined = (prefixValue << 64n) | suffixValue;
+  // const hex = '0x' + combined.toString(16);
+  // const accountId = AccountId.fromHex(hex);
+  return accountId;
+}
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { createNetworkId, NETWORK } from './config';

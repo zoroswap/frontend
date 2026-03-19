@@ -4,9 +4,12 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { UnifiedWalletButton } from '@/components/UnifiedWalletButton';
+import { ProgressBar } from '@/components/ProgressBar';
 import useLaunchpad, {
   getMidenscanAccountUrl,
   getMidenscanTxUrl,
+  LAUNCH_STEPS,
+  type LaunchStepIndex,
   type LaunchSuccess,
 } from '@/hooks/useLaunchpad';
 import { useUnifiedWallet } from '@/hooks/useUnifiedWallet';
@@ -61,7 +64,7 @@ export default function Launchpad() {
   const { connected } = useUnifiedWallet();
   const { launchToken, error, clearError } = useLaunchpad();
   const [symbol, setSymbol] = useState('');
-  const [decimals, setDecimals] = useState<string>('6');
+  const [decimals, setDecimals] = useState<string>('4');
   const [initialSupply, setInitialSupply] = useState('');
   const [touched, setTouched] = useState({
     symbol: false,
@@ -69,6 +72,7 @@ export default function Launchpad() {
     supply: false,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [launchStep, setLaunchStep] = useState<LaunchStepIndex | null>(null);
   const [successResult, setSuccessResult] = useState<LaunchSuccess | null>(null);
   const [copiedId, setCopiedId] = useState<'tx' | 'faucet' | null>(null);
 
@@ -78,7 +82,7 @@ export default function Launchpad() {
     ? validateDecimals(decimalsNum)
     : (Number.isNaN(decimalsNum) ? 'Invalid number' : null);
   const supplyError = touched.supply
-    ? validateInitialSupply(initialSupply, Number.isNaN(decimalsNum) ? 18 : decimalsNum)
+    ? validateInitialSupply(initialSupply, Number.isNaN(decimalsNum) ? 4 : decimalsNum)
     : null;
 
   const canSubmit = connected
@@ -107,17 +111,24 @@ export default function Launchpad() {
     }
     if (supplyBigint <= 0n) return;
     setIsSubmitting(true);
+    setLaunchStep(null);
     clearError();
-    const result = await launchToken({
-      symbol: sym,
-      decimals: dec,
-      initialSupply: supplyBigint,
-    });
+    const result = await launchToken(
+      {
+        symbol: sym,
+        decimals: dec,
+        initialSupply: supplyBigint,
+      },
+      {
+        onProgress: (step) => setLaunchStep(step),
+      },
+    );
     setIsSubmitting(false);
+    setLaunchStep(null);
     if (result) {
       setSuccessResult(result);
       setSymbol('');
-      setDecimals('6');
+      setDecimals('4');
       setInitialSupply('');
       setTouched({ symbol: false, decimals: false, supply: false });
       clearError();
@@ -155,6 +166,10 @@ export default function Launchpad() {
             </CardTitle>
             <p className='text-sm text-muted-foreground mt-1'>
               Create a new faucet token and mint initial supply to your wallet.
+            </p>
+            <p className='text-xs text-muted-foreground mt-2'>
+              Launching a new token can take a couple of seconds. Please wait until the
+              process completes.
             </p>
           </CardHeader>
           <CardContent className='space-y-4'>
@@ -336,6 +351,14 @@ export default function Launchpad() {
                       <p className='text-xs text-destructive'>{supplyError}</p>
                     )}
                   </div>
+
+                  {isSubmitting && launchStep !== null && (
+                    <ProgressBar
+                      steps={LAUNCH_STEPS}
+                      currentStepIndex={launchStep}
+                      title='Progress'
+                    />
+                  )}
 
                   {error && (
                     <div

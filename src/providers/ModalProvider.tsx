@@ -44,7 +44,7 @@ const ModalBackdrop = ({
       onClick={handleClose}
     >
       <Card
-        className='relative z-2 max-w-[640px] p-8 w-[90%] block'
+        className='relative z-2 max-w-[640px] w-[90%] max-h-[90vh] overflow-y-auto block'
         style={{
           transform: visible ? 'translateY(0)' : 'translateY(-20px)',
           opacity: visible ? 1 : 0,

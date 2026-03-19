@@ -12,6 +12,7 @@ import {
   Endpoint,
   Note,
   NoteType,
+  OutputNoteState,
   RpcClient,
   WebClient,
 } from '@miden-sdk/miden-sdk';
@@ -92,6 +93,42 @@ export function ZoroProvider({
       await throttledSync();
     });
   }, [client, withClientLock, throttledSync]);
+
+  const getNoteStatus = useCallback(
+    async (
+      noteId: string,
+    ): Promise<'consumed' | 'committed' | 'pending' | 'processing' | 'unknown'> => {
+      if (!client) return 'unknown';
+      return withClientLock(async () => {
+        const summary = await client.syncState();
+        const consumedIds = summary.consumedNotes().map((
+          id: { toString: () => string },
+        ) => id.toString());
+        if (consumedIds.includes(noteId)) return 'consumed';
+        try {
+          const record = await client.getOutputNote(noteId);
+          const state = record.state();
+          if (state === OutputNoteState.Consumed) return 'consumed';
+          if (
+            state === OutputNoteState.CommittedPartial
+            || state === OutputNoteState.CommittedFull
+          ) {
+            return 'committed';
+          }
+          if (
+            state === OutputNoteState.ExpectedPartial
+            || state === OutputNoteState.ExpectedFull
+          ) {
+            return 'pending';
+          }
+          return 'processing';
+        } catch {
+          return 'pending';
+        }
+      });
+    },
+    [client, withClientLock],
+  );
 
   const getAccount = useCallback(async (accountId: AccountId) => {
     if (!client) {
@@ -284,6 +321,7 @@ export function ZoroProvider({
         : undefined,
       accountId,
       syncState,
+      getNoteStatus,
       getAccount,
       getBalance,
       getConsumableNotes,
@@ -304,6 +342,7 @@ export function ZoroProvider({
     poolsInfo,
     isPoolsInfoFetched,
     syncState,
+    getNoteStatus,
     getAccount,
     getBalance,
     getConsumableNotes,

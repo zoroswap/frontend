@@ -1,4 +1,4 @@
-import { bech32ToAccountId, accountIdToBech32 } from '@/lib/utils';
+import { accountIdToBech32, bech32ToAccountId } from '@/lib/utils';
 import { ZoroContext } from '@/providers/ZoroContext';
 import type { TokenConfig } from '@/providers/ZoroProvider';
 import { Felt, Word } from '@miden-sdk/miden-sdk';
@@ -12,12 +12,11 @@ export const useLPBalances = ({ tokens }: { tokens?: TokenConfig[] }) => {
     if (!poolAccountId || !rpcClient || !accountId || !tokens) return;
     const balances: Record<string, bigint> = {};
     // Clone poolAccountId since getAccountDetails() consumes the AccountId argument
-    const poolIdClone = bech32ToAccountId(accountIdToBech32(poolAccountId))!;
-    const fetched = await rpcClient.getAccountDetails(poolIdClone);
+    const fetched = await rpcClient.getAccountDetails(poolAccountId);
     const storage = fetched.account()?.storage();
     for (const token of tokens) {
       const lp = storage?.getMapItem(
-        "zoroswap::user_deposits",
+        'zoroswap::user_deposits',
         Word.newFromFelts([
           new Felt(accountId.suffix().asInt()),
           new Felt(accountId.prefix().asInt()),

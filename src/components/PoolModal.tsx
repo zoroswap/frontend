@@ -2,7 +2,7 @@ import { useDeposit } from '@/hooks/useDeposit';
 import { usePoolsBalances } from '@/hooks/usePoolsBalances';
 import { useWithdraw } from '@/hooks/useWithdraw';
 import { DEFAULT_SLIPPAGE } from '@/lib/config';
-import { formatTokenAmount, formatUsd } from '@/lib/format';
+import { formatTokenAmount, formatTokenAmountForInput, formatUsd } from '@/lib/format';
 import { useOraclePrices } from '@/providers/OracleContext';
 import { ZoroContext } from '@/providers/ZoroContext';
 import type { TokenConfig } from '@/providers/ZoroProvider';
@@ -167,7 +167,7 @@ export default function PoolModal({
       setRawValue(newValue);
       setInputError(undefined);
       setInputValue(
-        (formatTokenAmount({ value: newValue, expo: decimals }) ?? '').toString(),
+        formatTokenAmountForInput({ value: newValue, expo: decimals }),
       );
       if (mode === 'Deposit') setDepositPct(percentage);
       if (mode === 'Withdraw') setWithdrawPct(percentage);
@@ -177,15 +177,16 @@ export default function PoolModal({
 
   const onInputChange = useCallback(
     (val: string) => {
-      setInputValue(val);
-      if (val === '') {
+      const s = typeof val === 'string' ? val : '';
+      setInputValue(s);
+      if (s === '') {
         setInputError(undefined);
         setRawValue(BigInt(0));
         if (mode === 'Deposit') setDepositPct(0);
         if (mode === 'Withdraw') setWithdrawPct(0);
         return;
       }
-      const parsed = parseUnits(val, decimals);
+      const parsed = parseUnits(s, decimals);
       const validationError = validateValue(parsed, balance);
       if (validationError) setInputError(validationError);
       else {
@@ -201,26 +202,6 @@ export default function PoolModal({
     },
     [decimals, balance, mode],
   );
-
-  useEffect(() => {
-    if (mode === 'Deposit' && balance > BigInt(0)) {
-      const newValue = (BigInt(depositPct) * balance) / BigInt(100);
-      setRawValue(newValue);
-      setInputValue(
-        (formatTokenAmount({ value: newValue, expo: decimals }) ?? '').toString(),
-      );
-    }
-  }, [depositPct, mode, balance, decimals]);
-
-  useEffect(() => {
-    if (mode === 'Withdraw' && balance > BigInt(0)) {
-      const newValue = (BigInt(withdrawPct) * balance) / BigInt(100);
-      setRawValue(newValue);
-      setInputValue(
-        (formatTokenAmount({ value: newValue, expo: decimals }) ?? '').toString(),
-      );
-    }
-  }, [withdrawPct, mode, balance, decimals]);
 
   const handleClose = useCallback(() => modalContext.closeModal(), [modalContext]);
 
@@ -360,10 +341,9 @@ export default function PoolModal({
   }, [rawValue, minAmountOutWithdraw, withdraw, token]);
 
   return (
-    <div className='flex flex-col gap-4'>
-      {/* Header */}
-      <div className='flex items-center justify-between'>
-        <div className='flex items-center gap-3'>
+    <div className='flex flex-col gap-5 p-8'>
+      <div className='flex items-center justify-between gap-2'>
+        <div className='flex items-center gap-2'>
           {isHfAmm
             ? (
               <span className='inline-block rounded-full border-2 border-background overflow-hidden bg-muted'>
@@ -422,21 +402,21 @@ export default function PoolModal({
 
       {mode === 'Deposit' && (
         <>
-          {/* Input card */}
-          <div className='rounded-2xl border border-border/50 bg-background p-5'>
-            <div className='flex items-center justify-between gap-3 mb-4'>
-              <Input
-                value={inputValue}
-                placeholder='0'
-                className='border-0 bg-transparent p-0 h-auto text-4xl font-semibold focus-visible:ring-0 no-spinner placeholder:text-muted-foreground/40 flex-1 min-w-0'
-                onChange={(e) => onInputChange(e.target.value)}
-              />
-              <span className='rounded-full overflow-hidden shrink-0'>
-                <AssetIcon
-                  symbol={isHfAmm
-                    ? (underlyingToken?.symbol ?? underlyingSymbol)
-                    : pool.symbol}
-                  size={36}
+          <div className='flex items-center justify-between gap-2'>
+            <p className='text-sm font-medium text-muted-foreground'>
+              {isHfAmm ? 'Deposit amount' : 'Deposit amounts'}
+            </p>
+            <Slippage slippage={slippage} onSlippageChange={setSlippage} />
+          </div>
+          <div className='space-y-3'>
+            <div className='rounded-xl border border-input bg-muted/30 p-3'>
+              <p className='text-xs text-muted-foreground mb-1'>Amount</p>
+              <div className='flex items-center justify-between gap-2'>
+                <Input
+                  value={typeof inputValue === 'string' ? inputValue : ''}
+                  placeholder='0.00'
+                  className='border-0 bg-transparent p-0 h-auto text-lg focus-visible:ring-0'
+                  onChange={(e) => onInputChange(e.target.value)}
                 />
               </span>
             </div>
@@ -511,6 +491,9 @@ export default function PoolModal({
                 />
               </span>
             </div>
+            {expectedLpFormatted != null && expectedLpFormatted !== (minLpFormatted ?? '0.00') && (
+              <p className='text-xs text-muted-foreground'>Expected: {expectedLpFormatted}</p>
+            )}
             {isHfAmm && (
               <div className='flex items-center justify-between'>
                 <span className='text-muted-foreground font-medium'>Total Value</span>
@@ -573,15 +556,43 @@ export default function PoolModal({
               ))}
             </div>
           </div>
-
-          {/* Details */}
-          <div className='rounded-2xl bg-muted p-4 space-y-3 text-sm'>
-            <div className='relative flex items-center justify-between'>
-              <span className='text-muted-foreground font-medium'>Max slippage</span>
-              <span className='flex items-center gap-1.5'>
-                <Slippage slippage={slippage} onSlippageChange={setSlippage} />
-                <span className='font-medium'>{slippage} %</span>
-              </span>
+          <div className='space-y-3'>
+            <div className='rounded-xl border border-input bg-muted/30 p-3'>
+              <p className='text-xs text-muted-foreground mb-1'>Amount</p>
+              <div className='flex items-center justify-between gap-2'>
+                <Input
+                  value={typeof inputValue === 'string' ? inputValue : ''}
+                  placeholder='0.00'
+                  className='border-0 bg-transparent p-0 h-auto text-lg focus-visible:ring-0'
+                  onChange={(e) => onInputChange(e.target.value)}
+                />
+                <div className='flex items-center gap-2 text-sm text-muted-foreground shrink-0'>
+                  <span>
+                    Balance: {formatTokenAmount({
+                      value: lpBalance,
+                      expo: decimals,
+                    })} {isHfAmm
+                      ? (pool.symbol.startsWith('z') ? pool.symbol : `z${pool.symbol}`)
+                      : 'LP'}
+                  </span>
+                  <span className='rounded-full overflow-hidden'>
+                    <AssetIcon symbol={pool.symbol} size={24} />
+                  </span>
+                </div>
+              </div>
+              <div className='flex gap-2 mt-2'>
+                {PERCENTAGES.map((n) => (
+                  <Button
+                    key={n}
+                    variant={withdrawPct === n ? 'default' : 'outline'}
+                    size='sm'
+                    className='flex-1 rounded-lg text-xs'
+                    onClick={() => setAmountPercentage(n)}
+                  >
+                    {n}%
+                  </Button>
+                ))}
+              </div>
             </div>
             <div className='flex items-center justify-between'>
               <span className='text-muted-foreground font-medium'>Balance</span>
@@ -606,21 +617,42 @@ export default function PoolModal({
               <span className='font-medium'>{withdrawPoolShareDisplay}</span>
             </div>
           </div>
-
-          {/* Receive row */}
-          <div className='rounded-2xl bg-muted p-4 space-y-3 text-sm'>
-            <div className='flex items-center justify-between'>
-              <span className='text-muted-foreground font-medium'>You receive (min)</span>
-              <span className='flex items-center gap-2 font-semibold'>
-                {minWithdrawAssetFormatted}{' '}
-                <AssetIcon
-                  symbol={isHfAmm
-                    ? (underlyingToken?.symbol ?? underlyingSymbol)
-                    : pool.symbol}
-                  size={20}
-                />
-              </span>
-            </div>
+          <div className='rounded-xl border border-input bg-muted/30 p-3 space-y-2'>
+            <p className='text-xs font-medium text-muted-foreground uppercase tracking-wide'>
+              You receive (min)
+            </p>
+            {isHfAmm
+              ? (
+                <div className='flex items-center justify-between text-sm'>
+                  <div className='flex items-center gap-2'>
+                    <AssetIcon
+                      symbol={underlyingToken?.symbol ?? underlyingSymbol}
+                      size={20}
+                    />
+                    <span>{underlyingToken?.symbol ?? underlyingSymbol}</span>
+                  </div>
+                  <span>{minWithdrawAssetFormatted}</span>
+                </div>
+              )
+              : (
+                <>
+                  <p className='text-xs text-muted-foreground'>LP: {withdrawReceiveFormatted ?? '0'}</p>
+                  <div className='flex items-center justify-between text-sm'>
+                    <div className='flex items-center gap-2'>
+                      <AssetIcon symbol={pool.symbol} size={20} />
+                      <span>{pool.symbol}</span>
+                    </div>
+                    <span>{withdrawAssetOutFormatted} (min: {minWithdrawAssetFormatted})</span>
+                  </div>
+                  <div className='flex items-center justify-between text-sm'>
+                    <div className='flex items-center gap-2'>
+                      <AssetIcon symbol='USDC' size={20} />
+                      <span>USDC</span>
+                    </div>
+                    <span>—</span>
+                  </div>
+                </>
+              )}
             {isHfAmm && (
               <div className='flex items-center justify-between'>
                 <span className='text-muted-foreground font-medium'>Total Value</span>
