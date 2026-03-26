@@ -162,7 +162,7 @@ function Explore() {
                 />
               ))
               : (
-                <div className='col-span-full rounded-xl border border-dashed border-muted-foreground/30 bg-muted/20 p-8 text-center text-muted-foreground text-sm'>
+                <div className='col-span-full rounded-xl border border-dashed border-muted-foreground/30 bg-muted/20 py-16 px-8 text-center text-muted-foreground text-sm'>
                   No positions yet. Add liquidity in High frequency pools below.
                 </div>
               )}
@@ -170,9 +170,15 @@ function Explore() {
         </section>
 
         <section id='high-frequency-pools'>
-          <h2 className='text-2xl font-bold font-cal-sans text-foreground mb-4'>
-            High frequency pools
-          </h2>
+          <div className='flex items-center gap-2 mb-4'>
+            <h2 className='text-2xl font-bold font-cal-sans text-foreground'>
+              High frequency pools
+            </h2>
+            <span className='inline-flex items-center gap-1.5 rounded-full bg-foreground/5 px-2.5 py-1 text-[11px] font-medium text-muted-foreground'>
+              <span className='h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse' />
+              Under construction
+            </span>
+          </div>
           <LiquidityPoolsTable
             poolsInfo={poolsInfo}
             poolBalances={poolBalances}
@@ -203,7 +209,7 @@ function Explore() {
               placeholder='Search by pool id (bech32 or 0x hex)…'
               value={communityPoolsSearch}
               onChange={e => setCommunityPoolsSearch(e.target.value)}
-              className='pl-9 rounded-lg bg-muted/50 border-muted-foreground/20'
+              className='pl-9 h-12 rounded-lg bg-muted/50 border-muted-foreground/20'
             />
           </div>
           <XykPoolTable search={communityPoolsSearch} />

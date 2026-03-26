@@ -156,20 +156,14 @@ export default function Launchpad() {
       <title>Launchpad - ZoroSwap | DeFi on Miden</title>
       <meta name='description' content='Launch a new token on Miden testnet.' />
       <Header />
-      <main className='flex-1 w-full max-w-xl mx-auto px-4 sm:px-6 py-8 sm:py-12'>
-        <Link
-          to='/'
-          className={`inline-flex items-center gap-2 ${bodyClass} hover:text-foreground transition-colors mb-8`}
-        >
-          <ArrowLeft className='h-4 w-4 shrink-0' />
-          Back to Swap
-        </Link>
+      <main className='flex-1 w-full max-w-5xl mx-auto px-6 py-8'>
+        <div className='max-w-xl mx-auto'>
 
         <div className='text-center mb-8 sm:mb-10'>
           <h1 className='text-2xl sm:text-3xl font-cal-sans font-bold text-foreground tracking-tight'>
             Token launchpad
           </h1>
-          <p className={`mt-3 max-w-md mx-auto ${bodyClass}`}>
+          <p className={`mt-3 ${bodyClass}`}>
             Deploy a new faucet token on Miden and mint the whole initial supply to your
             account. You will need to consume the tokens in your wallet.
           </p>
@@ -428,6 +422,18 @@ export default function Launchpad() {
             </div>
           </CardContent>
         </Card>
+        <div className='pt-8 pb-2 flex justify-center'>
+          <Link to='/'>
+            <Button
+              variant='secondary'
+              size='sm'
+              className='text-xs sm:text-sm text-muted-foreground hover:text-foreground transition-colors'
+            >
+              ← Back to Swap
+            </Button>
+          </Link>
+        </div>
+        </div>
       </main>
       <Footer />
     </div>

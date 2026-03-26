@@ -164,36 +164,34 @@ function Faucet() {
       <meta name='twitter:title' content='Faucet - ZoroSwap | DeFi on Miden' />
       <meta name='twitter:description' content='Testnet faucet for the Zoro Swap AMM.' />
       <Header />
-      <main className='flex-1 flex items-center justify-center p-3'>
-        <div className='w-full max-w-[495px]'>
-          <div>
-            {Object.values(tokens).map((token, index) => {
+      <main className='flex-1 w-full max-w-5xl mx-auto px-6 py-8'>
+          <div className='text-center mb-10'>
+            <h1 className='text-3xl font-bold font-cal-sans text-foreground mb-2'>
+              Testnet Faucet
+            </h1>
+            <p className='text-sm text-muted-foreground'>
+              Request test tokens to start swapping and providing liquidity on Miden testnet.
+            </p>
+          </div>
+          <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6'>
+            {Object.values(tokens).map((token) => {
               const status = mintStatuses[token.faucetIdBech32];
 
               if (!token || !status) return null;
-              const lineBetween = index > 0
-                ? <div className='border border-bottom-0 border-dashed my-6 opacity-50' />
-                : null;
 
               return (
                 <Fragment key={token.faucetIdBech32}>
-                  {lineBetween}
+                  <div className='flex flex-col'>
                   <Card
-                    key={token.symbol}
-                    className='rounded-xl transition-all duration-200 hover:border-orange-200/10 mb-4'
+                    className='rounded-xl rounded-b-none border-b-0 transition-all duration-200 hover:border-orange-200/10'
                   >
-                    <CardContent className='p-4 sm:p-6 flex gap-1 flex-col items-center'>
-                      <AssetIcon symbol={token.symbol} />
+                    <CardContent className='p-6 sm:p-8 flex gap-2 flex-col items-center'>
+                      <AssetIcon symbol={token.symbol} size={48} />
                       <h3 className='text-md sm:text-lg font-semibold'>
                         Test {token.name}
                       </h3>
-                      <div className='text-xs text-muted-foreground overflow-hidden'>
-                        <span className='hidden sm:inline'>
-                          {token.faucetIdBech32}
-                        </span>
-                        <span className='sm:hidden break-all'>
-                          {token.faucetIdBech32}
-                        </span>
+                      <div className='text-[10px] text-muted-foreground text-center'>
+                        {token.faucetIdBech32}
                       </div>
                     </CardContent>
                   </Card>
@@ -201,7 +199,7 @@ function Faucet() {
                     <Button
                       onClick={() => requestTokens(token.faucetIdBech32)}
                       disabled={isButtonDisabled(status)}
-                      className='w-full h-8 sm:h-12 bg-primary hover:bg-orange-700 text-white font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
+                      className='w-full h-14 rounded-none rounded-b-xl bg-primary hover:bg-orange-700 text-white text-sm sm:text-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
                     >
                       {status.isLoading && (
                         <Loader2 className='w-4 h-4 mr-2 animate-spin' />
@@ -210,7 +208,7 @@ function Faucet() {
                     </Button>
                   )}
                   {!connected && (
-                    <UnifiedWalletButton className='!font-bold !p-5 w-full !font-semibold !font-sans h-full !rounded-xl !text-sm sm:!text-lg !bg-primary !text-primary-foreground hover:!bg-primary/90 !border-none !text-center !flex !items-center !justify-center' />
+                    <UnifiedWalletButton className='!font-bold !p-5 w-full !font-semibold !font-sans h-full !rounded-none !rounded-b-xl !text-sm sm:!text-lg !bg-primary !text-primary-foreground hover:!bg-primary/90 !border-none !text-center !flex !items-center !justify-center' />
                   )}
                   <div
                     className={`overflow-hidden transition-all duration-300 ease-out ${
@@ -240,11 +238,12 @@ function Faucet() {
                       </div>
                     )}
                   </div>
+                  </div>
                 </Fragment>
               );
             })}
           </div>
-          <div className='pt-8 pb-2 sm:pb-0 flex sm:justify-start justify-center sm:items-start'>
+          <div className='pt-8 pb-2 sm:pb-0 flex justify-center'>
             <Link to='/'>
               <Button
                 variant='secondary'
@@ -255,7 +254,6 @@ function Faucet() {
               </Button>
             </Link>
           </div>
-        </div>
       </main>
       <Footer />
     </div>
