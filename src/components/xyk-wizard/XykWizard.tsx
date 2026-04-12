@@ -5,7 +5,7 @@ import { UnifiedWalletButton } from '@/components/UnifiedWalletButton';
 import useTokensWithBalance from '@/hooks/useTokensWithBalance';
 import { useUnifiedWallet } from '@/hooks/useUnifiedWallet';
 import { useXykPools } from '@/hooks/useXykPools';
-import { deployNewPool, registerPool } from '@/lib/DeployXykPool';
+import { deployNewPool } from '@/lib/DeployXykPool';
 import { accountIdToBech32 } from '@/lib/utils';
 import { compileXykDepositTransaction } from '@/lib/XykDepositNote';
 import { type TokenConfigWithBalance, ZoroContext } from '@/providers/ZoroContext';
@@ -117,7 +117,6 @@ const wizardSteps = [XykStep1, XykStep2, XykStep3, XykStep4];
 export const XYK_CREATE_STEPS = [
   'Deploying pool',
   'Adding liquidity',
-  'Registering with central registry',
   'Finalizing',
 ] as const;
 
@@ -285,19 +284,6 @@ const XykWizard = () => {
           payload: tx,
         });
         onProgress?.(2);
-
-        await registerPool({
-          token0,
-          token1,
-          pool_acc: newPoolId,
-          requestTransaction,
-          client,
-          sender: accountId,
-        });
-        await client.syncState();
-        await new Promise(r => setTimeout(r, 5000));
-        onProgress?.(3);
-
         return newPoolId;
       } catch (e) {
         console.error(e);

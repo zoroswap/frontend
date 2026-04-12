@@ -2,18 +2,6 @@ import {
   AccountId,
   AccountType,
   Felt,
-  FeltArray,
-  MidenArrays,
-  Note,
-  NoteAssets,
-  NoteAttachment,
-  NoteExecutionHint,
-  NoteInputs,
-  NoteMetadata,
-  NoteRecipient,
-  NoteTag,
-  NoteType,
-  OutputNote,
   StorageSlot,
   TransactionRequestBuilder,
   WebClient,
@@ -28,14 +16,12 @@ import xyk_registry from '@/masm/accounts/xyk_registry.masm?raw';
 import XYK_REGISTER_SCRIPT from '@/masm/notes/xyk_register.masm?raw';
 import network_account_masm from '@/masm/vendor/network_account_target.masm?raw';
 
-import type { TransactionRequest } from '@/providers/UnifiedWalletContext';
-import { CustomTransaction, TransactionType } from '@demox-labs/miden-wallet-adapter';
 import { StorageMap } from '@miden-sdk/miden-sdk';
 import { AccountComponent } from '@miden-sdk/miden-sdk';
 import { AccountBuilder } from '@miden-sdk/miden-sdk';
 import { AccountStorageMode } from '@miden-sdk/miden-sdk';
 import { REGISTRY_ACCOUNT } from './config';
-import { accountIdToBech32, generateRandomSerialNumber } from './utils';
+import { accountIdToBech32 } from './utils';
 
 export interface DeployNewPoolParams {
   token0: AccountId;
@@ -239,80 +225,7 @@ export async function deployNewPool({
   await client.submitNewTransaction(contract.account.id(), initTx);
   await client.syncState();
   client.syncState();
-
   return {
     newPoolId: contract.account.id(),
   };
 }
-
-export const registerPool = async ({
-  client,
-  token0,
-  token1,
-  pool_acc,
-  sender,
-  requestTransaction,
-}: DeployNewPoolParams & {
-  pool_acc: AccountId;
-  sender: AccountId;
-  requestTransaction: (tx: TransactionRequest) => void;
-}) => {
-  if (!REGISTRY_ACCOUNT) return;
-
-  await client.importAccountById(REGISTRY_ACCOUNT);
-  await client.importAccountById(pool_acc);
-  await client.syncState();
-
-  const script = compile_xyk_register_note_script(client);
-  const noteTag = NoteTag.withAccountTarget(REGISTRY_ACCOUNT);
-  const attachment = NoteAttachment.newNetworkAccountTarget(
-    REGISTRY_ACCOUNT,
-    NoteExecutionHint.always(),
-  );
-  const metadata = new NoteMetadata(
-    sender,
-    NoteType.Public,
-    noteTag,
-  ).withAttachment(attachment);
-
-  const inputs = new NoteInputs(
-    new FeltArray([
-      token0.prefix(),
-      token0.suffix(),
-      token1.prefix(),
-      token1.suffix(),
-      pool_acc.prefix(),
-      pool_acc.suffix(),
-      REGISTRY_ACCOUNT.prefix(),
-      REGISTRY_ACCOUNT.suffix(),
-    ]),
-  );
-
-  const noteAssets = new NoteAssets([]);
-  const note = new Note(
-    noteAssets,
-    metadata,
-    new NoteRecipient(generateRandomSerialNumber(), script, inputs),
-  );
-
-  const noteId = note.id().toString();
-
-  console.log('REGISTRY note: ', noteId, note);
-
-  const transactionRequest = new TransactionRequestBuilder()
-    .withOwnOutputNotes(new MidenArrays.OutputNoteArray([OutputNote.full(note)]))
-    .build();
-
-  const tx = new CustomTransaction(
-    accountIdToBech32(sender),
-    accountIdToBech32(REGISTRY_ACCOUNT),
-    transactionRequest,
-    [],
-    [],
-  );
-
-  requestTransaction({
-    type: TransactionType.Custom,
-    payload: tx,
-  });
-};

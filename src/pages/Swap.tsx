@@ -135,7 +135,12 @@ function Swap() {
     return findXykPool(selectedAssetSell.faucetIdBech32, selectedAssetBuy.faucetIdBech32);
   }, [selectedAssetSell, selectedAssetBuy, findXykPool]);
 
-  const isXykSwap = xykPoolId != null;
+  const isXykSwap = useMemo(() => {
+    if (!selectedAssetSell || !selectedAssetBuy) return false;
+    // prioritize hfAMM swaps
+    return xykPoolId != null && tokens[selectedAssetBuy.faucetIdBech32] !== null
+      && tokens[selectedAssetSell.faucetIdBech32] !== null;
+  }, [selectedAssetBuy, selectedAssetSell, tokens, xykPoolId]);
 
   const { data: xykPoolData } = useXykPool(xykPoolId);
 
