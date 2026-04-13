@@ -62,14 +62,14 @@ const LiquidityPoolsTable = ({
             placeholder='Search by token name or pair...'
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className='pl-9 rounded-lg bg-muted/50 border-muted-foreground/20'
+            className='pl-9 h-12 rounded-lg bg-muted/50 border-muted-foreground/20'
           />
         </div>
         <div className='flex gap-2'>
           <Button
             variant='outline'
             size='sm'
-            className={`rounded-lg ${
+            className={`h-12 rounded-lg ${
               poolFilter === 'hot'
                 ? 'bg-primary/10 border-primary text-primary'
                 : 'bg-muted/50 border-muted-foreground/20'
@@ -82,7 +82,7 @@ const LiquidityPoolsTable = ({
           <Button
             variant='outline'
             size='sm'
-            className={`rounded-lg ${
+            className={`h-12 rounded-lg ${
               poolFilter === 'new'
                 ? 'bg-primary/10 border-primary text-primary'
                 : 'bg-muted/50 border-muted-foreground/20'
@@ -95,7 +95,7 @@ const LiquidityPoolsTable = ({
           <Button
             variant='outline'
             size='sm'
-            className={`rounded-lg ${
+            className={`h-12 rounded-lg ${
               poolFilter === 'stables'
                 ? 'bg-primary/10 border-primary text-primary'
                 : 'bg-muted/50 border-muted-foreground/20'
