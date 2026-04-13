@@ -17,10 +17,10 @@ import {
   WebClient,
 } from '@miden-sdk/miden-sdk';
 
+import zoropool from '@/masm/accounts/zoropool.masm?raw';
+import WITHDRAW_SCRIPT from '@/masm/notes/WITHDRAW.masm?raw';
 import type { TokenConfig } from '@/providers/ZoroProvider';
 import { accountIdToBech32, generateRandomSerialNumber } from './utils';
-import WITHDRAW_SCRIPT from './WITHDRAW.masm?raw';
-import zoropool from './zoropool.masm?raw';
 
 export interface WithdrawParams {
   poolAccountId: AccountId;

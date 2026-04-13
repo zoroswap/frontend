@@ -1,3 +1,4 @@
+import { CustomTransaction } from '@demox-labs/miden-wallet-adapter';
 import {
   AccountId,
   Felt,
@@ -15,13 +16,11 @@ import {
   TransactionRequestBuilder,
   WebClient,
 } from '@miden-sdk/miden-sdk';
-import { CustomTransaction } from '@demox-labs/miden-wallet-adapter';
 
+import zoropool from '@/masm/accounts/zoropool.masm?raw';
+import ZOROSWAP_SCRIPT from '@/masm/notes/ZOROSWAP.masm?raw';
 import type { TokenConfig } from '@/providers/ZoroProvider';
 import { accountIdToBech32, generateRandomSerialNumber } from './utils';
-import ZOROSWAP_SCRIPT from './ZOROSWAP.masm?raw';
-
-import zoropool from './zoropool.masm?raw';
 
 export interface SwapParams {
   poolAccountId: AccountId;
@@ -81,9 +80,9 @@ export async function compileSwapTransaction({
       new Felt(BigInt(p2idTag)),
       new Felt(BigInt(0)),
       new Felt(BigInt(0)),
-      userAccountId.suffix(),   // beneficiary
+      userAccountId.suffix(), // beneficiary
       userAccountId.prefix(),
-      userAccountId.suffix(),   // creator
+      userAccountId.suffix(), // creator
       userAccountId.prefix(),
     ]),
   );
@@ -95,6 +94,8 @@ export async function compileSwapTransaction({
   );
 
   const noteId = note.id().toString();
+
+  console.log('Swap note: ', noteId);
 
   const transactionRequest = new TransactionRequestBuilder()
     .withOwnOutputNotes(new MidenArrays.OutputNoteArray([OutputNote.full(note)]))

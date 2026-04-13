@@ -5,17 +5,30 @@ import { formatUnits } from 'viem';
 import { Input } from './ui/input';
 
 const SwapInputBuy = (
-  { amountSell, assetBuy, assetSell }: {
+  { amountSell, assetBuy, assetSell, overrideAmount }: {
     amountSell?: bigint;
     assetBuy?: TokenConfig;
     assetSell?: TokenConfig;
+    overrideAmount?: bigint;
   },
 ) => {
   const { getWebsocketPrice } = useContext(OracleContext);
   const [stringBuy, setStringBuy] = useState<string>('');
   const activeStringBuy = useRef<undefined | string>(undefined);
 
+  // When overrideAmount is provided, display it directly (XYK mode)
   useEffect(() => {
+    if (overrideAmount == null || !assetBuy) return;
+    const formatted = formatUnits(overrideAmount, assetBuy.decimals);
+    if (formatted !== activeStringBuy.current) {
+      setStringBuy(formatted);
+      activeStringBuy.current = formatted;
+    }
+  }, [overrideAmount, assetBuy]);
+
+  // Oracle-based estimation (hfAMM mode)
+  useEffect(() => {
+    if (overrideAmount != null) return;
     const i = setInterval(() => {
       if (!amountSell || !assetBuy || !assetSell) {
         const newStringBuy = '';
@@ -42,7 +55,7 @@ const SwapInputBuy = (
       }
     }, 50);
     return () => clearInterval(i);
-  }, [assetBuy, assetSell, amountSell, getWebsocketPrice]);
+  }, [assetBuy, assetSell, amountSell, getWebsocketPrice, overrideAmount]);
 
   const html = useMemo(() => {
     return (
@@ -51,7 +64,7 @@ const SwapInputBuy = (
         value={stringBuy}
         disabled
         placeholder='0'
-        className='border-none text-3xl sm:text-4xl font-light outline-none flex-1 p-0 h-auto focus-visible:ring-0 no-spinner bg-transparent'
+        className='border-none text-4xl sm:text-6xl font-semibold text-muted-foreground outline-none flex-1 p-0 h-auto focus-visible:ring-0 no-spinner bg-transparent placeholder:text-muted-foreground'
       />
     );
   }, [stringBuy]);

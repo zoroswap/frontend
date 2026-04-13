@@ -1,14 +1,32 @@
 import { type PoolInfo, usePoolsInfo } from '@/hooks/usePoolsInfo';
+import { useRpcWorker } from '@/hooks/useRpcWorker';
 import { useUnifiedWallet } from '@/hooks/useUnifiedWallet';
-import { NETWORK } from '@/lib/config';
 import { clientMutex } from '@/lib/clientMutex';
-import { bech32ToAccountId, instantiateClient } from '@/lib/utils';
-import { AccountId, Address, Endpoint, Note, RpcClient, WebClient } from '@miden-sdk/miden-sdk';
+import { NETWORK } from '@/lib/config';
+import { accountIdToBech32, bech32ToAccountId, instantiateClient } from '@/lib/utils';
+import {
+  AccountId,
+  AccountStorageMode,
+  Address,
+  AuthScheme,
+  Endpoint,
+  Note,
+  NoteType,
+  OutputNoteState,
+  RpcClient,
+  WebClient,
+} from '@miden-sdk/miden-sdk';
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParaClient } from './ParaClientContext';
 import { ZoroContext } from './ZoroContext';
 
 const SYNC_THROTTLE_MS = 1500;
+
+export interface FaucetParams {
+  symbol: string;
+  decimals: number;
+  initialSupply: bigint;
+}
 
 export function ZoroProvider({
   children,
@@ -19,11 +37,13 @@ export function ZoroProvider({
   const paraClient = useParaClient();
   // Use accountId from UnifiedWallet if available (Para), otherwise derive from address (Miden)
   const accountId = useMemo(
-    () => unifiedAccountId ?? (address ? Address.fromBech32(address).accountId() : undefined),
+    () =>
+      unifiedAccountId ?? (address ? Address.fromBech32(address).accountId() : undefined),
     [address, unifiedAccountId],
   );
   const [midenClient, setMidenClient] = useState<WebClient | undefined>(undefined);
   const rpcClientRef = useRef<RpcClient | null>(null);
+  const { getFaucetInfo: workerGetFaucetInfo } = useRpcWorker();
 
   // For Para users, use paraClient; for Miden users, create our own client
   const client = walletType === 'para' ? paraClient : midenClient;
@@ -74,6 +94,42 @@ export function ZoroProvider({
       await throttledSync();
     });
   }, [client, withClientLock, throttledSync]);
+
+  const getNoteStatus = useCallback(
+    async (
+      noteId: string,
+    ): Promise<'consumed' | 'committed' | 'pending' | 'processing' | 'unknown'> => {
+      if (!client) return 'unknown';
+      return withClientLock(async () => {
+        const summary = await client.syncState();
+        const consumedIds = summary.consumedNotes().map((
+          id: { toString: () => string },
+        ) => id.toString());
+        if (consumedIds.includes(noteId)) return 'consumed';
+        try {
+          const record = await client.getOutputNote(noteId);
+          const state = record.state();
+          if (state === OutputNoteState.Consumed) return 'consumed';
+          if (
+            state === OutputNoteState.CommittedPartial
+            || state === OutputNoteState.CommittedFull
+          ) {
+            return 'committed';
+          }
+          if (
+            state === OutputNoteState.ExpectedPartial
+            || state === OutputNoteState.ExpectedFull
+          ) {
+            return 'pending';
+          }
+          return 'processing';
+        } catch {
+          return 'pending';
+        }
+      });
+    },
+    [client, withClientLock],
+  );
 
   const getAccount = useCallback(async (accountId: AccountId) => {
     if (!client) {
@@ -160,6 +216,86 @@ export function ZoroProvider({
     }
   }, [walletType, accountId, getConsumableNotes]);
 
+  // Creates a new faucet
+  const createFaucet = useCallback((params: FaucetParams) => {
+    if (!client) {
+      throw new Error('Client not initialized');
+    }
+    return withClientLock(async () => {
+      console.log('Creating a new faucet.');
+      const { symbol, decimals, initialSupply } = params;
+      const faucet = await client.newFaucet(
+        AccountStorageMode.public(),
+        false,
+        symbol,
+        decimals,
+        initialSupply,
+        AuthScheme.AuthRpoFalcon512,
+      );
+      console.log('Created faucet ', faucet.bech32id());
+      return faucet;
+    });
+  }, [client, withClientLock]);
+
+  // Mints from a faucet account
+  const mintFromFaucet = useCallback(
+    (faucet_id: AccountId, account_id: AccountId, amount: bigint) => {
+      if (!client) {
+        throw new Error('Client not initialized');
+      }
+      return withClientLock(async () => {
+        console.log(
+          `Minting ${amount} from faucet ${accountIdToBech32(faucet_id)} to account ${
+            accountIdToBech32(account_id)
+          }.`,
+        );
+        const mintTxRequest = client.newMintTransactionRequest(
+          account_id,
+          faucet_id,
+          NoteType.Public,
+          amount,
+        );
+        const mintTxId = await client.submitNewTransaction(
+          faucet_id,
+          mintTxRequest,
+        );
+        await client.syncState();
+        return mintTxId.toHex();
+      });
+    },
+    [client, withClientLock],
+  );
+
+  const getAvailableTokens = useCallback(async () => {
+    if (!client || !accountId) {
+      return [];
+    }
+    return withClientLock(async () => {
+      const acc = await client.getAccount(accountId);
+      const tokens: { config: TokenConfig; amount: bigint }[] = [];
+      for (const t of acc?.vault().fungibleAssets() ?? []) {
+        const f = t.faucetId();
+        const amount = t.amount();
+        const bech32 = accountIdToBech32(f);
+        const info = await workerGetFaucetInfo(bech32);
+        if (info) {
+          tokens.push({
+            config: {
+              symbol: info.symbol,
+              decimals: info.decimals,
+              name: info.symbol,
+              faucetId: f,
+              faucetIdBech32: bech32,
+              oracleId: '0x',
+            } as TokenConfig,
+            amount,
+          });
+        }
+      }
+      return tokens;
+    });
+  }, [client, withClientLock, accountId, workerGetFaucetInfo]);
+
   // Periodic refresh for Para wallet users
   useEffect(() => {
     if (walletType !== 'para' || !accountId) {
@@ -184,6 +320,7 @@ export function ZoroProvider({
         : undefined,
       accountId,
       syncState,
+      getNoteStatus,
       getAccount,
       getBalance,
       getConsumableNotes,
@@ -195,8 +332,30 @@ export function ZoroProvider({
       isExpectingNotes,
       startExpectingNotes,
       refreshPendingNotes,
+      createFaucet,
+      mintFromFaucet,
+      getAvailableTokens,
     };
-  }, [accountId, poolsInfo, isPoolsInfoFetched, syncState, getAccount, getBalance, getConsumableNotes, consumeNotes, client, rpcClient, pendingNotesCount, isExpectingNotes, startExpectingNotes, refreshPendingNotes]);
+  }, [
+    accountId,
+    poolsInfo,
+    isPoolsInfoFetched,
+    syncState,
+    getNoteStatus,
+    getAccount,
+    getBalance,
+    getConsumableNotes,
+    consumeNotes,
+    client,
+    rpcClient,
+    pendingNotesCount,
+    isExpectingNotes,
+    startExpectingNotes,
+    refreshPendingNotes,
+    createFaucet,
+    mintFromFaucet,
+    getAvailableTokens,
+  ]);
 
   return (
     <ZoroContext.Provider value={{ ...value }}>

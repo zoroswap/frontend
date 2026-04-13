@@ -1,11 +1,12 @@
 import { OracleContext } from '@/providers/OracleContext';
 import type { TokenConfig } from '@/providers/ZoroProvider';
-import { useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { useContext, useEffect, useRef, useState } from 'react';
 
 const ExchangeRatio = (
-  { assetA, assetB }: {
+  { assetA, assetB, overrideRatio }: {
     assetA: TokenConfig;
     assetB: TokenConfig;
+    overrideRatio?: string;
   },
 ) => {
   const { getWebsocketPrice } = useContext(OracleContext);
@@ -13,6 +14,7 @@ const ExchangeRatio = (
   const activeRatio = useRef<undefined | number>(undefined);
 
   useEffect(() => {
+    if (overrideRatio != null) return;
     const i = setInterval(() => {
       const priceA = getWebsocketPrice(assetA.oracleId);
       const priceB = getWebsocketPrice(assetB.oracleId);
@@ -25,13 +27,14 @@ const ExchangeRatio = (
       }
     }, 50);
     return () => clearInterval(i);
-  }, [assetA.oracleId, assetB.oracleId, getWebsocketPrice]);
+  }, [assetA.oracleId, assetB.oracleId, getWebsocketPrice, overrideRatio]);
 
-  const html = useMemo(() => {
-    return <>{ratio?.toFixed(8)}</>;
-  }, [ratio]);
+  if (overrideRatio != null) {
+    return <>{overrideRatio}</>;
+  }
 
-  return html;
+  return <>{ratio?.toFixed(8)}</>;
+
 };
 
 export default ExchangeRatio;

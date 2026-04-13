@@ -17,6 +17,14 @@ export const formatTokenAmount = (
   if (value == null) return undefined;
   return roundDown(formatUnits(BigInt(value), expo), digits);
 };
+
+/** Always returns a string for use in controlled inputs. formatTokenAmount may return number. */
+export const formatTokenAmountForInput = (
+  opts: { value?: bigint | null; expo: number; digits?: number },
+): string => {
+  const v = formatTokenAmount(opts);
+  return v != null ? String(v) : '';
+};
 export const prettyBigintFormat = (
   { value, expo }: { value?: bigint; expo: number },
 ) => {
@@ -67,6 +75,18 @@ export const formalNumberFormat = (
   })).format(val);
 };
 
+/** Format USD for display (e.g. $1,234.56). Use for hfAMM total value. */
+export const formatUsd = (val?: number | null): string => {
+  if (val == null || Number.isNaN(val)) return '—';
+  if (val < 0.01 && val > 0) return '<$0.01';
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(val);
+};
+
 export const formalBigIntFormat = ({ val, expo, round }: {
   val?: bigint;
   expo: number;
@@ -75,6 +95,15 @@ export const formalBigIntFormat = ({ val, expo, round }: {
   if (val == null) return '';
   const numval = Number(formatUnits(BigInt(val), expo));
   return formalNumberFormat(numval, round);
+};
+
+/** Format bigint as full number (no K/M/B shortening). Use for TVL when you want exact values. */
+export const fullNumberBigintFormat = (
+  { value, expo }: { value?: bigint; expo: number },
+) => {
+  if (value == null) return '';
+  const numval = Number(formatUnits(BigInt(value), expo));
+  return formalNumberFormat(numval);
 };
 
 export const base64ToHex = (b64: string) =>

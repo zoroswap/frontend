@@ -1,5 +1,5 @@
+import { emptyFn } from '@/lib/shared';
 import { createContext, type ReactNode } from 'react';
-import { emptyFn } from '../utils/shared';
 
 interface ModalContextProps {
   openModal: (c: ReactNode) => void;
