@@ -1,12 +1,12 @@
 import AssetIcon from '@/components/AssetIcon';
 import { type LpDetails, OrderStatus, type TxResult } from '@/components/OrderStatus';
-import PoolModal from '@/components/PoolModal';
-import type { LpActionType } from '@/components/PoolModal';
 import { PoolCompositionCard } from '@/components/PoolCompositionCard';
 import { PoolDetailHeader } from '@/components/PoolDetailHeader';
 import { PoolDetailLayout } from '@/components/PoolDetailLayout';
 import { PoolDetailStats } from '@/components/PoolDetailStats';
 import { PoolInfoCard } from '@/components/PoolInfoCard';
+import PoolModal from '@/components/PoolModal';
+import type { LpActionType } from '@/components/PoolModal';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useLPBalances } from '@/hooks/useLPBalances';
@@ -54,8 +54,8 @@ export default function HfPoolDetail() {
   const pool = useMemo(() => {
     if (!decodedPoolId || !poolsInfo?.liquidityPools) return null;
     return (
-      poolsInfo.liquidityPools.find((p) => p.faucetIdBech32 === decodedPoolId) ??
-      null
+      poolsInfo.liquidityPools.find((p) => p.faucetIdBech32 === decodedPoolId)
+        ?? null
     );
   }, [decodedPoolId, poolsInfo?.liquidityPools]);
 
@@ -68,7 +68,9 @@ export default function HfPoolDetail() {
   const hasPosition = lpBalance > BigInt(0);
 
   const poolSharePct = useMemo(() => {
-    if (!pool || !poolBalance || !hasPosition || poolBalance.totalLiabilities === 0n) return null;
+    if (!pool || !poolBalance || !hasPosition || poolBalance.totalLiabilities === 0n) {
+      return null;
+    }
     return (Number(lpBalance) / Number(poolBalance.totalLiabilities)) * 100;
   }, [pool, poolBalance, lpBalance, hasPosition]);
 
@@ -227,15 +229,16 @@ export default function HfPoolDetail() {
           />
         </div>
 
-        {/* Chart commented out for now
-        <div className='lg:col-span-2 space-y-6'>
-          <PriceTvlChartCard
-            candles={mockCandles}
-            chartRange={chartRange}
-            onChartRangeChange={setChartRange}
-          />
+        <div className='lg:col-span-2'>
+          <Card className='rounded-xl h-full flex items-center justify-center min-h-[320px]'>
+            <CardContent className='flex flex-col items-center gap-3 py-12 text-center'>
+              <p className='text-lg font-medium text-foreground'>Chart coming soon!</p>
+              <p className='text-sm text-muted-foreground max-w-xs'>
+                We're working on bringing you detailed pool analytics. Stay tuned!
+              </p>
+            </CardContent>
+          </Card>
         </div>
-        */}
       </div>
 
       {isSuccessModalOpen && (
@@ -244,9 +247,9 @@ export default function HfPoolDetail() {
           onClose={() => setIsSuccessModalOpen(false)}
           swapResult={txResult}
           lpDetails={lpDetails}
-          orderStatus={
-            txResult?.noteId ? orderStatus[txResult.noteId]?.status : undefined
-          }
+          orderStatus={txResult?.noteId
+            ? orderStatus[txResult.noteId]?.status
+            : undefined}
         />
       )}
     </PoolDetailLayout>
