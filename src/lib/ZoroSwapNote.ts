@@ -1,20 +1,20 @@
-import { CustomTransaction } from '@demox-labs/miden-wallet-adapter';
+import { CustomTransaction } from '@miden-sdk/miden-wallet-adapter';
 import {
   AccountId,
   Felt,
   FeltArray,
   FungibleAsset,
-  MidenArrays,
+  Linking,
+  MidenClient,
+  NoteArray,
   Note,
   NoteAssets,
-  NoteInputs,
+  NoteStorage,
   NoteMetadata,
   NoteRecipient,
   NoteTag,
   NoteType,
-  OutputNote,
   TransactionRequestBuilder,
-  WebClient,
 } from '@miden-sdk/miden-sdk';
 
 import zoropool from '@/masm/accounts/zoropool.masm?raw';
@@ -29,7 +29,7 @@ export interface SwapParams {
   amount: bigint;
   minAmountOut: bigint;
   userAccountId: AccountId;
-  client: WebClient;
+  client: MidenClient;
 }
 
 export interface SwapResult {
@@ -46,15 +46,17 @@ export async function compileSwapTransaction({
   userAccountId,
   client,
 }: Omit<SwapParams, 'syncState'>) {
-  // Note: syncState should be called by the caller before invoking this function
-  const builder = client.createCodeBuilder();
-  const pool_script = builder.buildLibrary('zoroswap::zoropool', zoropool);
-  builder.linkDynamicLibrary(pool_script);
-  const script = builder.compileNoteScript(ZOROSWAP_SCRIPT);
+  const script = await client.compile.noteScript({
+    code: ZOROSWAP_SCRIPT,
+    libraries: [{
+      namespace: 'zoroswap::zoropool',
+      code: zoropool,
+      linking: Linking.Dynamic,
+    }],
+  });
   const noteType = NoteType.Public;
   const offeredAsset = new FungibleAsset(sellToken.faucetId, amount);
 
-  // Note should only contain the offered asset
   const noteAssets = new NoteAssets([offeredAsset]);
   const noteTag = NoteTag.withAccountTarget(poolAccountId);
 
@@ -64,13 +66,11 @@ export async function compileSwapTransaction({
     noteTag,
   );
 
-  const deadline = Date.now() + 120_000; // 2 min from now
+  const deadline = Date.now() + 120_000;
 
-  // Use the AccountId for p2id tag
   const p2idTag = NoteTag.withAccountTarget(userAccountId).asU32();
 
-  // Following the pattern: [asset_id_prefix, asset_id_suffix, 0, min_amount_out]
-  const inputs = new NoteInputs(
+  const inputs = new NoteStorage(
     new FeltArray([
       new Felt(minAmountOut),
       new Felt(BigInt(0)),
@@ -80,9 +80,9 @@ export async function compileSwapTransaction({
       new Felt(BigInt(p2idTag)),
       new Felt(BigInt(0)),
       new Felt(BigInt(0)),
-      userAccountId.suffix(), // beneficiary
+      userAccountId.suffix(),
       userAccountId.prefix(),
-      userAccountId.suffix(), // creator
+      userAccountId.suffix(),
       userAccountId.prefix(),
     ]),
   );
@@ -98,7 +98,7 @@ export async function compileSwapTransaction({
   console.log('Swap note: ', noteId);
 
   const transactionRequest = new TransactionRequestBuilder()
-    .withOwnOutputNotes(new MidenArrays.OutputNoteArray([OutputNote.full(note)]))
+    .withOwnOutputNotes(new NoteArray([note]))
     .build();
 
   const tx = new CustomTransaction(

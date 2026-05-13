@@ -1,5 +1,4 @@
 import { NetworkId } from '@miden-sdk/miden-sdk';
-import { bech32ToAccountId } from './utils';
 
 export interface NetworkConfig {
   readonly rpcEndpoint: string;
@@ -70,10 +69,6 @@ export const API: ApiConfig = {
 
 // UI Configuration
 export const DEFAULT_SLIPPAGE = getNumericEnvVar('VITE_DEFAULT_SLIPPAGE', 0.5);
-
-// Xyk configuration
-export const XYK_REGISTRY_BECH32 = getEnvVar('VITE_XYK_REGISTRY');
-export const REGISTRY_ACCOUNT = bech32ToAccountId(XYK_REGISTRY_BECH32);
 
 /** Create a fresh NetworkId matching the configured network (toBech32 consumes the NetworkId) */
 export const createNetworkId = (): NetworkId => {

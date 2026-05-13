@@ -4,7 +4,7 @@ import { API } from '@/lib/config';
 import { compileWithdrawTransaction } from '@/lib/ZoroWithdrawNote';
 import { ZoroContext } from '@/providers/ZoroContext';
 import { type TokenConfig } from '@/providers/ZoroProvider';
-import { TransactionType } from '@demox-labs/miden-wallet-adapter';
+import { TransactionType } from '@miden-sdk/miden-wallet-adapter';
 import { NoteType } from '@miden-sdk/miden-sdk';
 import { useCallback, useContext, useMemo, useState } from 'react';
 import { toast } from 'react-toastify';

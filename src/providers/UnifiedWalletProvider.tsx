@@ -1,6 +1,6 @@
 import { clientMutex } from '@/lib/clientMutex';
 import { createNetworkId, NETWORK } from '@/lib/config';
-import { TransactionType, useWallet } from '@demox-labs/miden-wallet-adapter';
+import { TransactionType, useWallet } from '@miden-sdk/miden-wallet-adapter';
 import { useAccount, useLogout } from '@getpara/react-sdk-lite';
 import {
   AccountId,
@@ -75,13 +75,12 @@ export function UnifiedWalletProvider({ children }: UnifiedWalletProviderProps) 
             // Get the account ID
             const accountId = AccountId.fromHex(paraMidenAccountId);
 
-            // Submit the transaction
-            const txHash = await paraMidenClient.submitNewTransaction(
+            const { txId } = await paraMidenClient.transactions.submit(
               accountId,
               txRequest,
             );
 
-            return txHash.toHex();
+            return txId.toHex();
           }
           throw new Error('Unsupported transaction type for Para wallet');
         });

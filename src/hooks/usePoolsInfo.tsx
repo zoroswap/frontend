@@ -4,7 +4,7 @@ import type { AccountId } from '@miden-sdk/miden-sdk';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 
-export type PoolType = 'hfAMM' | 'xyk';
+export type PoolType = 'hfAMM';
 
 export interface RawPoolInfo {
   decimals: number;

@@ -1,20 +1,20 @@
-import { CustomTransaction } from '@demox-labs/miden-wallet-adapter';
+import { CustomTransaction } from '@miden-sdk/miden-wallet-adapter';
 import {
   AccountId,
   Felt,
   FeltArray,
   FungibleAsset,
-  MidenArrays,
+  Linking,
+  MidenClient,
+  NoteArray,
   Note,
   NoteAssets,
-  NoteInputs,
+  NoteStorage,
   NoteMetadata,
   NoteRecipient,
   NoteTag,
   NoteType,
-  OutputNote,
   TransactionRequestBuilder,
-  WebClient,
 } from '@miden-sdk/miden-sdk';
 
 import zoropool from '@/masm/accounts/zoropool.masm?raw';
@@ -28,7 +28,7 @@ export interface DepositParams {
   amount: bigint;
   minAmountOut: bigint;
   userAccountId: AccountId;
-  client: WebClient;
+  client: MidenClient;
   noteType: NoteType;
 }
 
@@ -46,15 +46,16 @@ export async function compileDepositTransaction({
   client,
   noteType,
 }: DepositParams) {
-  const builder = client.createCodeBuilder();
-  const pool_script = builder.buildLibrary('zoroswap::zoropool', zoropool);
-  builder.linkDynamicLibrary(pool_script);
-  const script = builder.compileNoteScript(
-    DEPOSIT_SCRIPT,
-  );
+  const script = await client.compile.noteScript({
+    code: DEPOSIT_SCRIPT,
+    libraries: [{
+      namespace: 'zoroswap::zoropool',
+      code: zoropool,
+      linking: Linking.Dynamic,
+    }],
+  });
   const offeredAsset = new FungibleAsset(token.faucetId, amount);
 
-  // Note should only contain the offered asset
   const noteAssets = new NoteAssets([offeredAsset]);
   const noteTag = noteType === NoteType.Private
     ? new NoteTag(0)
@@ -66,12 +67,11 @@ export async function compileDepositTransaction({
     noteTag,
   );
 
-  const deadline = Date.now() + 120_000; // 2 min from now
+  const deadline = Date.now() + 120_000;
 
-  // Use the AccountId for p2id tag
   const p2idTag = NoteTag.withAccountTarget(userAccountId).asU32();
 
-  const inputs = new NoteInputs(
+  const inputs = new NoteStorage(
     new FeltArray([
       new Felt(minAmountOut),
       new Felt(BigInt(deadline)),
@@ -93,7 +93,7 @@ export async function compileDepositTransaction({
   const noteId = note.id().toString();
 
   const transactionRequest = new TransactionRequestBuilder()
-    .withOwnOutputNotes(new MidenArrays.OutputNoteArray([OutputNote.full(note)]))
+    .withOwnOutputNotes(new NoteArray([note]))
     .build();
 
   const tx = new CustomTransaction(

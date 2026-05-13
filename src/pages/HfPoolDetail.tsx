@@ -207,7 +207,7 @@ export default function HfPoolDetail() {
               </CardContent>
             </Card>
           )}
-          <PoolCompositionCard variant='hf' symbol={pool.symbol} />
+          <PoolCompositionCard symbol={pool.symbol} />
           <PoolInfoCard
             tvlFormatted={tvlFormatted}
             extraRows={[

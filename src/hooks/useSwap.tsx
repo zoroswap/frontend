@@ -3,7 +3,7 @@ import { clientMutex } from '@/lib/clientMutex';
 import { compileSwapTransaction } from '@/lib/ZoroSwapNote';
 import { ZoroContext } from '@/providers/ZoroContext';
 import { type TokenConfig } from '@/providers/ZoroProvider';
-import { TransactionType } from '@demox-labs/miden-wallet-adapter';
+import { TransactionType } from '@miden-sdk/miden-wallet-adapter';
 import { useCallback, useContext, useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
 

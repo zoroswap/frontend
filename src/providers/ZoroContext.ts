@@ -2,10 +2,10 @@ import type { PoolInfo } from '@/hooks/usePoolsInfo';
 import type {
   Account,
   AccountId,
-  ConsumableNoteRecord,
+  InputNoteRecord,
+  MidenClient,
   Note,
   RpcClient,
-  WebClient,
 } from '@miden-sdk/miden-sdk';
 import { createContext } from 'react';
 import type { FaucetParams, TokenConfig } from './ZoroProvider';
@@ -14,7 +14,7 @@ export type TokenConfigWithBalance = { config: TokenConfig; amount: bigint };
 
 type ZoroProviderState = {
   poolAccountId?: AccountId;
-  client?: WebClient;
+  client?: MidenClient;
   rpcClient?: RpcClient;
   liquidity_pools: PoolInfo[];
   accountId?: AccountId;
@@ -25,9 +25,9 @@ type ZoroProviderState = {
   getNoteStatus: (
     noteId: string,
   ) => Promise<'consumed' | 'committed' | 'pending' | 'processing' | 'unknown'>;
-  getAccount: (accountId: AccountId) => Promise<Account | undefined>;
+  getAccount: (accountId: AccountId) => Promise<Account | null | undefined>;
   getBalance: (accountId: AccountId, faucetId: AccountId) => Promise<bigint>;
-  getConsumableNotes: (accountId: AccountId) => Promise<ConsumableNoteRecord[]>;
+  getConsumableNotes: (accountId: AccountId) => Promise<InputNoteRecord[]>;
   consumeNotes: (accountId: AccountId, notes: Note[]) => Promise<string>;
 
   // Notes tracking state (for Para wallet)
@@ -35,7 +35,6 @@ type ZoroProviderState = {
   isExpectingNotes: boolean;
   startExpectingNotes: () => void;
   refreshPendingNotes: () => Promise<void>;
-  // XYK pools
   createFaucet: (params: FaucetParams) => Promise<Account | undefined>;
   mintFromFaucet: (
     faucetId: AccountId,

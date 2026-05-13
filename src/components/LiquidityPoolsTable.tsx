@@ -128,7 +128,7 @@ const LiquidityPoolsTable = ({
               </h3>
               <p className='text-sm text-muted-foreground max-w-sm mb-6'>
                 {noPoolsAtAll
-                  ? 'Be the first to create a pool and earn fees from trades. Create a new XYK pool or add liquidity once pools exist.'
+                  ? 'Be the first to provide liquidity and earn fees from trades.'
                   : 'Try a different search term or filter to find pools.'}
               </p>
               {noPoolsAtAll && onCreatePool && (

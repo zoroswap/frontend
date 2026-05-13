@@ -44,7 +44,7 @@ export function useClaimNotes() {
       const noteObjects: Note[] = [];
       for (const n of notes) {
         try {
-          const note = n.inputNoteRecord().toNote();
+          const note = n.toNote();
           if (note) noteObjects.push(note);
         } catch (err) {
           console.warn('useClaimNotes: skipped a note that could not be converted', err);

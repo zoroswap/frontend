@@ -1,4 +1,4 @@
-import type { WebClient } from '@miden-sdk/miden-sdk';
+import type { MidenClient } from '@miden-sdk/miden-sdk';
 import { createContext, useContext } from 'react';
 
 /**
@@ -12,12 +12,12 @@ import { createContext, useContext } from 'react';
  * the `ZoroContext` methods (`syncState`, `getAccount`, `getBalance`, etc.).
  * Those handle locking properly using a mutex.
  */
-export const ParaClientContext = createContext<WebClient | undefined>(undefined);
+export const ParaClientContext = createContext<MidenClient | undefined>(undefined);
 
 /**
  * Internal hook for `ZoroProvider` to access the Para client.
  * Not exported from the module's public API.
  */
-export function useParaClient(): WebClient | undefined {
+export function useParaClient(): MidenClient | undefined {
   return useContext(ParaClientContext);
 }

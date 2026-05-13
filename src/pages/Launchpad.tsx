@@ -14,7 +14,7 @@ import useLaunchpad, {
 } from '@/hooks/useLaunchpad';
 import { useUnifiedWallet } from '@/hooks/useUnifiedWallet';
 import { truncateId } from '@/lib/format';
-import { ArrowLeft, CheckCircle, ExternalLink, Info, Loader2 } from 'lucide-react';
+import { CheckCircle, ExternalLink, Info, Loader2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { parseUnits } from 'viem';

@@ -3,7 +3,7 @@ import {
   AccountInterface,
   Address,
   Felt,
-  WebClient,
+  MidenClient,
   Word,
 } from '@miden-sdk/miden-sdk';
 
@@ -33,7 +33,10 @@ export function cn(...inputs: ClassValue[]) {
 export const instantiateClient = async (
   { accountsToImport }: { accountsToImport: (AccountId | undefined)[] },
 ) => {
-  const client = await WebClient.createClient(NETWORK.rpcEndpoint);
+  const client = await MidenClient.create({
+    rpcUrl: NETWORK.rpcEndpoint,
+    storeName: 'zoro-store',
+  });
   for (const acc of accountsToImport) {
     if (!acc) continue;
     try {
@@ -44,18 +47,15 @@ export const instantiateClient = async (
       console.error(e);
     }
   }
-  await client.syncState();
+  await client.sync();
   return client;
 };
 
-export const safeAccountImport = async (client: WebClient, accountId: AccountId) => {
-  const existingAccount = await client.getAccount(accountId);
-  if (existingAccount == null) {
-    try {
-      await client.importAccountById(accountId);
-    } catch (e) {
-      console.warn(e);
-    }
+export const safeAccountImport = async (client: MidenClient, accountId: AccountId) => {
+  try {
+    await client.accounts.getOrImport(accountId);
+  } catch (e) {
+    console.warn(e);
   }
 };
 

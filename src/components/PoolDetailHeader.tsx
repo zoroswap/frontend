@@ -11,7 +11,7 @@ export interface PoolDetailHeaderProps {
   onAddLiquidity: () => void;
   onWithdraw: () => void;
   hasPosition: boolean;
-  /** Single icon (HF) or stacked pair (XYK). */
+  /** Pool icon(s). */
   headerIcons: ReactNode;
 }
 

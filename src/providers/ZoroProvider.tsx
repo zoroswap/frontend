@@ -6,15 +6,13 @@ import { NETWORK } from '@/lib/config';
 import { accountIdToBech32, bech32ToAccountId, instantiateClient } from '@/lib/utils';
 import {
   AccountId,
-  AccountStorageMode,
+  AccountType,
   Address,
-  AuthScheme,
   Endpoint,
+  MidenClient,
   Note,
-  NoteType,
   OutputNoteState,
   RpcClient,
-  WebClient,
 } from '@miden-sdk/miden-sdk';
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParaClient } from './ParaClientContext';
@@ -41,7 +39,7 @@ export function ZoroProvider({
       unifiedAccountId ?? (address ? Address.fromBech32(address).accountId() : undefined),
     [address, unifiedAccountId],
   );
-  const [midenClient, setMidenClient] = useState<WebClient | undefined>(undefined);
+  const [midenClient, setMidenClient] = useState<MidenClient | undefined>(undefined);
   const rpcClientRef = useRef<RpcClient | null>(null);
   const { getFaucetInfo: workerGetFaucetInfo } = useRpcWorker();
 
@@ -81,7 +79,7 @@ export function ZoroProvider({
     if (!client) return;
     const now = Date.now();
     if (now - lastSyncTime.current >= SYNC_THROTTLE_MS) {
-      await client.syncState();
+      await client.sync();
       lastSyncTime.current = now;
     }
   }, [client]);
@@ -101,13 +99,14 @@ export function ZoroProvider({
     ): Promise<'consumed' | 'committed' | 'pending' | 'processing' | 'unknown'> => {
       if (!client) return 'unknown';
       return withClientLock(async () => {
-        const summary = await client.syncState();
+        const summary = await client.sync();
         const consumedIds = summary.consumedNotes().map((
           id: { toString: () => string },
         ) => id.toString());
         if (consumedIds.includes(noteId)) return 'consumed';
         try {
-          const record = await client.getOutputNote(noteId);
+          const records = await client.notes.listSent({ ids: [noteId] });
+          const record = records[0];
           const state = record.state();
           if (state === OutputNoteState.Consumed) return 'consumed';
           if (
@@ -137,7 +136,7 @@ export function ZoroProvider({
     }
     return withClientLock(async () => {
       await throttledSync();
-      return await client.getAccount(accountId);
+      return await client.accounts.get(accountId);
     });
   }, [client, withClientLock, throttledSync]);
 
@@ -147,7 +146,7 @@ export function ZoroProvider({
     }
     return withClientLock(async () => {
       await throttledSync();
-      const account = await client.getAccount(accountId);
+      const account = await client.accounts.get(accountId);
       return BigInt(account?.vault().getBalance(faucetId) ?? 0);
     });
   }, [client, withClientLock, throttledSync]);
@@ -158,9 +157,7 @@ export function ZoroProvider({
     }
     return withClientLock(async () => {
       await throttledSync();
-      const account = await client.getAccount(accountId);
-      if (!account) return [];
-      return await client.getConsumableNotes(account.id());
+      return await client.notes.listAvailable({ account: accountId });
     });
   }, [client, withClientLock, throttledSync]);
 
@@ -169,13 +166,12 @@ export function ZoroProvider({
       throw new Error('Client not initialized');
     }
     return withClientLock(async () => {
-      const account = await client.getAccount(accountId);
+      const account = await client.accounts.get(accountId);
       if (!account) {
         throw new Error('Account not found');
       }
-      const consumeTxRequest = client.newConsumeTransactionRequest(notes);
-      const txHash = await client.submitNewTransaction(account.id(), consumeTxRequest);
-      return txHash.toHex();
+      const { txId } = await client.transactions.consume({ account, notes });
+      return txId.toHex();
     });
   }, [client, withClientLock]);
 
@@ -216,51 +212,36 @@ export function ZoroProvider({
     }
   }, [walletType, accountId, getConsumableNotes]);
 
-  // Creates a new faucet
   const createFaucet = useCallback((params: FaucetParams) => {
     if (!client) {
       throw new Error('Client not initialized');
     }
     return withClientLock(async () => {
-      console.log('Creating a new faucet.');
       const { symbol, decimals, initialSupply } = params;
-      const faucet = await client.newFaucet(
-        AccountStorageMode.public(),
-        false,
+      const faucet = await client.accounts.create({
+        type: AccountType.FungibleFaucet,
         symbol,
         decimals,
-        initialSupply,
-        AuthScheme.AuthRpoFalcon512,
-      );
-      console.log('Created faucet ', faucet.bech32id());
+        maxSupply: initialSupply,
+        storage: 'public',
+      });
       return faucet;
     });
   }, [client, withClientLock]);
 
-  // Mints from a faucet account
   const mintFromFaucet = useCallback(
     (faucet_id: AccountId, account_id: AccountId, amount: bigint) => {
       if (!client) {
         throw new Error('Client not initialized');
       }
       return withClientLock(async () => {
-        console.log(
-          `Minting ${amount} from faucet ${accountIdToBech32(faucet_id)} to account ${
-            accountIdToBech32(account_id)
-          }.`,
-        );
-        const mintTxRequest = client.newMintTransactionRequest(
-          account_id,
-          faucet_id,
-          NoteType.Public,
+        const { txId } = await client.transactions.mint({
+          account: faucet_id,
+          to: account_id,
           amount,
-        );
-        const mintTxId = await client.submitNewTransaction(
-          faucet_id,
-          mintTxRequest,
-        );
-        await client.syncState();
-        return mintTxId.toHex();
+        });
+        await client.sync();
+        return txId.toHex();
       });
     },
     [client, withClientLock],
@@ -271,7 +252,7 @@ export function ZoroProvider({
       return [];
     }
     return withClientLock(async () => {
-      const acc = await client.getAccount(accountId);
+      const acc = await client.accounts.get(accountId);
       const tokens: { config: TokenConfig; amount: bigint }[] = [];
       for (const t of acc?.vault().fungibleAssets() ?? []) {
         const f = t.faucetId();

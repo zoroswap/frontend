@@ -1,20 +1,20 @@
-import { CustomTransaction } from '@demox-labs/miden-wallet-adapter';
+import { CustomTransaction } from '@miden-sdk/miden-wallet-adapter';
 import {
   AccountId,
   Felt,
   FeltArray,
   FungibleAsset,
-  MidenArrays,
+  Linking,
+  MidenClient,
+  NoteArray,
   Note,
   NoteAssets,
-  NoteInputs,
+  NoteStorage,
   NoteMetadata,
   NoteRecipient,
   NoteTag,
   NoteType,
-  OutputNote,
   TransactionRequestBuilder,
-  WebClient,
 } from '@miden-sdk/miden-sdk';
 
 import zoropool from '@/masm/accounts/zoropool.masm?raw';
@@ -28,7 +28,7 @@ export interface WithdrawParams {
   amount: bigint;
   minAmountOut: bigint;
   userAccountId: AccountId;
-  client: WebClient;
+  client: MidenClient;
   noteType: NoteType;
 }
 
@@ -46,16 +46,17 @@ export async function compileWithdrawTransaction({
   client,
   noteType,
 }: WithdrawParams) {
-  const builder = client.createCodeBuilder();
-  const pool_script = builder.buildLibrary('zoroswap::zoropool', zoropool);
-  builder.linkDynamicLibrary(pool_script);
-  const script = builder.compileNoteScript(
-    WITHDRAW_SCRIPT,
-  );
+  const script = await client.compile.noteScript({
+    code: WITHDRAW_SCRIPT,
+    libraries: [{
+      namespace: 'zoroswap::zoropool',
+      code: zoropool,
+      linking: Linking.Dynamic,
+    }],
+  });
   const requestedAsset = new FungibleAsset(token.faucetId, minAmountOut).intoWord()
     .toFelts();
 
-  // Note should only contain the offered asset
   const noteAssets = new NoteAssets([]);
   const noteTag = noteType === NoteType.Private
     ? new NoteTag(0)
@@ -67,13 +68,11 @@ export async function compileWithdrawTransaction({
     noteTag,
   );
 
-  const deadline = Date.now() + 120_000; // 2 min from now
+  const deadline = Date.now() + 120_000;
 
-  // Use the AccountId for p2id tag
   const p2idTag = NoteTag.withAccountTarget(userAccountId).asU32();
 
-  // Following the pattern: [asset_id_prefix, asset_id_suffix, 0, min_amount_out]
-  const inputs = new NoteInputs(
+  const inputs = new NoteStorage(
     new FeltArray([
       ...requestedAsset,
       new Felt(BigInt(0)),
@@ -96,7 +95,7 @@ export async function compileWithdrawTransaction({
   const noteId = note.id().toString();
 
   const transactionRequest = new TransactionRequestBuilder()
-    .withOwnOutputNotes(new MidenArrays.OutputNoteArray([OutputNote.full(note)]))
+    .withOwnOutputNotes(new NoteArray([note]))
     .build();
 
   const tx = new CustomTransaction(

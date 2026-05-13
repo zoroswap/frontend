@@ -13,23 +13,15 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { UnifiedWalletButton } from '@/components/UnifiedWalletButton';
 import { useBalance } from '@/hooks/useBalance';
-import { useRpcWorker } from '@/hooks/useRpcWorker';
 import { useSwap } from '@/hooks/useSwap';
 import { useUnifiedWallet } from '@/hooks/useUnifiedWallet';
-import { useWaitForNoteConsumed } from '@/hooks/useWaitForNoteConsumed';
 import { useOrderUpdates } from '@/hooks/useWebSocket';
-import { useXykPool } from '@/hooks/useXykPool';
-import { useXykTokens } from '@/hooks/useXykTokens';
-import { clientMutex } from '@/lib/clientMutex';
 import { DEFAULT_SLIPPAGE } from '@/lib/config';
 import { formalBigIntFormat, truncateId } from '@/lib/format';
 import { bech32ToAccountId } from '@/lib/utils';
-import { getAmountOut } from '@/lib/xykMath';
-import { compileXykSwapTransaction } from '@/lib/XykSwapNote';
 import { OracleContext, useOraclePrices } from '@/providers/OracleContext';
 import { ZoroContext } from '@/providers/ZoroContext';
 import { type TokenConfig } from '@/providers/ZoroProvider.tsx';
-import { TransactionType } from '@demox-labs/miden-wallet-adapter';
 import { CheckCircle, Clock, ExternalLink, Loader2, X, XCircle } from 'lucide-react';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
@@ -49,8 +41,6 @@ function hasOracle(token: TokenConfig | undefined): boolean {
   return !!token?.oracleId && token.oracleId !== '0x' && token.oracleId !== '';
 }
 
-type XykTxStatus = 'submitting' | 'confirming' | 'confirmed' | 'failed';
-
 interface SwapTxInfo {
   noteId: string;
   txId?: string;
@@ -58,52 +48,29 @@ interface SwapTxInfo {
   buyToken: TokenConfig;
   sellAmount: bigint;
   buyAmount: bigint;
-  isXyk: boolean;
-  xykStatus?: XykTxStatus;
 }
 
 function Swap() {
-  const { tokens, client, accountId, syncState } = useContext(ZoroContext);
-  const { requestTransaction } = useUnifiedWallet();
+  const { tokens, client, accountId } = useContext(ZoroContext);
   const {
     swap: hfAmmSwap,
-    isLoading: isLoadingHfAmmSwap,
+    isLoading: isLoadingSwap,
     txId: hfAmmTxId,
     noteId: hfAmmNoteId,
   } = useSwap();
   const { orderStatus, registerCallback } = useOrderUpdates();
   const { connecting, connected } = useUnifiedWallet();
-  const { xykTokens, getXykPairTokens, findXykPool } = useXykTokens();
-  const waitForNoteConsumed = useWaitForNoteConsumed();
-  const { invalidateCache } = useRpcWorker();
 
-  // --- XYK swap state ---
-  const [isLoadingXykSwap, setIsLoadingXykSwap] = useState(false);
-
-  const isLoadingSwap = isLoadingHfAmmSwap || isLoadingXykSwap;
-
-  // --- Inline transaction status ---
   const [txInfo, setTxInfo] = useState<SwapTxInfo | null>(null);
 
-  // Track hfAMM noteId → txInfo
   const lastHfAmmNoteRef = useRef<string | undefined>(undefined);
   const lastSellRef = useRef<
     { token: TokenConfig; buy: TokenConfig; sellAmt: bigint; buyAmt: bigint } | null
   >(null);
 
-  // --- Merged token list (hfAMM + XYK, deduplicated) ---
   const allTokens = useMemo(() => {
-    const map = new Map<string, TokenConfig>();
-    for (const t of Object.values(tokens)) {
-      map.set(t.faucetIdBech32, t);
-    }
-    for (const t of xykTokens) {
-      if (!map.has(t.faucetIdBech32)) {
-        map.set(t.faucetIdBech32, t);
-      }
-    }
-    return [...map.values()];
-  }, [tokens, xykTokens]);
+    return Object.values(tokens);
+  }, [tokens]);
 
   const [selectedAssetBuy, setSelectedAssetBuy] = useState<undefined | TokenConfig>(
     () => getLocalStoredToken('buy'),
@@ -129,55 +96,6 @@ function Swap() {
   const [sellInputError, setSellInputError] = useState<string | undefined>(undefined);
   const { getWebsocketPrice } = useContext(OracleContext);
 
-  // --- XYK swap detection ---
-  const xykPoolId = useMemo(() => {
-    if (!selectedAssetSell || !selectedAssetBuy) return undefined;
-    return findXykPool(selectedAssetSell.faucetIdBech32, selectedAssetBuy.faucetIdBech32);
-  }, [selectedAssetSell, selectedAssetBuy, findXykPool]);
-
-  const isXykSwap = useMemo(() => {
-    if (!selectedAssetSell || !selectedAssetBuy) return false;
-    // prioritize hfAMM swaps
-    return xykPoolId != null && tokens[selectedAssetBuy.faucetIdBech32] !== null
-      && tokens[selectedAssetSell.faucetIdBech32] !== null;
-  }, [selectedAssetBuy, selectedAssetSell, tokens, xykPoolId]);
-
-  const { data: xykPoolData } = useXykPool(xykPoolId);
-
-  // --- XYK buy amount estimation ---
-  const xykBuyAmount = useMemo(() => {
-    if (
-      !isXykSwap || !xykPoolData || !selectedAssetSell || !selectedAssetBuy
-      || rawSell <= 0n
-    ) {
-      return undefined;
-    }
-    const sellIst0 =
-      selectedAssetSell.faucetIdBech32 === xykPoolData.token0.faucetIdBech32;
-    const [reserveIn, reserveOut] = sellIst0
-      ? [xykPoolData.reserve0, xykPoolData.reserve1]
-      : [xykPoolData.reserve1, xykPoolData.reserve0];
-    return getAmountOut(rawSell, reserveIn, reserveOut);
-  }, [isXykSwap, xykPoolData, selectedAssetSell, selectedAssetBuy, rawSell]);
-
-  // --- XYK exchange ratio (1 unit of sell -> ? buy) ---
-  const xykExchangeRatio = useMemo(() => {
-    if (!isXykSwap || !xykPoolData || !selectedAssetSell) return undefined;
-    const sellIst0 =
-      selectedAssetSell.faucetIdBech32 === xykPoolData.token0.faucetIdBech32;
-    const [reserveIn, reserveOut] = sellIst0
-      ? [xykPoolData.reserve0, xykPoolData.reserve1]
-      : [xykPoolData.reserve1, xykPoolData.reserve0];
-    const oneUnit = 10n ** BigInt(selectedAssetSell.decimals);
-    if (reserveIn === 0n) return undefined;
-    const out = getAmountOut(oneUnit, reserveIn, reserveOut);
-    const buyDecimals = sellIst0
-      ? xykPoolData.token1.decimals
-      : xykPoolData.token0.decimals;
-    return formatUnits(out, buyDecimals);
-  }, [isXykSwap, xykPoolData, selectedAssetSell]);
-
-  // --- hfAMM tokens get priority (sorted to top) ---
   const hfAmmBech32s = useMemo(() => {
     const s = new Set<string>();
     for (const t of allTokens) {
@@ -186,23 +104,17 @@ function Swap() {
     return s;
   }, [allTokens]);
 
-  // --- Disabled (unavailable) tokens for buy side only ---
   const buyDisabled = useMemo(() => {
     if (!selectedAssetSell) return new Set<string>();
     const sellBech32 = selectedAssetSell.faucetIdBech32;
-    const sellIsHfAmm = hasOracle(selectedAssetSell);
-    const xykPairs = new Set(getXykPairTokens(sellBech32));
 
     const disabled = new Set<string>();
     for (const t of allTokens) {
       if (t.faucetIdBech32 === sellBech32) continue;
-      const canPairWith = sellIsHfAmm
-        ? (hasOracle(t) || xykPairs.has(t.faucetIdBech32))
-        : xykPairs.has(t.faucetIdBech32);
-      if (!canPairWith) disabled.add(t.faucetIdBech32);
+      if (!hasOracle(t)) disabled.add(t.faucetIdBech32);
     }
     return disabled;
-  }, [selectedAssetSell, allTokens, getXykPairTokens]);
+  }, [selectedAssetSell, allTokens]);
 
   const priceIds = useMemo(() => [
     ...(selectedAssetBuy?.oracleId ? [selectedAssetBuy.oracleId] : []),
@@ -220,11 +132,8 @@ function Swap() {
 
   const canPair = useCallback((a: TokenConfig, b: TokenConfig) => {
     if (a.faucetIdBech32 === b.faucetIdBech32) return false;
-    const aHas = hasOracle(a);
-    const bHas = hasOracle(b);
-    if (aHas && bHas) return true;
-    return !!findXykPool(a.faucetIdBech32, b.faucetIdBech32);
-  }, [findXykPool]);
+    return hasOracle(a) && hasOracle(b);
+  }, []);
 
   const setAsset = useCallback((side: 'buy' | 'sell', faucetIdBech32: string) => {
     const asset = allTokens.find(a => a.faucetIdBech32 === faucetIdBech32);
@@ -289,7 +198,6 @@ function Swap() {
     setSelectedAssetSell(newAssetSell);
   }, [selectedAssetBuy, selectedAssetSell]);
 
-  // --- hfAMM: pick up noteId from useSwap and create inline txInfo ---
   useEffect(() => {
     if (hfAmmNoteId && hfAmmNoteId !== lastHfAmmNoteRef.current && lastSellRef.current) {
       lastHfAmmNoteRef.current = hfAmmNoteId;
@@ -301,12 +209,10 @@ function Swap() {
         buyToken: s.buy,
         sellAmount: s.sellAmt,
         buyAmount: s.buyAmt,
-        isXyk: false,
       });
     }
   }, [hfAmmNoteId, hfAmmTxId]);
 
-  // --- hfAMM: register websocket callback ---
   useEffect(() => {
     if (hfAmmNoteId) {
       registerCallback(hfAmmNoteId, status => {
@@ -317,105 +223,13 @@ function Swap() {
     }
   }, [hfAmmNoteId, registerCallback, refetchBalanceSell]);
 
-  // --- hfAMM: toast on failure ---
   useEffect(() => {
-    if (txInfo && !txInfo.isXyk && orderStatus[txInfo.noteId]?.status === 'failed') {
+    if (txInfo && orderStatus[txInfo.noteId]?.status === 'failed') {
       toast.error('Swap order failed');
     }
   }, [txInfo, orderStatus]);
 
-  // --- XYK swap execution ---
-  const onXykSwap = useCallback(async () => {
-    if (
-      !selectedAssetBuy || !selectedAssetSell || !xykPoolId || !client || !accountId
-      || !requestTransaction
-    ) return;
-
-    const poolAccountId = bech32ToAccountId(xykPoolId);
-    if (!poolAccountId) return;
-
-    const expectedOut = xykBuyAmount ?? 0n;
-    const slippageFactor = BigInt(Math.round((100 - slippage) * 1e6));
-    const minAmountOut = expectedOut * slippageFactor / BigInt(1e8);
-
-    const info: SwapTxInfo = {
-      noteId: '',
-      sellToken: selectedAssetSell,
-      buyToken: selectedAssetBuy,
-      sellAmount: rawSell,
-      buyAmount: expectedOut,
-      isXyk: true,
-      xykStatus: 'submitting',
-    };
-    setTxInfo(info);
-    setIsLoadingXykSwap(true);
-
-    try {
-      await syncState();
-      const { tx, noteId: nid } = await clientMutex.runExclusive(() =>
-        compileXykSwapTransaction({
-          poolAccountId,
-          userAccountId: accountId,
-          sellToken: selectedAssetSell.faucetId,
-          buyToken: selectedAssetBuy.faucetId,
-          amount: rawSell,
-          minAmountOut: minAmountOut > 0n ? minAmountOut : 1n,
-          client,
-        })
-      );
-      const newTxId = await requestTransaction({
-        type: TransactionType.Custom,
-        payload: tx,
-      });
-      await syncState();
-
-      const updated: SwapTxInfo = {
-        ...info,
-        noteId: nid,
-        txId: newTxId,
-        xykStatus: 'confirming',
-      };
-      setTxInfo(updated);
-      setIsLoadingXykSwap(false);
-      setRawBuy(expectedOut);
-
-      try {
-        await waitForNoteConsumed(nid);
-        setTxInfo(prev =>
-          prev?.noteId === nid ? { ...prev, xykStatus: 'confirmed' } : prev
-        );
-        if (xykPoolId) await invalidateCache(xykPoolId);
-        refetchBalanceSell();
-      } catch {
-        setTxInfo(prev => prev?.noteId === nid ? { ...prev, xykStatus: 'failed' } : prev);
-      }
-    } catch (err) {
-      console.error(err);
-      const message = err instanceof Error ? err.message : String(err);
-      toast.error(`Error swapping: ${message}`);
-      setTxInfo(prev =>
-        prev?.xykStatus === 'submitting' ? { ...prev, xykStatus: 'failed' } : prev
-      );
-      setIsLoadingXykSwap(false);
-    }
-  }, [
-    selectedAssetBuy,
-    selectedAssetSell,
-    xykPoolId,
-    client,
-    accountId,
-    requestTransaction,
-    xykBuyAmount,
-    slippage,
-    rawSell,
-    syncState,
-    waitForNoteConsumed,
-    invalidateCache,
-    refetchBalanceSell,
-  ]);
-
-  // --- hfAMM swap execution ---
-  const onHfAmmSwap = useCallback(() => {
+  const onSwap = useCallback(() => {
     if (!selectedAssetBuy || !selectedAssetSell) return;
 
     const slippageFactor = BigInt(Math.round((100 - slippage) * 1e6));
@@ -450,14 +264,6 @@ function Swap() {
     getWebsocketPrice,
   ]);
 
-  const onSwap = useCallback(() => {
-    if (isXykSwap) {
-      onXykSwap();
-    } else {
-      onHfAmmSwap();
-    }
-  }, [isXykSwap, onXykSwap, onHfAmmSwap]);
-
   const handleMaxClick = useCallback(() => {
     onInputChange(
       formatUnits(balanceSell || BigInt(0), selectedAssetSell?.decimals || 6),
@@ -478,8 +284,7 @@ function Swap() {
   const swapDisabled = connecting || isLoadingSwap || !client
     || stringSell === '' || !!sellInputError || !selectedAssetBuy;
 
-  // --- Inline tx status ---
-  const hfAmmOrderStatus = txInfo && !txInfo.isXyk
+  const hfAmmOrderStatus = txInfo
     ? orderStatus[txInfo.noteId]?.status
     : undefined;
   const showTxStatus = txInfo != null;
@@ -538,16 +343,14 @@ function Swap() {
               <div>
                 <div className='flex items-center justify-between text-sm'>
                   <div className='text-muted-foreground font-medium'>
-                    {!isXykSwap && rawSell > BigInt(0) && selectedAssetSell
+                    {rawSell > BigInt(0) && selectedAssetSell
                         && hasOracle(selectedAssetSell)
                       ? (
                         <>
                           $<Price amount={rawSell} tokenConfig={selectedAssetSell} />
                         </>
                       )
-                      : !isXykSwap
-                      ? '$0'
-                      : ''}
+                      : '$0'}
                   </div>
                   {accountId && selectedAssetSell && (
                     balanceSell === null
@@ -594,7 +397,6 @@ function Swap() {
                   amountSell={rawSell}
                   assetBuy={selectedAssetBuy}
                   assetSell={selectedAssetSell}
-                  overrideAmount={isXykSwap ? (xykBuyAmount ?? 0n) : undefined}
                 />
                 <div className='relative'>
                   <TokenAutocomplete
@@ -670,7 +472,6 @@ function Swap() {
                   <ExchangeRatio
                     assetA={selectedAssetSell}
                     assetB={selectedAssetBuy}
-                    overrideRatio={isXykSwap ? xykExchangeRatio : undefined}
                   />{' '}
                   {selectedAssetBuy.symbol}
                 </span>
@@ -720,53 +521,7 @@ function InlineTxStatus({
     } catch { /* */ }
   }, [txInfo.noteId]);
 
-  // Resolve a unified status label + styling
   const { label, color, bgColor, spinning, pulse } = useMemo(() => {
-    if (txInfo.isXyk) {
-      switch (txInfo.xykStatus) {
-        case 'submitting':
-          return {
-            label: 'Submitting',
-            color: 'text-blue-600 dark:text-blue-400',
-            bgColor: 'bg-blue-100 dark:bg-blue-900/30',
-            spinning: true,
-            pulse: true,
-          };
-        case 'confirming':
-          return {
-            label: 'Confirming',
-            color: 'text-yellow-600 dark:text-yellow-400',
-            bgColor: 'bg-yellow-100 dark:bg-yellow-900/30',
-            spinning: true,
-            pulse: true,
-          };
-        case 'confirmed':
-          return {
-            label: 'Confirmed',
-            color: 'text-green-600 dark:text-green-400',
-            bgColor: 'bg-green-100 dark:bg-green-900/30',
-            spinning: false,
-            pulse: false,
-          };
-        case 'failed':
-          return {
-            label: 'Failed',
-            color: 'text-red-600 dark:text-red-400',
-            bgColor: 'bg-red-100 dark:bg-red-900/30',
-            spinning: false,
-            pulse: false,
-          };
-        default:
-          return {
-            label: 'Created',
-            color: 'text-muted-foreground',
-            bgColor: 'bg-muted/50',
-            spinning: false,
-            pulse: true,
-          };
-      }
-    }
-    // hfAMM status
     switch (hfAmmOrderStatus) {
       case 'pending':
         return {
@@ -817,18 +572,17 @@ function InlineTxStatus({
           pulse: true,
         };
     }
-  }, [txInfo.isXyk, txInfo.xykStatus, hfAmmOrderStatus]);
+  }, [hfAmmOrderStatus]);
 
   const StatusIcon = spinning
     ? Loader2
-    : label === 'Confirmed' || label === 'Executed'
+    : label === 'Executed'
     ? CheckCircle
     : label === 'Failed'
     ? XCircle
     : Clock;
 
-  const isDone = label === 'Confirmed' || label === 'Executed' || label === 'Failed'
-    || label === 'Expired';
+  const isDone = label === 'Executed' || label === 'Failed' || label === 'Expired';
 
   return (
     <div className='mt-4 rounded-xl border border-border bg-card p-4 space-y-3 animate-in fade-in slide-in-from-top-2 duration-300'>
@@ -911,7 +665,7 @@ function InlineTxStatus({
       )}
 
       {/* Contextual hint */}
-      {label === 'Executed' && !txInfo.isXyk && (
+      {label === 'Executed' && (
         <p className='text-xs text-muted-foreground'>
           Claim your tokens in the wallet.
         </p>
