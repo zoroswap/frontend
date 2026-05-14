@@ -1,23 +1,23 @@
-import { CustomTransaction } from '@miden-sdk/miden-wallet-adapter';
 import {
   AccountId,
   Felt,
   FeltArray,
-  FungibleAsset,
   Linking,
   MidenClient,
-  NoteArray,
   Note,
+  NoteArray,
   NoteAssets,
-  NoteStorage,
   NoteMetadata,
   NoteRecipient,
+  NoteStorage,
   NoteTag,
   NoteType,
   TransactionRequestBuilder,
 } from '@miden-sdk/miden-sdk';
+import { CustomTransaction } from '@miden-sdk/miden-wallet-adapter';
 
 import zoropool from '@/masm/accounts/zoropool.masm?raw';
+import assetUtils from '@/masm/lib/asset_utils.masm?raw';
 import WITHDRAW_SCRIPT from '@/masm/notes/WITHDRAW.masm?raw';
 import type { TokenConfig } from '@/providers/ZoroProvider';
 import { accountIdToBech32, generateRandomSerialNumber } from './utils';
@@ -49,14 +49,15 @@ export async function compileWithdrawTransaction({
   const script = await client.compile.noteScript({
     code: WITHDRAW_SCRIPT,
     libraries: [{
+      namespace: 'zoro_miden::lib::asset_utils',
+      code: assetUtils,
+      linking: Linking.Dynamic,
+    }, {
       namespace: 'zoroswap::zoropool',
       code: zoropool,
       linking: Linking.Dynamic,
     }],
   });
-  const requestedAsset = new FungibleAsset(token.faucetId, minAmountOut).intoWord()
-    .toFelts();
-
   const noteAssets = new NoteAssets([]);
   const noteTag = noteType === NoteType.Private
     ? new NoteTag(0)
@@ -74,11 +75,14 @@ export async function compileWithdrawTransaction({
 
   const inputs = new NoteStorage(
     new FeltArray([
-      ...requestedAsset,
+      token.faucetId.suffix(),
+      token.faucetId.prefix(),
       new Felt(BigInt(0)),
+      new Felt(minAmountOut),
       new Felt(amount),
       new Felt(BigInt(deadline)),
       new Felt(BigInt(p2idTag)),
+      new Felt(BigInt(0)),
       new Felt(BigInt(0)),
       new Felt(BigInt(0)),
       userAccountId.suffix(),

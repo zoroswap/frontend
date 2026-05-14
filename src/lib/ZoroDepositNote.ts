@@ -1,4 +1,3 @@
-import { CustomTransaction } from '@miden-sdk/miden-wallet-adapter';
 import {
   AccountId,
   Felt,
@@ -6,18 +5,20 @@ import {
   FungibleAsset,
   Linking,
   MidenClient,
-  NoteArray,
   Note,
+  NoteArray,
   NoteAssets,
-  NoteStorage,
   NoteMetadata,
   NoteRecipient,
+  NoteStorage,
   NoteTag,
   NoteType,
   TransactionRequestBuilder,
 } from '@miden-sdk/miden-sdk';
+import { CustomTransaction } from '@miden-sdk/miden-wallet-adapter';
 
 import zoropool from '@/masm/accounts/zoropool.masm?raw';
+import assetUtils from '@/masm/lib/asset_utils.masm?raw';
 import DEPOSIT_SCRIPT from '@/masm/notes/DEPOSIT.masm?raw';
 import type { TokenConfig } from '@/providers/ZoroProvider';
 import { accountIdToBech32, generateRandomSerialNumber } from './utils';
@@ -49,6 +50,10 @@ export async function compileDepositTransaction({
   const script = await client.compile.noteScript({
     code: DEPOSIT_SCRIPT,
     libraries: [{
+      namespace: 'zoro_miden::lib::asset_utils',
+      code: assetUtils,
+      linking: Linking.Dynamic,
+    }, {
       namespace: 'zoroswap::zoropool',
       code: zoropool,
       linking: Linking.Dynamic,
