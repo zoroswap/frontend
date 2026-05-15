@@ -19,6 +19,8 @@ import { CustomTransaction } from '@miden-sdk/miden-wallet-adapter';
 
 import zoropool from '@/masm/accounts/zoropool.masm?raw';
 import assetUtils from '@/masm/lib/asset_utils.masm?raw';
+import mathUtils from '@/masm/lib/math.masm?raw';
+import storageUtils from '@/masm/lib/storage_utils.masm?raw';
 import ZOROSWAP_SCRIPT from '@/masm/notes/ZOROSWAP.masm?raw';
 import type { TokenConfig } from '@/providers/ZoroProvider';
 import { accountIdToBech32, generateRandomSerialNumber } from './utils';
@@ -49,15 +51,28 @@ export async function compileSwapTransaction({
 }: Omit<SwapParams, 'syncState'>) {
   const script = await client.compile.noteScript({
     code: ZOROSWAP_SCRIPT,
-    libraries: [{
-      namespace: 'zoro_miden::lib::asset_utils',
-      code: assetUtils,
-      linking: Linking.Static,
-    }, {
-      namespace: 'zoroswap::zoropool',
-      code: zoropool,
-      linking: Linking.Dynamic,
-    }],
+    libraries: [
+      {
+        namespace: 'zoro_miden::lib::math',
+        code: mathUtils,
+        linking: Linking.Static,
+      },
+      {
+        namespace: 'zoro_miden::lib::storage_utils',
+        code: storageUtils,
+        linking: Linking.Static,
+      },
+      {
+        namespace: 'zoro_miden::lib::asset_utils',
+        code: assetUtils,
+        linking: Linking.Static,
+      },
+      {
+        namespace: 'zoroswap::zoropool',
+        code: zoropool,
+        linking: Linking.Dynamic,
+      },
+    ],
   });
   console.log('Script root: ', script.root().toHex());
   const noteType = NoteType.Public;

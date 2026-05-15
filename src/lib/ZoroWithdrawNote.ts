@@ -18,6 +18,8 @@ import { CustomTransaction } from '@miden-sdk/miden-wallet-adapter';
 
 import zoropool from '@/masm/accounts/zoropool.masm?raw';
 import assetUtils from '@/masm/lib/asset_utils.masm?raw';
+import mathUtils from '@/masm/lib/math.masm?raw';
+import storageUtils from '@/masm/lib/storage_utils.masm?raw';
 import WITHDRAW_SCRIPT from '@/masm/notes/WITHDRAW.masm?raw';
 import type { TokenConfig } from '@/providers/ZoroProvider';
 import { accountIdToBech32, generateRandomSerialNumber } from './utils';
@@ -48,15 +50,28 @@ export async function compileWithdrawTransaction({
 }: WithdrawParams) {
   const script = await client.compile.noteScript({
     code: WITHDRAW_SCRIPT,
-    libraries: [{
-      namespace: 'zoro_miden::lib::asset_utils',
-      code: assetUtils,
-      linking: Linking.Dynamic,
-    }, {
-      namespace: 'zoroswap::zoropool',
-      code: zoropool,
-      linking: Linking.Dynamic,
-    }],
+    libraries: [
+      {
+        namespace: 'zoro_miden::lib::math',
+        code: mathUtils,
+        linking: Linking.Static,
+      },
+      {
+        namespace: 'zoro_miden::lib::storage_utils',
+        code: storageUtils,
+        linking: Linking.Static,
+      },
+      {
+        namespace: 'zoro_miden::lib::asset_utils',
+        code: assetUtils,
+        linking: Linking.Static,
+      },
+      {
+        namespace: 'zoroswap::zoropool',
+        code: zoropool,
+        linking: Linking.Dynamic,
+      },
+    ],
   });
   const noteAssets = new NoteAssets([]);
   const noteTag = noteType === NoteType.Private
