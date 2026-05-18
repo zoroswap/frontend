@@ -13,10 +13,10 @@ import { ThemeProvider } from './providers/ThemeProvider';
 import '@miden-sdk/miden-wallet-adapter/styles.css';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Bounce, ToastContainer } from 'react-toastify';
-import Launchpad from './pages/Launchpad';
+import { DisclaimerGate } from './components/Disclaimer';
 import Explore from './pages/Explore';
 import HfPoolDetail from './pages/HfPoolDetail';
-import { DisclaimerGate } from './components/Disclaimer';
+import Launchpad from './pages/Launchpad';
 import ModalProvider from './providers/ModalProvider';
 import { ParaProviderWrapper } from './providers/ParaProviderWrapper';
 import { UnifiedWalletProvider } from './providers/UnifiedWalletProvider';
@@ -61,18 +61,18 @@ function App() {
                       <DisclaimerGate>
                         <AppRouter />
                         <ToastContainer
-                        position='top-center'
-                        autoClose={5000}
-                        hideProgressBar={false}
-                        newestOnTop={false}
-                        closeOnClick={false}
-                        rtl={false}
-                        pauseOnFocusLoss
-                        draggable
-                        pauseOnHover
-                        theme='dark'
-                        transition={Bounce}
-                      />
+                          position='top-center'
+                          autoClose={5000}
+                          hideProgressBar={false}
+                          newestOnTop={false}
+                          closeOnClick={false}
+                          rtl={false}
+                          pauseOnFocusLoss
+                          draggable
+                          pauseOnHover
+                          theme='dark'
+                          transition={Bounce}
+                        />
                       </DisclaimerGate>
                     </ModalProvider>
                   </OracleProvider>
