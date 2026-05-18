@@ -92,7 +92,7 @@ export function Footer() {
           </a>
         </div>
         <div className='opacity-25 absolute right-4 text-xs sm:block hidden'>
-          testnet 0.13
+          testnet 0.14
         </div>
       </div>
     </footer>

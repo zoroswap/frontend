@@ -3,7 +3,6 @@ import {
   Felt,
   FeltArray,
   FungibleAsset,
-  Linking,
   MidenClient,
   Note,
   NoteArray,
@@ -49,33 +48,43 @@ export async function compileDepositTransaction({
   client,
   noteType,
 }: DepositParams) {
-  const script = await client.compile.noteScript({
-    code: DEPOSIT_SCRIPT,
-    libraries: [
-      {
-        namespace: 'zoro_miden::lib::math',
-        code: mathUtils,
-        linking: Linking.Static,
-      },
-      {
-        namespace: 'zoro_miden::lib::storage_utils',
-        code: storageUtils,
-        linking: Linking.Static,
-      },
-      {
-        namespace: 'zoro_miden::lib::asset_utils',
-        code: assetUtils,
-        linking: Linking.Static,
-      },
-      {
-        namespace: 'zoroswap::zoropool',
-        code: zoropool,
-        linking: Linking.Static,
-      },
-    ],
+  // hack until linking is fixed
+  const script = await (client as any)._withInnerWebClient(async (inner: any) => {
+    const builder = inner.createCodeBuilder();
+    builder.linkModule('zoro_miden::lib::math', mathUtils);
+    builder.linkModule('zoro_miden::lib::storage_utils', storageUtils);
+    builder.linkModule('zoro_miden::lib::asset_utils', assetUtils);
+    builder.linkModule('zoroswap::zoropool', zoropool);
+    return builder.compileNoteScript(DEPOSIT_SCRIPT);
   });
 
-  console.log('deposit script root', script.root());
+  // const script2 = await client.compile.noteScript({
+  //   code: DEPOSIT_SCRIPT,
+  //   libraries: [
+  //     {
+  //       namespace: 'zoro_miden::lib::math',
+  //       code: mathUtils,
+  //       linking: Linking.Static,
+  //     },
+  //     {
+  //       namespace: 'zoro_miden::lib::storage_utils',
+  //       code: storageUtils,
+  //       linking: Linking.Static,
+  //     },
+  //     {
+  //       namespace: 'zoro_miden::lib::asset_utils',
+  //       code: assetUtils,
+  //       linking: Linking.Static,
+  //     },
+  //     {
+  //       namespace: 'zoroswap::zoropool',
+  //       code: zoropool,
+  //       linking: Linking.Static,
+  //     },
+  //   ],
+  // });
+
+  // console.log('deposit script root', script.root());
 
   const offeredAsset = new FungibleAsset(token.faucetId, amount);
 

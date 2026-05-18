@@ -2,7 +2,6 @@ import {
   AccountId,
   Felt,
   FeltArray,
-  Linking,
   MidenClient,
   Note,
   NoteArray,
@@ -48,31 +47,43 @@ export async function compileWithdrawTransaction({
   client,
   noteType,
 }: WithdrawParams) {
-  const script = await client.compile.noteScript({
-    code: WITHDRAW_SCRIPT,
-    libraries: [
-      {
-        namespace: 'zoro_miden::lib::math',
-        code: mathUtils,
-        linking: Linking.Static,
-      },
-      {
-        namespace: 'zoro_miden::lib::storage_utils',
-        code: storageUtils,
-        linking: Linking.Static,
-      },
-      {
-        namespace: 'zoro_miden::lib::asset_utils',
-        code: assetUtils,
-        linking: Linking.Static,
-      },
-      {
-        namespace: 'zoroswap::zoropool',
-        code: zoropool,
-        linking: Linking.Dynamic,
-      },
-    ],
-  });
+  // hack until linking is fixed
+  const script = await (client as any)._withInnerWebClient(
+    async (inner: any) => {
+      const builder = inner.createCodeBuilder();
+      builder.linkModule('zoro_miden::lib::math', mathUtils);
+      builder.linkModule('zoro_miden::lib::storage_utils', storageUtils);
+      builder.linkModule('zoro_miden::lib::asset_utils', assetUtils);
+      builder.linkModule('zoroswap::zoropool', zoropool);
+      return builder.compileNoteScript(WITHDRAW_SCRIPT);
+    },
+  );
+
+  // const script = await client.compile.noteScript({
+  //   code: WITHDRAW_SCRIPT,
+  //   libraries: [
+  //     {
+  //       namespace: 'zoro_miden::lib::math',
+  //       code: mathUtils,
+  //       linking: Linking.Static,
+  //     },
+  //     {
+  //       namespace: 'zoro_miden::lib::storage_utils',
+  //       code: storageUtils,
+  //       linking: Linking.Static,
+  //     },
+  //     {
+  //       namespace: 'zoro_miden::lib::asset_utils',
+  //       code: assetUtils,
+  //       linking: Linking.Static,
+  //     },
+  //     {
+  //       namespace: 'zoroswap::zoropool',
+  //       code: zoropool,
+  //       linking: Linking.Dynamic,
+  //     },
+  //   ],
+  // });
   const noteAssets = new NoteAssets([]);
   const noteTag = noteType === NoteType.Private
     ? new NoteTag(0)
