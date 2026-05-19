@@ -1,12 +1,11 @@
-import { AllDropdown } from '@/components/AllDropdown';
 import { Footer } from '@/components/Footer';
 import { Header } from '@/components/Header';
 import LiquidityPoolsTable from '@/components/LiquidityPoolsTable';
-import { poweredByMiden } from '@/components/PoweredByMiden';
 import { type LpDetails, OrderStatus, type TxResult } from '@/components/OrderStatus';
 import PoolModal from '@/components/PoolModal';
 import type { LpActionType } from '@/components/PoolModal';
 import { PositionCard } from '@/components/PositionCard';
+import { poweredByMiden } from '@/components/PoweredByMiden';
 import { SelectPoolModal } from '@/components/SelectPoolModal';
 import { Button } from '@/components/ui/button';
 import { useLPBalances } from '@/hooks/useLPBalances';
@@ -133,8 +132,6 @@ function Explore() {
               Your positions
             </h2>
             <div className='flex items-center gap-3'>
-              <AllDropdown />
-              <AllDropdown />
               <Button
                 size='sm'
                 className='rounded-lg bg-primary text-primary-foreground'
