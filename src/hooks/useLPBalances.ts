@@ -21,14 +21,15 @@ export const useLPBalances = ({ tokens }: { tokens?: TokenConfig[] }) => {
       kind: 'mapItem' as const,
       slotName: 'zoroswap::user_deposits',
       key: [
-        accSuffix,
-        accPrefix,
         token.faucetId.suffix().asInt().toString(),
         token.faucetId.prefix().asInt().toString(),
+        accSuffix,
+        accPrefix,
       ] as [string, string, string, string],
     }));
 
     const results = await getAccountStorage(poolBech32, queries);
+
     const newBalances: Record<string, bigint> = {};
     for (let i = 0; i < tokens.length; i++) {
       const word = (results[i] as SlotMapItemResult).value;
