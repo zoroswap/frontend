@@ -1,26 +1,20 @@
 import {
   AccountId,
-  Felt,
-  FeltArray,
   MidenClient,
   Note,
   NoteArray,
   NoteAssets,
   NoteMetadata,
   NoteRecipient,
-  NoteStorage,
   NoteTag,
   NoteType,
   TransactionRequestBuilder,
 } from '@miden-sdk/miden-sdk';
 import { CustomTransaction } from '@miden-sdk/miden-wallet-adapter';
 
-import zoropool from '@/masm/accounts/zoropool.masm?raw';
-import assetUtils from '@/masm/lib/asset_utils.masm?raw';
-import mathUtils from '@/masm/lib/math.masm?raw';
-import storageUtils from '@/masm/lib/storage_utils.masm?raw';
 import WITHDRAW_SCRIPT from '@/masm/notes/WITHDRAW.masm?raw';
 import type { TokenConfig } from '@/providers/ZoroProvider';
+import { buildZoroNoteStorage, compileZoroNoteScript } from './compileZoroNoteScript';
 import { accountIdToBech32, generateRandomSerialNumber } from './utils';
 
 export interface WithdrawParams {
@@ -47,43 +41,8 @@ export async function compileWithdrawTransaction({
   client,
   noteType,
 }: WithdrawParams) {
-  // hack until linking is fixed
-  const script = await (client as any)._withInnerWebClient(
-    async (inner: any) => {
-      const builder = inner.createCodeBuilder();
-      builder.linkModule('zoro_miden::lib::math', mathUtils);
-      builder.linkModule('zoro_miden::lib::storage_utils', storageUtils);
-      builder.linkModule('zoro_miden::lib::asset_utils', assetUtils);
-      builder.linkModule('zoroswap::zoropool', zoropool);
-      return builder.compileNoteScript(WITHDRAW_SCRIPT);
-    },
-  );
+  const script = await compileZoroNoteScript(client, WITHDRAW_SCRIPT);
 
-  // const script = await client.compile.noteScript({
-  //   code: WITHDRAW_SCRIPT,
-  //   libraries: [
-  //     {
-  //       namespace: 'zoro_miden::lib::math',
-  //       code: mathUtils,
-  //       linking: Linking.Static,
-  //     },
-  //     {
-  //       namespace: 'zoro_miden::lib::storage_utils',
-  //       code: storageUtils,
-  //       linking: Linking.Static,
-  //     },
-  //     {
-  //       namespace: 'zoro_miden::lib::asset_utils',
-  //       code: assetUtils,
-  //       linking: Linking.Static,
-  //     },
-  //     {
-  //       namespace: 'zoroswap::zoropool',
-  //       code: zoropool,
-  //       linking: Linking.Dynamic,
-  //     },
-  //   ],
-  // });
   const noteAssets = new NoteAssets([]);
   const noteTag = noteType === NoteType.Private
     ? new NoteTag(0)
@@ -99,22 +58,17 @@ export async function compileWithdrawTransaction({
 
   const p2idTag = NoteTag.withAccountTarget(userAccountId).asU32();
 
-  const inputs = new NoteStorage(
-    new FeltArray([
-      token.faucetId.suffix(),
-      token.faucetId.prefix(),
-      new Felt(BigInt(0)),
-      new Felt(minAmountOut),
-      new Felt(amount),
-      new Felt(BigInt(deadline)),
-      new Felt(BigInt(p2idTag)),
-      new Felt(BigInt(0)),
-      new Felt(BigInt(0)),
-      new Felt(BigInt(0)),
-      userAccountId.suffix(),
-      userAccountId.prefix(),
-    ]),
-  );
+  const inputs = buildZoroNoteStorage({
+    beneficiary: userAccountId,
+    deadline,
+    p2idTag,
+    metadata2: amount,
+    asset: {
+      suffix: token.faucetId.suffix(),
+      prefix: token.faucetId.prefix(),
+      amount: minAmountOut,
+    },
+  });
 
   const note = new Note(
     noteAssets,
