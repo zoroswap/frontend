@@ -13,6 +13,8 @@ import mathUtils from '@/masm/lib/math.masm?raw';
 import outputNoteUtils from '@/masm/lib/output_note_utils.masm?raw';
 import storageUtils from '@/masm/lib/storage_utils.masm?raw';
 import noteCommon from '@/masm/notes/lib/common.masm?raw';
+import noteReclaim from '@/masm/notes/lib/reclaim.masm?raw';
+import noteRespawn from '@/masm/notes/lib/respawn.masm?raw';
 
 type InnerWebClient = {
   createCodeBuilder: () => {
@@ -64,18 +66,37 @@ export function buildZoroNoteStorage({
   );
 }
 
+type CodeBuilder = ReturnType<InnerWebClient['createCodeBuilder']>;
+
+function linkCoreModules(builder: CodeBuilder) {
+  builder.linkModule('zoro_miden::lib::math', mathUtils);
+  builder.linkModule('zoro_miden::lib::storage_utils', storageUtils);
+  builder.linkModule('zoro_miden::lib::asset_utils', assetUtils);
+  builder.linkModule('zoro_miden::note::common', noteCommon);
+  builder.linkModule('zoroswap::zoropool', zoropool);
+}
+
 export async function compileZoroNoteScript(
   client: MidenClient,
   noteScript: string,
 ): Promise<NoteScript> {
   return (client as ClientWithInner)._withInnerWebClient(async (inner) => {
     const builder = inner.createCodeBuilder();
-    builder.linkModule('zoro_miden::lib::math', mathUtils);
-    builder.linkModule('zoro_miden::lib::storage_utils', storageUtils);
-    builder.linkModule('zoro_miden::lib::asset_utils', assetUtils);
-    builder.linkModule('zoro_miden::note::common', noteCommon);
+    linkCoreModules(builder);
     builder.linkModule('zoro_miden::lib::output_note_utils', outputNoteUtils);
-    builder.linkModule('zoroswap::zoropool', zoropool);
+    return builder.compileNoteScript(noteScript);
+  });
+}
+
+export async function compilePositionNoteScript(
+  client: MidenClient,
+  noteScript: string,
+): Promise<NoteScript> {
+  return (client as ClientWithInner)._withInnerWebClient(async (inner) => {
+    const builder = inner.createCodeBuilder();
+    linkCoreModules(builder);
+    builder.linkModule('zoro_miden::note::respawn', noteRespawn);
+    builder.linkModule('zoro_miden::note::reclaim', noteReclaim);
     return builder.compileNoteScript(noteScript);
   });
 }

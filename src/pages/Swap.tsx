@@ -2,6 +2,7 @@ import AssetIcon from '@/components/AssetIcon';
 import ExchangeRatio from '@/components/ExchangeRatio';
 import { Footer } from '@/components/Footer';
 import { Header } from '@/components/Header';
+import { PositionPanel } from '@/components/PositionPanel';
 import { poweredByMiden } from '@/components/PoweredByMiden';
 import Price from '@/components/Price';
 import Slippage from '@/components/Slippage';
@@ -13,6 +14,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { UnifiedWalletButton } from '@/components/UnifiedWalletButton';
 import { useBalance } from '@/hooks/useBalance';
+import { usePosition } from '@/hooks/usePosition';
 import { useSwap } from '@/hooks/useSwap';
 import { useUnifiedWallet } from '@/hooks/useUnifiedWallet';
 import { useOrderUpdates } from '@/hooks/useWebSocket';
@@ -50,6 +52,15 @@ interface SwapTxInfo {
   buyAmount: bigint;
 }
 
+interface PositionTxInfo {
+  orderId: string;
+  noteId?: string;
+  sellToken: TokenConfig;
+  buyToken: TokenConfig;
+  sellAmount: bigint;
+  buyAmount: bigint;
+}
+
 function Swap() {
   const { tokens, client, accountId } = useContext(ZoroContext);
   const {
@@ -58,10 +69,20 @@ function Swap() {
     txId: hfAmmTxId,
     noteId: hfAmmNoteId,
   } = useSwap();
-  const { orderStatus, registerCallback } = useOrderUpdates();
+  const { orderStatus, registerCallback, subscribeToOrder } = useOrderUpdates();
   const { connecting, connected } = useUnifiedWallet();
+  const [positionMode, setPositionMode] = useState(false);
+  const {
+    positionId,
+    isLoading: isLoadingPosition,
+    openPosition,
+    positionSwap,
+    reclaimPosition,
+    hasPosition,
+  } = usePosition();
 
   const [txInfo, setTxInfo] = useState<SwapTxInfo | null>(null);
+  const [positionTxInfo, setPositionTxInfo] = useState<PositionTxInfo | null>(null);
 
   const lastHfAmmNoteRef = useRef<string | undefined>(undefined);
   const lastSellRef = useRef<
@@ -224,14 +245,37 @@ function Swap() {
   }, [hfAmmNoteId, registerCallback, refetchBalanceSell]);
 
   useEffect(() => {
+    if (positionTxInfo?.orderId) {
+      subscribeToOrder(positionTxInfo.orderId);
+    }
+  }, [positionTxInfo?.orderId, subscribeToOrder]);
+
+  useEffect(() => {
+    if (positionTxInfo?.orderId) {
+      registerCallback(positionTxInfo.orderId, status => {
+        if (status === 'pending') {
+          refetchBalanceSell();
+        }
+      });
+    }
+  }, [positionTxInfo?.orderId, registerCallback, refetchBalanceSell]);
+
+  useEffect(() => {
     if (txInfo && orderStatus[txInfo.noteId]?.status === 'failed') {
       toast.error('Swap order failed');
     }
   }, [txInfo, orderStatus]);
 
-  const onSwap = useCallback(() => {
-    if (!selectedAssetBuy || !selectedAssetSell) return;
+  useEffect(() => {
+    if (positionTxInfo && orderStatus[positionTxInfo.orderId]?.status === 'failed') {
+      toast.error('Swap order failed');
+    }
+  }, [positionTxInfo, orderStatus]);
 
+  const computeMinAmountOut = useCallback(() => {
+    if (!selectedAssetBuy || !selectedAssetSell) {
+      return { computedBuy: 0n, minAmountOut: 0n };
+    }
     const slippageFactor = BigInt(Math.round((100 - slippage) * 1e6));
     const priceA = getWebsocketPrice(selectedAssetBuy.oracleId);
     const priceB = getWebsocketPrice(selectedAssetSell.oracleId);
@@ -239,7 +283,13 @@ function Swap() {
       / Number(priceA?.priceFeed.value ?? 1);
     const computedBuy = BigInt(Math.floor((ratio ?? 1) * 1e12)) * rawSell
       / BigInt(10 ** (selectedAssetBuy.decimals - selectedAssetSell.decimals + 12));
-    const minAmountOut = computedBuy * slippageFactor / BigInt(1e8);
+    return { computedBuy, minAmountOut: computedBuy * slippageFactor / BigInt(1e8) };
+  }, [rawSell, slippage, selectedAssetBuy, selectedAssetSell, getWebsocketPrice]);
+
+  const onSwap = useCallback(() => {
+    if (!selectedAssetBuy || !selectedAssetSell) return;
+
+    const { computedBuy, minAmountOut } = computeMinAmountOut();
 
     lastSellRef.current = {
       token: selectedAssetSell,
@@ -247,6 +297,31 @@ function Swap() {
       sellAmt: rawSell,
       buyAmt: computedBuy,
     };
+
+    if (positionMode) {
+      if (hasPosition) {
+        void positionSwap({
+          amount: rawSell,
+          minAmountOut,
+          buyToken: selectedAssetBuy,
+          sellToken: selectedAssetSell,
+        }).then(({ orderId }) => {
+          const s = lastSellRef.current;
+          if (!s) return;
+          setPositionTxInfo({
+            orderId,
+            sellToken: s.token,
+            buyToken: s.buy,
+            sellAmount: s.sellAmt,
+            buyAmount: s.buyAmt,
+          });
+        });
+      } else if (selectedAssetSell) {
+        void openPosition({ token: selectedAssetSell, amount: rawSell });
+      }
+      setRawBuy(computedBuy);
+      return;
+    }
 
     hfAmmSwap({
       amount: rawSell,
@@ -257,11 +332,14 @@ function Swap() {
     setRawBuy(computedBuy);
   }, [
     rawSell,
-    slippage,
     selectedAssetBuy,
     selectedAssetSell,
     hfAmmSwap,
-    getWebsocketPrice,
+    computeMinAmountOut,
+    positionMode,
+    hasPosition,
+    positionSwap,
+    openPosition,
   ]);
 
   const handleMaxClick = useCallback(() => {
@@ -269,6 +347,8 @@ function Swap() {
       formatUnits(balanceSell || BigInt(0), selectedAssetSell?.decimals || 6),
     );
   }, [onInputChange, balanceSell, selectedAssetSell?.decimals]);
+
+  const isActionLoading = isLoadingSwap || isLoadingPosition;
 
   const buttonText = useMemo(() => {
     if (!selectedAssetBuy) return 'Select a token';
@@ -278,20 +358,35 @@ function Swap() {
     if (showInsufficientBalance) {
       return `Insufficient ${selectedAssetSell?.symbol} balance`;
     }
+    if (positionMode) {
+      return hasPosition ? 'Swap via Position' : 'Open Position';
+    }
     return 'Swap';
-  }, [rawSell, balanceSell, selectedAssetSell?.symbol, selectedAssetBuy]);
+  }, [rawSell, balanceSell, selectedAssetSell?.symbol, selectedAssetBuy, positionMode, hasPosition]);
 
-  const swapDisabled = connecting || isLoadingSwap || !client
+  const swapDisabled = connecting || isActionLoading || !client
     || stringSell === '' || !!sellInputError || !selectedAssetBuy;
 
   const hfAmmOrderStatus = txInfo
     ? orderStatus[txInfo.noteId]?.status
     : undefined;
+  const positionOrderStatus = positionTxInfo
+    ? orderStatus[positionTxInfo.orderId]?.status
+    : undefined;
+  const positionNoteId = positionTxInfo
+    ? orderStatus[positionTxInfo.orderId]?.noteId ?? positionTxInfo.noteId
+    : undefined;
   const showTxStatus = txInfo != null;
+  const showPositionTxStatus = positionMode && positionTxInfo != null;
 
   const dismissTxInfo = useCallback(() => {
     clearForm();
     setTxInfo(null);
+  }, [clearForm]);
+
+  const dismissPositionTxInfo = useCallback(() => {
+    clearForm();
+    setPositionTxInfo(null);
   }, [clearForm]);
 
   return (
@@ -304,9 +399,41 @@ function Swap() {
         <div className='w-full max-w-[580px]'>
           <h1 className='sr-only'>Swap Tokens</h1>
 
-          <div className='relative flex justify-end mb-1'>
+          <div className='relative flex items-center justify-between mb-1 gap-2'>
+            <div className='flex rounded-lg border border-border/60 p-0.5 bg-muted/30'>
+              <button
+                type='button'
+                onClick={() => setPositionMode(false)}
+                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                  !positionMode
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Standard
+              </button>
+              <button
+                type='button'
+                onClick={() => setPositionMode(true)}
+                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                  positionMode
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Position
+              </button>
+            </div>
             <Slippage slippage={slippage} onSlippageChange={setSlippage} />
           </div>
+
+          {positionMode && (
+            <PositionPanel
+              positionId={positionId}
+              isLoading={isLoadingPosition}
+              onReclaim={reclaimPosition}
+            />
+          )}
 
           {/* Sell Card */}
           <Card className='border border-border/60 rounded-xl sm:rounded-2xl bg-card shadow-none'>
@@ -382,7 +509,7 @@ function Swap() {
           {/* Swap Pairs */}
           <div className='flex justify-center -my-7 relative z-10'>
             <div className='bg-card rounded-xl p-1'>
-              <SwapPairs swapPairs={swapPairs} disabled={isLoadingSwap} />
+              <SwapPairs swapPairs={swapPairs} disabled={isActionLoading} />
             </div>
           </div>
 
@@ -420,7 +547,7 @@ function Swap() {
                   disabled={swapDisabled}
                   variant='outline'
                   className={`w-full h-14 sm:h-16 rounded-2xl font-bold text-base sm:text-xl transition-colors disabled:pointer-events-none disabled:opacity-50 ${
-                    buttonText === 'Swap'
+                    buttonText === 'Swap' || buttonText === 'Swap via Position' || buttonText === 'Open Position'
                       ? 'bg-primary text-primary-foreground hover:bg-primary/90 border-primary'
                       : 'hover:border-orange-200/20 hover:bg-accent hover:text-accent-foreground'
                   }`}
@@ -432,11 +559,11 @@ function Swap() {
                         Connecting...
                       </>
                     )
-                    : isLoadingSwap
+                    : isActionLoading
                     ? (
                       <>
                         <Loader2 className='w-5 h-5 mr-2 animate-spin' />
-                        Creating Note...
+                        {positionMode && !hasPosition ? 'Opening Position...' : 'Processing...'}
                       </>
                     )
                     : !client
@@ -482,9 +609,25 @@ function Swap() {
           {/* Inline transaction status */}
           {showTxStatus && txInfo && (
             <InlineTxStatus
-              txInfo={txInfo}
-              hfAmmOrderStatus={hfAmmOrderStatus}
+              sellToken={txInfo.sellToken}
+              buyToken={txInfo.buyToken}
+              sellAmount={txInfo.sellAmount}
+              buyAmount={txInfo.buyAmount}
+              orderStatus={hfAmmOrderStatus}
+              noteId={txInfo.noteId}
               onDismiss={dismissTxInfo}
+            />
+          )}
+          {showPositionTxStatus && positionTxInfo && (
+            <InlineTxStatus
+              sellToken={positionTxInfo.sellToken}
+              buyToken={positionTxInfo.buyToken}
+              sellAmount={positionTxInfo.sellAmount}
+              buyAmount={positionTxInfo.buyAmount}
+              orderStatus={positionOrderStatus}
+              orderId={positionTxInfo.orderId}
+              noteId={positionNoteId}
+              onDismiss={dismissPositionTxInfo}
             />
           )}
         </div>
@@ -502,27 +645,38 @@ function Swap() {
 // ---------------------------------------------------------------------------
 
 function InlineTxStatus({
-  txInfo,
-  hfAmmOrderStatus,
+  sellToken,
+  buyToken,
+  sellAmount,
+  buyAmount,
+  orderStatus,
+  noteId,
+  orderId,
   onDismiss,
 }: {
-  txInfo: SwapTxInfo;
-  hfAmmOrderStatus?: string;
+  sellToken: TokenConfig;
+  buyToken: TokenConfig;
+  sellAmount: bigint;
+  buyAmount: bigint;
+  orderStatus?: string;
+  noteId?: string;
+  orderId?: string;
   onDismiss: () => void;
 }) {
   const [copied, setCopied] = useState(false);
 
-  const copyNoteId = useCallback(async () => {
-    if (!txInfo.noteId) return;
+  const copyId = useCallback(async () => {
+    const id = noteId ?? orderId;
+    if (!id) return;
     try {
-      await navigator.clipboard.writeText(txInfo.noteId);
+      await navigator.clipboard.writeText(id);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch { /* */ }
-  }, [txInfo.noteId]);
+  }, [noteId, orderId]);
 
   const { label, color, bgColor, spinning, pulse } = useMemo(() => {
-    switch (hfAmmOrderStatus) {
+    switch (orderStatus) {
       case 'pending':
         return {
           label: 'Pending',
@@ -572,7 +726,7 @@ function InlineTxStatus({
           pulse: true,
         };
     }
-  }, [hfAmmOrderStatus]);
+  }, [orderStatus]);
 
   const StatusIcon = spinning
     ? Loader2
@@ -616,32 +770,31 @@ function InlineTxStatus({
       {/* Amounts */}
       <div className='flex items-center gap-2 text-sm rounded-lg bg-muted/50 p-2.5'>
         <span className='inline-flex items-center gap-1'>
-          <AssetIcon symbol={txInfo.sellToken.symbol} size={16} />
+          <AssetIcon symbol={sellToken.symbol} size={16} />
           <span className='dark:text-red-200 text-red-700'>
             {formalBigIntFormat({
-              val: txInfo.sellAmount,
-              expo: txInfo.sellToken.decimals,
-            })} {txInfo.sellToken.symbol}
+              val: sellAmount,
+              expo: sellToken.decimals,
+            })} {sellToken.symbol}
           </span>
         </span>
         <span className='text-muted-foreground'>→</span>
         <span className='inline-flex items-center gap-1'>
-          <AssetIcon symbol={txInfo.buyToken.symbol} size={16} />
+          <AssetIcon symbol={buyToken.symbol} size={16} />
           <span className='dark:text-green-200 text-green-700'>
             {formalBigIntFormat({
-              val: txInfo.buyAmount,
-              expo: txInfo.buyToken.decimals,
-            })} {txInfo.buyToken.symbol}
+              val: buyAmount,
+              expo: buyToken.decimals,
+            })} {buyToken.symbol}
           </span>
         </span>
       </div>
 
-      {/* Note ID */}
-      {txInfo.noteId && (
+      {orderId && !noteId && (
         <div className='flex items-center gap-1.5 text-xs'>
-          <span className='text-muted-foreground'>Note:</span>
+          <span className='text-muted-foreground'>Order:</span>
           <button
-            onClick={copyNoteId}
+            onClick={copyId}
             className='font-mono hover:bg-muted/50 rounded px-1 py-0.5 transition-colors cursor-pointer'
           >
             {copied
@@ -651,10 +804,29 @@ function InlineTxStatus({
                   Copied
                 </span>
               )
-              : truncateId(txInfo.noteId)}
+              : truncateId(orderId)}
+          </button>
+        </div>
+      )}
+
+      {noteId && (
+        <div className='flex items-center gap-1.5 text-xs'>
+          <span className='text-muted-foreground'>Note:</span>
+          <button
+            onClick={copyId}
+            className='font-mono hover:bg-muted/50 rounded px-1 py-0.5 transition-colors cursor-pointer'
+          >
+            {copied
+              ? (
+                <span className='inline-flex items-center gap-1'>
+                  <CheckCircle className='h-3 w-3 text-green-500' />
+                  Copied
+                </span>
+              )
+              : truncateId(noteId)}
           </button>
           <a
-            href={`https://testnet.midenscan.com/note/${txInfo.noteId}`}
+            href={`https://testnet.midenscan.com/note/${noteId}`}
             target='_blank'
             rel='noopener noreferrer'
             className='text-muted-foreground hover:text-foreground'
