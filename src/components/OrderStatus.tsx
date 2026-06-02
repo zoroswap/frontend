@@ -61,6 +61,14 @@ const getOrderStatusDisplay = (status?: OrderStatus) => {
         animate: true,
         shouldPulse: true,
       };
+    case 'matched':
+      return {
+        icon: CheckCircle,
+        text: 'Matched',
+        color: 'text-green-500 dark:text-green-300',
+        bgColor: 'bg-green-50 dark:bg-green-900/20',
+        shouldPulse: true,
+      };
     case 'executed':
       return {
         icon: CheckCircle,
@@ -291,6 +299,8 @@ export function OrderStatus({
                     className={`mb-4 p-3 rounded-lg border-2 ${statusDisplay.bgColor} ${
                       orderStatus === 'executed'
                         ? 'border-green-500'
+                        : orderStatus === 'matched'
+                        ? 'border-green-400'
                         : orderStatus === 'failed'
                         ? 'border-red-500'
                         : orderStatus === 'matching'
@@ -299,11 +309,20 @@ export function OrderStatus({
                     }`}
                   >
                     <div className='flex items-center justify-center gap-2'>
-                      <statusDisplay.icon
-                        className={`h-5 w-5 ${statusDisplay.color} ${
-                          statusDisplay.animate ? 'animate-spin' : ''
-                        } ${statusDisplay.shouldPulse ? 'animate-status-pulse' : ''}`}
-                      />
+                      {orderStatus === 'executed'
+                        ? (
+                          <>
+                            <CheckCircle className={`h-5 w-5 ${statusDisplay.color}`} />
+                            <CheckCircle className={`h-5 w-5 ${statusDisplay.color}`} />
+                          </>
+                        )
+                        : (
+                          <statusDisplay.icon
+                            className={`h-5 w-5 ${statusDisplay.color} ${
+                              statusDisplay.animate ? 'animate-spin' : ''
+                            } ${statusDisplay.shouldPulse ? 'animate-status-pulse' : ''}`}
+                          />
+                        )}
                       <span className={`font-semibold ${statusDisplay.color}`}>
                         Order {statusDisplay.text}
                       </span>
@@ -316,6 +335,11 @@ export function OrderStatus({
                     {orderStatus === 'matching' && (
                       <p className='text-xs text-center mt-1 text-blue-600 dark:text-blue-400'>
                         Finding the best price for your order <AnimatedDots />
+                      </p>
+                    )}
+                    {orderStatus === 'matched' && (
+                      <p className='text-xs text-center mt-1 text-green-600 dark:text-green-400'>
+                        Waiting for transaction to be confirmed <AnimatedDots />
                       </p>
                     )}
                     {orderStatus === 'pending' && (

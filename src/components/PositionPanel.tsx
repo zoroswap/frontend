@@ -89,7 +89,7 @@ export function PositionPanel({
           ? (
             <div className='space-y-4'>
               <div className='space-y-2'>
-                <p className='text-xs text-muted-foreground'>Active position on server</p>
+                <p className='text-xs text-muted-foreground'>Active position</p>
                 <button
                   type='button'
                   onClick={() => void copyPositionId()}

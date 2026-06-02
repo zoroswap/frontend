@@ -16,7 +16,6 @@ import { Input } from '@/components/ui/input';
 import { UnifiedWalletButton } from '@/components/UnifiedWalletButton';
 import { useBalance } from '@/hooks/useBalance';
 import { usePosition } from '@/hooks/usePosition';
-import { useSwap } from '@/hooks/useSwap';
 import { useUnifiedWallet } from '@/hooks/useUnifiedWallet';
 import { useOrderUpdates } from '@/hooks/useWebSocket';
 import { DEFAULT_SLIPPAGE } from '@/lib/config';
@@ -46,15 +45,6 @@ function hasOracle(token: TokenConfig | undefined): boolean {
 }
 
 interface SwapTxInfo {
-  noteId: string;
-  txId?: string;
-  sellToken: TokenConfig;
-  buyToken: TokenConfig;
-  sellAmount: bigint;
-  buyAmount: bigint;
-}
-
-interface PositionTxInfo {
   orderId: string;
   noteId?: string;
   sellToken: TokenConfig;
@@ -65,15 +55,8 @@ interface PositionTxInfo {
 
 function Swap() {
   const { tokens, client, accountId } = useContext(ZoroContext);
-  const {
-    swap: hfAmmSwap,
-    isLoading: isLoadingSwap,
-    txId: hfAmmTxId,
-    noteId: hfAmmNoteId,
-  } = useSwap();
   const { orderStatus, registerCallback, subscribeToOrder } = useOrderUpdates();
   const { connecting, connected } = useUnifiedWallet();
-  const [positionMode, setPositionMode] = useState(false);
   const {
     positionId,
     positionInfo,
@@ -87,9 +70,7 @@ function Swap() {
   } = usePosition();
 
   const [txInfo, setTxInfo] = useState<SwapTxInfo | null>(null);
-  const [positionTxInfo, setPositionTxInfo] = useState<PositionTxInfo | null>(null);
 
-  const lastHfAmmNoteRef = useRef<string | undefined>(undefined);
   const lastSellRef = useRef<
     { token: TokenConfig; buy: TokenConfig; sellAmt: bigint; buyAmt: bigint } | null
   >(null);
@@ -116,28 +97,25 @@ function Swap() {
     token: selectedAssetBuy,
   });
 
-  // In position mode with an open position, the available sell balance is the
-  // position's own asset balance (from /positions/{id}), not the wallet balance.
-  const usePositionBalance = positionMode && hasPosition;
   const positionSellBalance = useMemo<bigint | null>(() => {
-    if (!usePositionBalance || !selectedAssetSell) return null;
+    if (!hasPosition || !selectedAssetSell) return null;
     if (!positionInfo) return null;
     const entry = positionInfo.assets.find(
       ([bech32]) => bech32 === selectedAssetSell.faucetIdBech32,
     );
     return entry ? BigInt(entry[1]) : BigInt(0);
-  }, [usePositionBalance, positionInfo, selectedAssetSell]);
+  }, [hasPosition, positionInfo, selectedAssetSell]);
 
-  const activeBalance = usePositionBalance ? positionSellBalance : balanceSell;
+  const activeBalance = hasPosition ? positionSellBalance : balanceSell;
   const activeBalanceFmt = useMemo(() => {
-    if (usePositionBalance) {
+    if (hasPosition) {
       return formalBigIntFormat({
         val: positionSellBalance ?? undefined,
         expo: selectedAssetSell?.decimals ?? 6,
       });
     }
     return balanceSellFmt;
-  }, [usePositionBalance, positionSellBalance, selectedAssetSell?.decimals, balanceSellFmt]);
+  }, [hasPosition, positionSellBalance, selectedAssetSell?.decimals, balanceSellFmt]);
 
   const [rawSell, setRawSell] = useState<bigint>(BigInt(0));
   const [, setRawBuy] = useState<bigint>(BigInt(0));
@@ -146,7 +124,7 @@ function Swap() {
   const [sellInputError, setSellInputError] = useState<string | undefined>(undefined);
   const { getWebsocketPrice } = useContext(OracleContext);
 
-  const hfAmmBech32s = useMemo(() => {
+  const oracleTokenBech32s = useMemo(() => {
     const s = new Set<string>();
     for (const t of allTokens) {
       if (hasOracle(t)) s.add(t.faucetIdBech32);
@@ -249,71 +227,38 @@ function Swap() {
   }, [selectedAssetBuy, selectedAssetSell]);
 
   useEffect(() => {
-    if (hfAmmNoteId && hfAmmNoteId !== lastHfAmmNoteRef.current && lastSellRef.current) {
-      lastHfAmmNoteRef.current = hfAmmNoteId;
-      const s = lastSellRef.current;
-      setTxInfo({
-        noteId: hfAmmNoteId,
-        txId: hfAmmTxId,
-        sellToken: s.token,
-        buyToken: s.buy,
-        sellAmount: s.sellAmt,
-        buyAmount: s.buyAmt,
-      });
+    if (txInfo?.orderId) {
+      subscribeToOrder(txInfo.orderId);
     }
-  }, [hfAmmNoteId, hfAmmTxId]);
+  }, [txInfo?.orderId, subscribeToOrder]);
 
   useEffect(() => {
-    if (hfAmmNoteId) {
-      registerCallback(hfAmmNoteId, status => {
+    if (txInfo?.orderId) {
+      registerCallback(txInfo.orderId, status => {
         if (status === 'pending') {
           refetchBalanceSell();
         }
       });
     }
-  }, [hfAmmNoteId, registerCallback, refetchBalanceSell]);
+  }, [txInfo?.orderId, registerCallback, refetchBalanceSell]);
 
   useEffect(() => {
-    if (positionTxInfo?.orderId) {
-      subscribeToOrder(positionTxInfo.orderId);
-    }
-  }, [positionTxInfo?.orderId, subscribeToOrder]);
-
-  useEffect(() => {
-    if (positionTxInfo?.orderId) {
-      registerCallback(positionTxInfo.orderId, status => {
-        if (status === 'pending') {
-          refetchBalanceSell();
-        }
-      });
-    }
-  }, [positionTxInfo?.orderId, registerCallback, refetchBalanceSell]);
-
-  useEffect(() => {
-    if (txInfo && orderStatus[txInfo.noteId]?.status === 'failed') {
+    if (txInfo && orderStatus[txInfo.orderId]?.status === 'failed') {
       toast.error('Swap order failed');
     }
   }, [txInfo, orderStatus]);
 
   useEffect(() => {
-    if (positionTxInfo && orderStatus[positionTxInfo.orderId]?.status === 'failed') {
-      toast.error('Swap order failed');
-    }
-  }, [positionTxInfo, orderStatus]);
-
-  // Refresh position info once a position swap reaches a terminal state
-  // (confirmed/denied), so displayed balances stay in sync with the server.
-  useEffect(() => {
-    if (!positionTxInfo) return;
-    const status = orderStatus[positionTxInfo.orderId]?.status;
+    if (!txInfo) return;
+    const status = orderStatus[txInfo.orderId]?.status;
     if (status === 'executed' || status === 'failed' || status === 'expired') {
-      const key = `${positionTxInfo.orderId}:${status}`;
+      const key = `${txInfo.orderId}:${status}`;
       if (lastPositionRefreshRef.current !== key) {
         lastPositionRefreshRef.current = key;
         void refreshPositionInfo();
       }
     }
-  }, [positionTxInfo, orderStatus, refreshPositionInfo]);
+  }, [txInfo, orderStatus, refreshPositionInfo]);
 
   const computeMinAmountOut = useCallback(() => {
     if (!selectedAssetBuy || !selectedAssetSell) {
@@ -330,7 +275,7 @@ function Swap() {
   }, [rawSell, slippage, selectedAssetBuy, selectedAssetSell, getWebsocketPrice]);
 
   const onSwap = useCallback(() => {
-    if (!selectedAssetBuy || !selectedAssetSell) return;
+    if (!selectedAssetBuy || !selectedAssetSell || !hasPosition) return;
 
     const { computedBuy, minAmountOut } = computeMinAmountOut();
 
@@ -341,41 +286,28 @@ function Swap() {
       buyAmt: computedBuy,
     };
 
-    if (positionMode && hasPosition) {
-      void positionSwap({
-        amount: rawSell,
-        minAmountOut,
-        buyToken: selectedAssetBuy,
-        sellToken: selectedAssetSell,
-      }).then(({ orderId }) => {
-        const s = lastSellRef.current;
-        if (!s) return;
-        setPositionTxInfo({
-          orderId,
-          sellToken: s.token,
-          buyToken: s.buy,
-          sellAmount: s.sellAmt,
-          buyAmount: s.buyAmt,
-        });
-      });
-      setRawBuy(computedBuy);
-      return;
-    }
-
-    hfAmmSwap({
+    void positionSwap({
       amount: rawSell,
       minAmountOut,
       buyToken: selectedAssetBuy,
       sellToken: selectedAssetSell,
+    }).then(({ orderId }) => {
+      const s = lastSellRef.current;
+      if (!s) return;
+      setTxInfo({
+        orderId,
+        sellToken: s.token,
+        buyToken: s.buy,
+        sellAmount: s.sellAmt,
+        buyAmount: s.buyAmt,
+      });
     });
     setRawBuy(computedBuy);
   }, [
     rawSell,
     selectedAssetBuy,
     selectedAssetSell,
-    hfAmmSwap,
     computeMinAmountOut,
-    positionMode,
     hasPosition,
     positionSwap,
   ]);
@@ -390,8 +322,6 @@ function Swap() {
     );
   }, [onInputChange, activeBalance, selectedAssetSell?.decimals]);
 
-  const isActionLoading = isLoadingSwap || isLoadingPosition;
-
   const buttonText = useMemo(() => {
     if (!selectedAssetBuy) return 'Select a token';
     const showInsufficientBalance = Boolean(
@@ -400,53 +330,40 @@ function Swap() {
     if (showInsufficientBalance) {
       return `Insufficient ${selectedAssetSell?.symbol} balance`;
     }
-    if (positionMode && hasPosition) {
-      return 'Swap via Position';
-    }
     return 'Swap';
-  }, [rawSell, activeBalance, selectedAssetSell?.symbol, selectedAssetBuy, positionMode, hasPosition]);
+  }, [rawSell, activeBalance, selectedAssetSell?.symbol, selectedAssetBuy]);
 
-  const swapDisabled = connecting || isActionLoading || !client
+  const swapDisabled = connecting || isLoadingPosition || !client
     || stringSell === '' || !!sellInputError || !selectedAssetBuy;
 
-  const hfAmmOrderStatus = txInfo
-    ? orderStatus[txInfo.noteId]?.status
+  const orderStatusValue = txInfo
+    ? orderStatus[txInfo.orderId]?.status
     : undefined;
-  const positionOrderStatus = positionTxInfo
-    ? orderStatus[positionTxInfo.orderId]?.status
+  const txNoteId = txInfo
+    ? orderStatus[txInfo.orderId]?.noteId ?? txInfo.noteId
     : undefined;
-  const positionNoteId = positionTxInfo
-    ? orderStatus[positionTxInfo.orderId]?.noteId ?? positionTxInfo.noteId
+  const positionOrderStatus = txInfo
+    ? orderStatus[txInfo.orderId]?.status
     : undefined;
-  const showTxStatus = txInfo != null;
-  const showPositionTxStatus = positionMode && positionTxInfo != null;
 
   const dismissTxInfo = useCallback(() => {
     clearForm();
     setTxInfo(null);
   }, [clearForm]);
 
-  const dismissPositionTxInfo = useCallback(() => {
-    clearForm();
-    setPositionTxInfo(null);
-  }, [clearForm]);
+  const showCreatePanel = !hasPosition;
 
-  // Position creation is a separate flow; the swap inputs below stay pure for swaps.
-  const showCreatePanel = positionMode && !hasPosition;
-
-  const positionInfoPanel = positionMode
-    ? (
-      <PositionPanel
-        positionId={positionId}
-        positionInfo={positionInfo}
-        tokens={tokens}
-        isLoading={isLoadingPosition}
-        onReclaim={reclaimPosition}
-        onRemove={removePosition}
-        successHighlight={positionOrderStatus === 'executed'}
-      />
-    )
-    : null;
+  const positionInfoPanel = (
+    <PositionPanel
+      positionId={positionId}
+      positionInfo={positionInfo}
+      tokens={tokens}
+      isLoading={isLoadingPosition}
+      onReclaim={reclaimPosition}
+      onRemove={removePosition}
+      successHighlight={positionOrderStatus === 'executed'}
+    />
+  );
 
   return (
     <div className='min-h-screen bg-background text-foreground flex flex-col relative dotted-bg'>
@@ -460,36 +377,11 @@ function Swap() {
           <div className='w-full lg:w-[580px] lg:flex-shrink-0'>
           <h1 className='sr-only'>Swap Tokens</h1>
 
-          <div className='relative flex items-center justify-between mb-1 gap-2'>
-            <div className='flex rounded-lg border border-border/60 p-0.5 bg-muted/30'>
-              <button
-                type='button'
-                onClick={() => setPositionMode(false)}
-                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
-                  !positionMode
-                    ? 'bg-background text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                Standard
-              </button>
-              <button
-                type='button'
-                onClick={() => setPositionMode(true)}
-                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
-                  positionMode
-                    ? 'bg-background text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                Position
-              </button>
-            </div>
+          <div className='relative flex items-center justify-end mb-1 gap-2'>
             <Slippage slippage={slippage} onSlippageChange={setSlippage} />
           </div>
 
-          {/* On small screens position info sits above the swap; on large it moves to the right column */}
-          {positionMode && <div className='lg:hidden'>{positionInfoPanel}</div>}
+          <div className='lg:hidden'>{positionInfoPanel}</div>
 
           {showCreatePanel
             ? (
@@ -499,7 +391,7 @@ function Swap() {
                 isLoading={isLoadingPosition}
                 hasWallet={!!accountId}
                 onCreate={handleOpenPosition}
-                priorityBech32s={hfAmmBech32s}
+                priorityBech32s={oracleTokenBech32s}
               />
             )
             : (
@@ -527,7 +419,7 @@ function Swap() {
                     tokens={allTokens}
                     value={selectedAssetSell}
                     onChange={(id) => setAsset('sell', id)}
-                    priorityBech32s={hfAmmBech32s}
+                    priorityBech32s={oracleTokenBech32s}
                   />
                 </div>
               </div>
@@ -578,7 +470,7 @@ function Swap() {
           {/* Swap Pairs */}
           <div className='flex justify-center -my-7 relative z-10'>
             <div className='bg-card rounded-xl p-1'>
-              <SwapPairs swapPairs={swapPairs} disabled={isActionLoading} />
+              <SwapPairs swapPairs={swapPairs} disabled={isLoadingPosition} />
             </div>
           </div>
 
@@ -600,7 +492,7 @@ function Swap() {
                     value={selectedAssetBuy}
                     onChange={(id) => setAsset('buy', id)}
                     disabledBech32s={buyDisabled}
-                    priorityBech32s={hfAmmBech32s}
+                    priorityBech32s={oracleTokenBech32s}
                   />
                 </div>
               </div>
@@ -616,7 +508,7 @@ function Swap() {
                   disabled={swapDisabled}
                   variant='outline'
                   className={`w-full h-14 sm:h-16 rounded-2xl font-bold text-base sm:text-xl transition-colors disabled:pointer-events-none disabled:opacity-50 ${
-                    buttonText === 'Swap' || buttonText === 'Swap via Position'
+                    buttonText === 'Swap'
                       ? 'bg-primary text-primary-foreground hover:bg-primary/90 border-primary'
                       : 'hover:border-orange-200/20 hover:bg-accent hover:text-accent-foreground'
                   }`}
@@ -628,7 +520,7 @@ function Swap() {
                         Connecting...
                       </>
                     )
-                    : isActionLoading
+                    : isLoadingPosition
                     ? (
                       <>
                         <Loader2 className='w-5 h-5 mr-2 animate-spin' />
@@ -677,38 +569,23 @@ function Swap() {
               </>
             )}
 
-          {/* Inline transaction status */}
-          {showTxStatus && txInfo && (
+          {txInfo && (
             <InlineTxStatus
               sellToken={txInfo.sellToken}
               buyToken={txInfo.buyToken}
               sellAmount={txInfo.sellAmount}
               buyAmount={txInfo.buyAmount}
-              orderStatus={hfAmmOrderStatus}
-              noteId={txInfo.noteId}
+              orderStatus={orderStatusValue}
+              orderId={txInfo.orderId}
+              noteId={txNoteId}
               onDismiss={dismissTxInfo}
-            />
-          )}
-          {showPositionTxStatus && positionTxInfo && (
-            <InlineTxStatus
-              sellToken={positionTxInfo.sellToken}
-              buyToken={positionTxInfo.buyToken}
-              sellAmount={positionTxInfo.sellAmount}
-              buyAmount={positionTxInfo.buyAmount}
-              orderStatus={positionOrderStatus}
-              orderId={positionTxInfo.orderId}
-              noteId={positionNoteId}
-              onDismiss={dismissPositionTxInfo}
             />
           )}
           </div>
 
-          {/* Position info column (right side on wide screens) */}
-          {positionMode && (
-            <div className='hidden lg:block w-full lg:w-[360px] lg:flex-shrink-0'>
-              {positionInfoPanel}
-            </div>
-          )}
+          <div className='hidden lg:block w-full lg:w-[360px] lg:flex-shrink-0'>
+            {positionInfoPanel}
+          </div>
         </div>
       </main>
       <div className='flex items-center justify-center py-6'>
@@ -772,6 +649,14 @@ function InlineTxStatus({
           spinning: true,
           pulse: true,
         };
+      case 'matched':
+        return {
+          label: 'Matched',
+          color: 'text-green-500 dark:text-green-300',
+          bgColor: 'bg-green-50 dark:bg-green-900/20',
+          spinning: false,
+          pulse: true,
+        };
       case 'executed':
         return {
           label: 'Executed',
@@ -809,7 +694,7 @@ function InlineTxStatus({
 
   const StatusIcon = spinning
     ? Loader2
-    : label === 'Executed'
+    : label === 'Executed' || label === 'Matched'
     ? CheckCircle
     : label === 'Failed'
     ? XCircle
@@ -835,17 +720,31 @@ function InlineTxStatus({
       </div>
 
       {/* Status badge */}
-      <div
-        className={`flex items-center justify-center gap-2 rounded-lg p-2.5 ${bgColor}`}
-      >
-        <StatusIcon
-          className={`h-4 w-4 ${color} ${spinning ? 'animate-spin' : ''} ${
-            pulse ? 'animate-pulse' : ''
-          }`}
-        />
-        <span className={`text-sm font-semibold ${color}`}>
-          {label}
-        </span>
+      <div className={`rounded-lg p-2.5 ${bgColor}`}>
+        <div className='flex items-center justify-center gap-2'>
+          {label === 'Executed'
+            ? (
+              <>
+                <CheckCircle className={`h-4 w-4 ${color}`} />
+                <CheckCircle className={`h-4 w-4 ${color}`} />
+              </>
+            )
+            : (
+              <StatusIcon
+                className={`h-4 w-4 ${color} ${spinning ? 'animate-spin' : ''} ${
+                  pulse ? 'animate-pulse' : ''
+                }`}
+              />
+            )}
+          <span className={`text-sm font-semibold ${color}`}>
+            {label}
+          </span>
+        </div>
+        {orderStatus === 'matched' && (
+          <p className='text-xs text-center mt-1.5 text-green-600 dark:text-green-400'>
+            Waiting for transaction to be confirmed
+          </p>
+        )}
       </div>
 
       {/* Amounts */}
