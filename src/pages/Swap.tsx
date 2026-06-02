@@ -3,6 +3,7 @@ import ExchangeRatio from '@/components/ExchangeRatio';
 import { Footer } from '@/components/Footer';
 import { Header } from '@/components/Header';
 import { PositionCreatePanel } from '@/components/PositionCreatePanel';
+import { PositionHowItWorks } from '@/components/PositionHowItWorks';
 import { PositionPanel } from '@/components/PositionPanel';
 import { poweredByMiden } from '@/components/PoweredByMiden';
 import Price from '@/components/Price';
@@ -372,7 +373,12 @@ function Swap() {
       <meta name='twitter:title' content='Swap - ZoroSwap | DeFi on Miden' />
       <Header />
       <main className='flex-1 flex items-start justify-center px-3 py-4 sm:p-6'>
-        <div className='w-full max-w-[580px] lg:max-w-[980px] flex flex-col lg:flex-row lg:items-start lg:justify-center gap-4 lg:gap-6'>
+        <div className='w-full max-w-[580px] lg:max-w-[980px] flex flex-col gap-4 lg:gap-6'>
+          {!hasPosition && (
+            <PositionHowItWorks className='w-full' />
+          )}
+
+          <div className='flex flex-col lg:flex-row lg:items-start lg:justify-center gap-4 lg:gap-6'>
           {/* Swap / creation column */}
           <div className='w-full lg:w-[580px] lg:flex-shrink-0'>
           <h1 className='sr-only'>Swap Tokens</h1>
@@ -585,6 +591,7 @@ function Swap() {
 
           <div className='hidden lg:block w-full lg:w-[360px] lg:flex-shrink-0'>
             {positionInfoPanel}
+          </div>
           </div>
         </div>
       </main>

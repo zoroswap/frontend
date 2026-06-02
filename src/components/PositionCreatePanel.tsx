@@ -240,7 +240,7 @@ export function PositionCreatePanel({
             Open Position
           </div>
           <p className='text-xs text-muted-foreground'>
-            Deposit one or more tokens into a position note to enable position swaps.
+            Choose tokens and amounts to open your first position.
           </p>
         </div>
 
