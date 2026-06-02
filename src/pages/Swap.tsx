@@ -374,10 +374,6 @@ function Swap() {
       <Header />
       <main className='flex-1 flex items-start justify-center px-3 py-4 sm:p-6'>
         <div className='w-full max-w-[580px] lg:max-w-[980px] flex flex-col gap-4 lg:gap-6'>
-          {!hasPosition && (
-            <PositionHowItWorks className='w-full' />
-          )}
-
           <div className='flex flex-col lg:flex-row lg:items-start lg:justify-center gap-4 lg:gap-6'>
           {/* Swap / creation column */}
           <div className='w-full lg:w-[580px] lg:flex-shrink-0'>
@@ -591,8 +587,15 @@ function Swap() {
 
           <div className='hidden lg:block w-full lg:w-[360px] lg:flex-shrink-0'>
             {positionInfoPanel}
+            {!hasPosition && (
+              <PositionHowItWorks className='mt-4' />
+            )}
           </div>
           </div>
+
+          {!hasPosition && (
+            <PositionHowItWorks className='w-full lg:hidden' />
+          )}
         </div>
       </main>
       <div className='flex items-center justify-center py-6'>

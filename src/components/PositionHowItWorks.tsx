@@ -20,9 +20,9 @@ const STEPS: Step[] = [
     title: 'Deposit',
     description: (
       <>
-        Put your assets into a{' '}
-        <span className='text-foreground/90'>Position</span> — a private Miden note that
-        holds your balances.
+        Deposit tokens into a{' '}
+        <span className='text-foreground/90'>Position</span> note on Miden. Your assets
+        stay yours and can always be reclaimed in the wallet or thru app.
       </>
     ),
     icon: Layers,
@@ -32,9 +32,9 @@ const STEPS: Step[] = [
     title: 'Swap',
     description: (
       <>
-        Each trade updates your{' '}
-        <span className='text-foreground/90'>Position</span> — ZoroSwap recreates the note
-        with your new asset mix.
+        When you place a swap, ZoroSwap issues a new{' '}
+        <span className='text-foreground/90'>Position</span> note with your updated
+        balances.
       </>
     ),
     icon: ArrowLeftRight,
@@ -44,9 +44,9 @@ const STEPS: Step[] = [
     title: 'Withdraw',
     description: (
       <>
-        Reclaim your{' '}
-        <span className='text-foreground/90'>Position</span> note anytime through the app
-        or your wallet.
+        Reclaim your assets from{' '}
+        <span className='text-foreground/90'>Position</span> note thru the wallet or the
+        app.
       </>
     ),
     icon: LogOut,
@@ -67,15 +67,15 @@ function StepCard({ step, isLast }: { step: Step; isLast: boolean }) {
         </div>
         {!isLast && (
           <div
-            className='sm:hidden w-px flex-1 min-h-4 mt-2 bg-gradient-to-b from-border to-transparent'
+            className='w-px flex-1 min-h-4 mt-2 bg-border/50'
             aria-hidden
           />
         )}
       </div>
 
-      <div className='min-w-0 pb-5 sm:pb-0 flex-1'>
-        <div className='flex items-baseline gap-2 mb-1'>
-          <span className='text-[10px] font-semibold uppercase tracking-wider text-primary/80'>
+      <div className={cn('min-w-0 flex-1', !isLast && 'pb-5')}>
+        <div className='flex flex-wrap items-baseline gap-x-2 gap-y-0 mb-1'>
+          <span className='text-[10px] font-semibold uppercase tracking-wider text-primary/80 shrink-0'>
             Step {step.number}
           </span>
           <h3 className='text-sm font-semibold text-foreground'>{step.title}</h3>
@@ -100,11 +100,14 @@ export function PositionHowItWorks({ className }: PositionHowItWorksProps) {
       aria-label='How ZoroSwap works'
     >
       <div
-        className='pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-primary/[0.06] to-transparent'
-        aria-hidden
-      />
-      <div
-        className='pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent'
+        className='pointer-events-none absolute inset-x-0 top-0 h-20 opacity-[0.35] dark:opacity-[0.22]'
+        style={{
+          backgroundImage:
+            'radial-gradient(circle, hsl(var(--primary) / 0.55) 0.6px, transparent 0.6px)',
+          backgroundSize: '4px 4px',
+          maskImage: 'linear-gradient(to bottom, black 25%, transparent 100%)',
+          WebkitMaskImage: 'linear-gradient(to bottom, black 25%, transparent 100%)',
+        }}
         aria-hidden
       />
 
@@ -113,12 +116,7 @@ export function PositionHowItWorks({ className }: PositionHowItWorksProps) {
           How ZoroSwap works
         </p>
 
-        <div className='relative grid grid-cols-1 sm:grid-cols-3 sm:gap-6 lg:gap-8'>
-          <div
-            className='hidden sm:block absolute top-[1.375rem] left-[calc(16.666%-0.5rem)] right-[calc(16.666%-0.5rem)] h-px bg-border/60'
-            aria-hidden
-          />
-
+        <div className='relative grid grid-cols-1 gap-0'>
           {STEPS.map((step, index) => (
             <StepCard key={step.number} step={step} isLast={index === STEPS.length - 1} />
           ))}
