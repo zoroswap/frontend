@@ -21,6 +21,7 @@ import { useUnifiedWallet } from '@/hooks/useUnifiedWallet';
 import { useOrderUpdates } from '@/hooks/useWebSocket';
 import { DEFAULT_SLIPPAGE } from '@/lib/config';
 import { formalBigIntFormat, truncateId } from '@/lib/format';
+import type { PositionAssetInput } from '@/lib/ZoroPositionNote';
 import { bech32ToAccountId } from '@/lib/utils';
 import { OracleContext, useOraclePrices } from '@/providers/OracleContext';
 import { ZoroContext } from '@/providers/ZoroContext';
@@ -378,8 +379,8 @@ function Swap() {
     positionSwap,
   ]);
 
-  const handleOpenPosition = useCallback((token: TokenConfig, amount: bigint) => {
-    void openPosition({ token, amount });
+  const handleOpenPosition = useCallback((assets: PositionAssetInput[]) => {
+    void openPosition({ assets });
   }, [openPosition]);
 
   const handleMaxClick = useCallback(() => {

@@ -20,11 +20,15 @@ import type { TokenConfig } from '@/providers/ZoroProvider';
 import { buildZoroNoteStorage, compilePositionNoteScript } from './compileZoroNoteScript';
 import { accountIdToBech32, generateRandomSerialNumber } from './utils';
 
+export interface PositionAssetInput {
+  token: TokenConfig;
+  amount: bigint;
+}
+
 export interface OpenPositionParams {
   poolAccountId: AccountId;
   userAccountId: AccountId;
-  token: TokenConfig;
-  amount: bigint;
+  assets: PositionAssetInput[];
   client: MidenClient;
 }
 
@@ -37,14 +41,19 @@ export function serializeNoteToBase64(note: Note): string {
 export async function compileOpenPositionTransaction({
   poolAccountId,
   userAccountId,
-  token,
-  amount,
+  assets,
   client,
 }: OpenPositionParams) {
+  if (assets.length === 0) {
+    throw new Error('At least one asset is required to open a position');
+  }
+
   const script = await compilePositionNoteScript(client, POSITION_SCRIPT);
 
-  const offeredAsset = new FungibleAsset(token.faucetId, amount);
-  const noteAssets = new NoteAssets([offeredAsset]);
+  const offeredAssets = assets.map(
+    ({ token, amount }) => new FungibleAsset(token.faucetId, amount),
+  );
+  const noteAssets = new NoteAssets(offeredAssets);
   const noteTag = NoteTag.withAccountTarget(poolAccountId);
 
   const metadata = new NoteMetadata(

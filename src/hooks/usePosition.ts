@@ -15,6 +15,7 @@ import {
 import {
   compileOpenPositionTransaction,
   compileReclaimPositionTransaction,
+  type PositionAssetInput,
   serializeNoteToBase64,
 } from '@/lib/ZoroPositionNote';
 import { ZoroContext } from '@/providers/ZoroContext';
@@ -85,14 +86,15 @@ export function usePosition() {
   }, [positionId, verifyPosition, refreshPositionInfo]);
 
   const openPosition = useCallback(async ({
-    token,
-    amount,
+    assets,
   }: {
-    token: TokenConfig;
-    amount: bigint;
+    assets: PositionAssetInput[];
   }) => {
     if (!poolAccountId || !accountId || !client || !requestTransaction) {
       return;
+    }
+    if (assets.length === 0) {
+      throw new Error('At least one asset is required');
     }
     setIsLoading(true);
     try {
@@ -102,8 +104,7 @@ export function usePosition() {
         compileOpenPositionTransaction({
           poolAccountId,
           userAccountId: accountId,
-          token,
-          amount,
+          assets,
           client,
         })
       );
