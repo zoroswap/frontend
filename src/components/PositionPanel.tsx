@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { formalBigIntFormat, truncateId } from '@/lib/format';
 import { type PositionInfoResponse } from '@/lib/positionsApi';
 import { type TokenConfig } from '@/providers/ZoroProvider';
-import { CheckCircle, ExternalLink, Loader2 } from 'lucide-react';
+import { CheckCircle, ExternalLink, Loader2, Trash2 } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 
 interface PositionPanelProps {
@@ -13,6 +13,7 @@ interface PositionPanelProps {
   tokens: Record<string, TokenConfig>;
   isLoading: boolean;
   onReclaim: () => Promise<void>;
+  onRemove: () => void;
   successHighlight?: boolean;
 }
 
@@ -22,6 +23,7 @@ export function PositionPanel({
   tokens,
   isLoading,
   onReclaim,
+  onRemove,
   successHighlight = false,
 }: PositionPanelProps) {
   const [copied, setCopied] = useState(false);
@@ -58,17 +60,28 @@ export function PositionPanel({
         <div className='flex items-center justify-between mb-3'>
           <span className='text-xs sm:text-sm text-primary font-semibold'>Position</span>
           {positionId && (
-            <Button
-              variant='outline'
-              size='sm'
-              onClick={() => void onReclaim()}
-              disabled={/*isLoading*/ true}
-              className='h-8 text-xs opacity-10'
-            >
-              {isLoading
-                ? <Loader2 className='h-3 w-3 animate-spin' />
-                : 'Reclaim'}
-            </Button>
+            <div className='flex items-center gap-2'>
+              <Button
+                variant='outline'
+                size='sm'
+                onClick={() => void onReclaim()}
+                disabled={/*isLoading*/ true}
+                className='h-8 text-xs opacity-10'
+              >
+                {isLoading
+                  ? <Loader2 className='h-3 w-3 animate-spin' />
+                  : 'Reclaim'}
+              </Button>
+              <Button
+                variant='outline'
+                size='sm'
+                onClick={onRemove}
+                className='h-8 text-xs'
+              >
+                <Trash2 className='h-3 w-3 mr-1' />
+                Remove
+              </Button>
+            </div>
           )}
         </div>
 

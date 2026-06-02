@@ -82,6 +82,7 @@ function Swap() {
     openPosition,
     positionSwap,
     reclaimPosition,
+    removePosition,
     hasPosition,
   } = usePosition();
 
@@ -441,6 +442,7 @@ function Swap() {
         tokens={tokens}
         isLoading={isLoadingPosition}
         onReclaim={reclaimPosition}
+        onRemove={removePosition}
         successHighlight={positionOrderStatus === 'executed'}
       />
     )

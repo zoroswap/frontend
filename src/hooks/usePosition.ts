@@ -194,6 +194,16 @@ export function usePosition() {
     }
   }, [accountId, positionId, requestTransaction, syncState]);
 
+  const removePosition = useCallback(() => {
+    if (!accountId || !positionId) {
+      return;
+    }
+    clearStoredPositionId(accountId);
+    setPositionId(null);
+    setPositionInfo(null);
+    toast.success('Position removed');
+  }, [accountId, positionId]);
+
   return useMemo(() => ({
     positionId,
     positionInfo,
@@ -202,6 +212,7 @@ export function usePosition() {
     openPosition,
     positionSwap,
     reclaimPosition,
+    removePosition,
     hasPosition: positionId != null,
   }), [
     positionId,
@@ -211,5 +222,6 @@ export function usePosition() {
     openPosition,
     positionSwap,
     reclaimPosition,
+    removePosition,
   ]);
 }
