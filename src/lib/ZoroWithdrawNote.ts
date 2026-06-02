@@ -1,26 +1,21 @@
-import { CustomTransaction } from '@demox-labs/miden-wallet-adapter';
 import {
   AccountId,
-  Felt,
-  FeltArray,
-  FungibleAsset,
-  MidenArrays,
+  MidenClient,
   Note,
+  NoteArray,
   NoteAssets,
-  NoteInputs,
   NoteMetadata,
   NoteRecipient,
   NoteTag,
   NoteType,
-  OutputNote,
   TransactionRequestBuilder,
-  WebClient,
 } from '@miden-sdk/miden-sdk';
+import { CustomTransaction } from '@miden-sdk/miden-wallet-adapter';
 
+import WITHDRAW_SCRIPT from '@/masm/notes/WITHDRAW.masm?raw';
 import type { TokenConfig } from '@/providers/ZoroProvider';
+import { buildZoroNoteStorage, compileZoroNoteScript } from './compileZoroNoteScript';
 import { accountIdToBech32, generateRandomSerialNumber } from './utils';
-import WITHDRAW_SCRIPT from './WITHDRAW.masm?raw';
-import zoropool from './zoropool.masm?raw';
 
 export interface WithdrawParams {
   poolAccountId: AccountId;
@@ -28,7 +23,7 @@ export interface WithdrawParams {
   amount: bigint;
   minAmountOut: bigint;
   userAccountId: AccountId;
-  client: WebClient;
+  client: MidenClient;
   noteType: NoteType;
 }
 
@@ -46,16 +41,8 @@ export async function compileWithdrawTransaction({
   client,
   noteType,
 }: WithdrawParams) {
-  const builder = client.createCodeBuilder();
-  const pool_script = builder.buildLibrary('zoroswap::zoropool', zoropool);
-  builder.linkDynamicLibrary(pool_script);
-  const script = builder.compileNoteScript(
-    WITHDRAW_SCRIPT,
-  );
-  const requestedAsset = new FungibleAsset(token.faucetId, minAmountOut).intoWord()
-    .toFelts();
+  const script = await compileZoroNoteScript(client, WITHDRAW_SCRIPT);
 
-  // Note should only contain the offered asset
   const noteAssets = new NoteAssets([]);
   const noteTag = noteType === NoteType.Private
     ? new NoteTag(0)
@@ -67,25 +54,21 @@ export async function compileWithdrawTransaction({
     noteTag,
   );
 
-  const deadline = Date.now() + 120_000; // 2 min from now
+  const deadline = Date.now() + 120_000;
 
-  // Use the AccountId for p2id tag
   const p2idTag = NoteTag.withAccountTarget(userAccountId).asU32();
 
-  // Following the pattern: [asset_id_prefix, asset_id_suffix, 0, min_amount_out]
-  const inputs = new NoteInputs(
-    new FeltArray([
-      ...requestedAsset,
-      new Felt(BigInt(0)),
-      new Felt(amount),
-      new Felt(BigInt(deadline)),
-      new Felt(BigInt(p2idTag)),
-      new Felt(BigInt(0)),
-      new Felt(BigInt(0)),
-      userAccountId.suffix(),
-      userAccountId.prefix(),
-    ]),
-  );
+  const inputs = buildZoroNoteStorage({
+    beneficiary: userAccountId,
+    deadline,
+    p2idTag,
+    metadata2: amount,
+    asset: {
+      suffix: token.faucetId.suffix(),
+      prefix: token.faucetId.prefix(),
+      amount: minAmountOut,
+    },
+  });
 
   const note = new Note(
     noteAssets,
@@ -96,7 +79,7 @@ export async function compileWithdrawTransaction({
   const noteId = note.id().toString();
 
   const transactionRequest = new TransactionRequestBuilder()
-    .withOwnOutputNotes(new MidenArrays.OutputNoteArray([OutputNote.full(note)]))
+    .withOwnOutputNotes(new NoteArray([note]))
     .build();
 
   const tx = new CustomTransaction(

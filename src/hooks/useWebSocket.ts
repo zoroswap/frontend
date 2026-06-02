@@ -112,6 +112,7 @@ export function useOrderUpdates(orderIds?: string[]) {
       status: OrderStatus;
       timestamp: number;
       details: OrderUpdateDetails;
+      noteId?: string;
     }>
   >({});
 
@@ -130,18 +131,22 @@ export function useOrderUpdates(orderIds?: string[]) {
     channels,
     onMessage: (message) => {
       if (message.type === 'OrderUpdate') {
+        const entry = {
+          status: message.status,
+          timestamp: message.timestamp,
+          details: message.details,
+          noteId: message.note_id,
+        };
         callbacks.current[message.note_id]?.(message.status);
-        if (message.status === 'executed' && callbacks.current[message.note_id]) {
+        callbacks.current[message.order_id]?.(message.status);
+        if (message.status === 'executed') {
           delete callbacks.current[message.note_id];
+          delete callbacks.current[message.order_id];
         }
-        // Key by note_id so frontend can look up status by the note hash it knows
         setOrderStatus(prev => ({
           ...prev,
-          [message.note_id]: {
-            status: message.status,
-            timestamp: message.timestamp,
-            details: message.details,
-          },
+          [message.note_id]: entry,
+          [message.order_id]: entry,
         }));
       }
     },

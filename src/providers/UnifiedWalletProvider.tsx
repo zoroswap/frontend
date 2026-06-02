@@ -1,12 +1,12 @@
 import { clientMutex } from '@/lib/clientMutex';
 import { createNetworkId, NETWORK } from '@/lib/config';
+import { TransactionType, useWallet } from '@miden-sdk/miden-wallet-adapter';
+import { useAccount, useLogout } from '@getpara/react-sdk-lite';
 import {
   AccountId,
   AccountInterface,
   TransactionRequest as TxRequest,
 } from '@miden-sdk/miden-sdk';
-import { TransactionType, useWallet } from '@demox-labs/miden-wallet-adapter';
-import { useAccount, useLogout } from '@getpara/react-sdk-lite';
 import { useParaMiden } from '@miden-sdk/use-miden-para-react';
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { ParaClientContext } from './ParaClientContext';
@@ -35,38 +35,32 @@ export function UnifiedWalletProvider({ children }: UnifiedWalletProviderProps) 
   } = useParaMiden(NETWORK.rpcEndpoint);
 
   // Local state
-  const [walletType, setWalletType] = useState<WalletType>(null);
-
   // Determine connection state
   const midenConnected = midenWallet.connected;
+  const midenConnecting = midenWallet.connecting;
 
-  // Set wallet type based on connection
-  useEffect(() => {
-    if (midenConnected && walletType !== 'miden') {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setWalletType('miden');
-    } else if (paraConnected && !midenConnected && walletType !== 'para') {
-      setWalletType('para');
-    } else if (!midenConnected && !paraConnected && walletType !== null) {
-      setWalletType(null);
-    }
-  }, [midenConnected, paraConnected, walletType]);
+  // Derive wallet type from live connection state.
+  // This avoids any "stuck" UI where the adapter is connecting but our app still thinks no wallet is active.
+  const walletType: WalletType = (midenConnected || midenConnecting)
+    ? 'miden'
+    : paraConnected
+    ? 'para'
+    : null;
 
   // Request transaction handler
   const requestTransaction = useCallback(
     async (tx: TransactionRequest): Promise<string | undefined> => {
       if (walletType === 'miden') {
         // Delegate to Miden wallet adapter
-        if ('type' in tx && tx.type === 'Custom') {
-          return midenWallet.requestTransaction?.({
+        if ('type' in tx && tx.type === TransactionType.Custom) {
+          const txId = await midenWallet.requestTransaction?.({
             type: TransactionType.Custom,
             payload: tx.payload,
           });
-        }
-        return midenWallet.requestTransaction?.(tx);
+          return txId;
+        } else throw new Error('Unsupported transaction type for Miden wallet');
       } else if (walletType === 'para' && paraMidenClient && paraMidenAccountId) {
         // For Para users, execute transactions via the Miden client.
-        // Use mutex to prevent concurrent access to the client.
         return clientMutex.runExclusive(async () => {
           if ('type' in tx && tx.type === TransactionType.Custom) {
             const customTx = tx.payload as { transactionRequest: string };
@@ -81,10 +75,12 @@ export function UnifiedWalletProvider({ children }: UnifiedWalletProviderProps) 
             // Get the account ID
             const accountId = AccountId.fromHex(paraMidenAccountId);
 
-            // Submit the transaction
-            const txHash = await paraMidenClient.submitNewTransaction(accountId, txRequest);
+            const { txId } = await paraMidenClient.transactions.submit(
+              accountId,
+              txRequest,
+            );
 
-            return txHash.toHex();
+            return txId.toHex();
           }
           throw new Error('Unsupported transaction type for Para wallet');
         });
@@ -101,7 +97,6 @@ export function UnifiedWalletProvider({ children }: UnifiedWalletProviderProps) 
     } else if (walletType === 'para') {
       await logoutAsync();
     }
-    setWalletType(null);
   }, [walletType, midenWallet, logoutAsync]);
 
   // Convert paraMidenAccountId string to AccountId if available
@@ -146,7 +141,7 @@ export function UnifiedWalletProvider({ children }: UnifiedWalletProviderProps) 
       : false;
 
     const connecting = walletType === 'miden'
-      ? midenWallet.connecting
+      ? midenConnecting
       : walletType === 'para'
       ? paraConnected && !paraMidenClient
       : false;
@@ -171,7 +166,7 @@ export function UnifiedWalletProvider({ children }: UnifiedWalletProviderProps) 
   }, [
     walletType,
     midenConnected,
-    midenWallet.connecting,
+    midenConnecting,
     midenWallet.address,
     paraConnected,
     paraMidenClient,
@@ -183,7 +178,9 @@ export function UnifiedWalletProvider({ children }: UnifiedWalletProviderProps) 
   ]);
 
   // Para client for internal use by ZoroProvider (handles locking)
-  const paraClientValue = walletType === 'para' ? paraMidenClient ?? undefined : undefined;
+  const paraClientValue = walletType === 'para'
+    ? paraMidenClient ?? undefined
+    : undefined;
 
   return (
     <UnifiedWalletContext.Provider value={value}>

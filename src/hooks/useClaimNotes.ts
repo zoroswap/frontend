@@ -1,5 +1,6 @@
 import { useUnifiedWallet } from '@/hooks/useUnifiedWallet';
 import { ZoroContext } from '@/providers/ZoroContext';
+import type { Note } from '@miden-sdk/miden-sdk';
 import { useCallback, useContext, useState } from 'react';
 
 export function useClaimNotes() {
@@ -17,7 +18,10 @@ export function useClaimNotes() {
 
   const claimNotes = useCallback(async () => {
     if (walletType !== 'para' || !accountId) {
-      console.log('useClaimNotes: missing requirements', { walletType, hasAccountId: !!accountId });
+      console.log('useClaimNotes: missing requirements', {
+        walletType,
+        hasAccountId: !!accountId,
+      });
       return { claimed: 0 };
     }
 
@@ -36,10 +40,24 @@ export function useClaimNotes() {
         return { claimed: 0 };
       }
 
-      // Convert consumable note records to Note objects
-      const noteObjects = notes.map((n) => n.inputNoteRecord().toNote());
+      // Convert consumable note records to Note objects; skip any that fail (e.g. wrong note type)
+      const noteObjects: Note[] = [];
+      for (const n of notes) {
+        try {
+          const note = n.toNote();
+          if (note) noteObjects.push(note);
+        } catch (err) {
+          console.warn('useClaimNotes: skipped a note that could not be converted', err);
+        }
+      }
 
-      console.log('useClaimNotes: consuming', noteObjects.length, 'notes');
+      if (noteObjects.length === 0) {
+        console.warn('useClaimNotes: no notes could be converted to consumable format');
+        setClaiming(false);
+        return { claimed: 0 };
+      }
+
+      console.log('useClaimNotes: consuming', noteObjects[0].assets(), 'notes');
 
       // Consume the notes (locking handled internally)
       const txHash = await consumeNotes(accountId, noteObjects);
@@ -53,12 +71,27 @@ export function useClaimNotes() {
       return { claimed: notes.length };
     } catch (e) {
       console.error('useClaimNotes: error', e);
-      const errorMessage = e instanceof Error ? e.message : 'Failed to claim notes';
+      const rawMessage = e instanceof Error ? e.message : String(e);
+      const isExecutorError =
+        /transaction executor error|failed to execute transaction|error during processing of event/i
+          .test(
+            rawMessage,
+          );
+      const errorMessage = isExecutorError
+        ? 'The node rejected the claim transaction. This can happen if a note was already consumed, the note type is not supported for claiming here, or the node is out of sync. Try syncing again or reconnecting your wallet.'
+        : rawMessage || 'Failed to claim notes';
       setError(errorMessage);
       setClaiming(false);
-      throw e;
+      throw new Error(errorMessage);
     }
-  }, [accountId, walletType, syncState, getConsumableNotes, consumeNotes, refreshPendingNotes]);
+  }, [
+    accountId,
+    walletType,
+    syncState,
+    getConsumableNotes,
+    consumeNotes,
+    refreshPendingNotes,
+  ]);
 
   return {
     claimNotes,

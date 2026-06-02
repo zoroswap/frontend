@@ -1,6 +1,6 @@
 import { OracleContext } from '@/providers/OracleContext';
 import type { TokenConfig } from '@/providers/ZoroProvider';
-import { useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { useContext, useEffect, useRef, useState } from 'react';
 
 const ExchangeRatio = (
   { assetA, assetB }: {
@@ -27,11 +27,7 @@ const ExchangeRatio = (
     return () => clearInterval(i);
   }, [assetA.oracleId, assetB.oracleId, getWebsocketPrice]);
 
-  const html = useMemo(() => {
-    return <>{ratio?.toFixed(8)}</>;
-  }, [ratio]);
-
-  return html;
+  return <>{ratio?.toFixed(8)}</>;
 };
 
 export default ExchangeRatio;

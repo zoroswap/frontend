@@ -1,4 +1,4 @@
-import { emptyFn } from '@/utils/shared';
+import { emptyFn } from '@/lib/shared';
 import { createContext, useContext, useMemo } from 'react';
 
 export interface PriceData {

@@ -1,6 +1,6 @@
+import { formalNumberFormat, formatTokenAmount } from '@/lib/format';
 import { OracleContext } from '@/providers/OracleContext';
 import type { TokenConfig } from '@/providers/ZoroProvider';
-import { formalNumberFormat, formatTokenAmount } from '@/utils/format';
 import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 
 const Price = (

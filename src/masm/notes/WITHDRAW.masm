@@ -1,0 +1,55 @@
+use miden::protocol::active_note
+use miden::protocol::output_note
+use miden::core::crypto::hashes::poseidon2
+use miden::core::sys
+
+use zoroswap::zoropool
+use zoro_miden::lib::asset_utils    
+use zoro_miden::lib::output_note_utils    
+use zoro_miden::note::common
+use common::DEFAULT_NUMBER_OF_STORAGE_ITEMS
+
+# Arguments:
+# [amount_out, reserve, reserve_with_slippage, total_liabilities]
+# 
+# Expected Note storage:
+# [MIN_ASSET_OUT]
+# [PARAMS] = [deadline, p2id_tag, lp_withdraw_amount, empty]
+# [CREATOR_ID_WORD] = [empty, empty, creator_id_suffix, creator_id_prefix]
+#
+# loc 0-3 ACTUAL_ASSET_OUT
+@locals(4)
+proc execute_WITHDRAW
+    exec.common::get_pool_0_reserve_with_slippage exec.common::get_pool_0_reserve exec.common::get_pool_0_liabilities
+    # => [liabilities, reserve, reserve,reserve_with_slippage]
+    padw exec.common::get_expected_asset
+    # => [ASSET, liabilities, reserve, reserve,reserve_with_slippage]
+    exec.common::get_metadata_item_2 exec.common::get_beneficiary_id 
+    # => [user_id_suffix, user_id_prefix, lp_withdraw_amount, ASSET, liabilities, reserve, reserve_with_slippage]
+    call.zoropool::withdraw
+    # => []
+    exec.common::get_expected_asset exec.common::get_amount_out_argument 
+    # => [amount_out, MIN_ASSET_OUT]
+    movdn.4 movup.3 drop loc_storew_le.0
+    # => [ACTUAL_ASSET_OUT]
+    exec.asset_utils::expand_asset
+    # => [ASSET_OUT_KEY, ASSET_OUT_VALUE]
+    exec.common::set_output_asset
+    # => []
+    exec.common::get_pool_0_reserve_with_slippage exec.common::get_pool_0_reserve exec.common::get_pool_0_liabilities
+    # => [liabilities, reserve, reserve,reserve_with_slippage]
+    padw loc_loadw_le.0
+    # => [ACTUAL_ASSET_OUT, liabilities, reserve, reserve,reserve_with_slippage]
+    call.zoropool::remove_asset_from_pool
+    # => []
+    exec.output_note_utils::create_p2id_beneficiary_note
+    # => []
+end
+
+@note_script
+pub proc main
+    exec.common::store_arguments_from_stack_to_memory
+    push.DEFAULT_NUMBER_OF_STORAGE_ITEMS exec.common::store_storage_to_memory drop
+    exec.execute_WITHDRAW
+    exec.sys::truncate_stack
+end

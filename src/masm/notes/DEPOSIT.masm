@@ -1,0 +1,50 @@
+use miden::core::crypto::hashes::poseidon2
+use miden::core::sys
+use miden::protocol::active_note
+
+use zoroswap::zoropool
+use zoro_miden::lib::asset_utils
+use zoro_miden::lib::output_note_utils
+use zoro_miden::note::common
+use common::DEFAULT_NUMBER_OF_STORAGE_ITEMS
+
+# Arguments:
+# [lp_amount, reserve, reserve_with_slippage, total_liabilities]
+#
+# Expected Note storage:
+# [EMPTY]
+# [PARAMS] = [deadline, p2id_tag, min_lp_amount, empty]
+# [CREATOR_ID_WORD] = [empty, empty, creator_id_suffix, creator_id_prefix]
+proc execute_DEPOSIT
+    exec.common::get_amount_out_argument exec.common::get_metadata_item_2
+    # => [min_lp_amount, lp_amount]
+    lt
+    if.true
+        # min LP amount is not met
+        exec.common::set_output_asset_to_input_asset
+        # => []
+        exec.output_note_utils::create_p2id_bounce_to_sender
+        # => []
+    else
+        exec.common::get_pool_0_reserve_with_slippage exec.common::get_pool_0_reserve exec.common::get_pool_0_liabilities
+        # => [liabilities, reserve, reserve_with_slippage]
+        padw exec.common::get_input_asset
+        # => [ASSET, liabilities, reserve, reserve_with_slippage]
+        call.zoropool::receive_asset
+        # => []
+        
+        exec.common::get_amount_out_argument exec.common::get_beneficiary_id padw exec.common::get_input_asset
+        # => [ASSET, beneficiary_suffix, beneficiary_prefix, lp_amount]
+        call.zoropool::deposit
+        # => []
+    end
+end
+
+@note_script
+pub proc main
+    exec.common::store_arguments_from_stack_to_memory
+    push.DEFAULT_NUMBER_OF_STORAGE_ITEMS exec.common::store_storage_to_memory drop
+    exec.common::store_asset_to_memory
+    exec.execute_DEPOSIT
+    exec.sys::truncate_stack
+end

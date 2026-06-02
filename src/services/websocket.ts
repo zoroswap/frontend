@@ -15,7 +15,7 @@ export type ClientMessage =
   | { type: 'Unsubscribe'; channels: SubscriptionChannel[] }
   | { type: 'Ping' };
 
-export type OrderStatus = 'pending' | 'matching' | 'executed' | 'failed' | 'expired';
+export type OrderStatus = 'pending' | 'matching' | 'matched' | 'executed' | 'failed' | 'expired';
 
 export interface OrderUpdateDetails {
   amount_in: number;

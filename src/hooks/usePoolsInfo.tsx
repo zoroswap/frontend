@@ -4,6 +4,8 @@ import type { AccountId } from '@miden-sdk/miden-sdk';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 
+export type PoolType = 'hfAMM';
+
 export interface RawPoolInfo {
   decimals: number;
   faucet_id: string;
@@ -18,6 +20,7 @@ export interface PoolInfo {
   name: string;
   oracleId: string;
   symbol: string;
+  poolType: PoolType;
 }
 
 export const usePoolsInfo = () => {
@@ -32,12 +35,14 @@ export const usePoolsInfo = () => {
     data: {
       poolAccountId: data?.pool_account_id,
       liquidityPools: data?.liquidity_pools.map(
-        p => ({
-          ...p,
-          oracleId: p.oracle_id,
-          faucetId: bech32ToAccountId(p.faucet_id),
-          faucetIdBech32: p.faucet_id,
-        } as PoolInfo),
+        p =>
+          ({
+            ...p,
+            oracleId: p.oracle_id,
+            faucetId: bech32ToAccountId(p.faucet_id),
+            faucetIdBech32: p.faucet_id,
+            poolType: 'hfAMM' as const,
+          }) as PoolInfo,
       ),
     },
     refetch: refetch,

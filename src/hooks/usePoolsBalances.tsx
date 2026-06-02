@@ -20,7 +20,7 @@ export interface RawPoolBalance {
 }
 
 export const usePoolsBalances = () => {
-  const { data, refetch } = useQuery({
+  const { data, refetch, isLoading } = useQuery({
     queryKey: ['pools-balances'],
     queryFn: fetchPoolBalance,
     staleTime: 15000,
@@ -36,7 +36,8 @@ export const usePoolsBalances = () => {
       } as PoolBalance),
     ),
     refetch,
-  }), [data, refetch]);
+    isLoading,
+  }), [data, refetch, isLoading]);
   return value;
 };
 

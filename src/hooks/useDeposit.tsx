@@ -4,6 +4,7 @@ import { API } from '@/lib/config';
 import { compileDepositTransaction } from '@/lib/ZoroDepositNote';
 import { ZoroContext } from '@/providers/ZoroContext';
 import { type TokenConfig } from '@/providers/ZoroProvider';
+import { TransactionType } from '@miden-sdk/miden-wallet-adapter';
 import { NoteType } from '@miden-sdk/miden-sdk';
 import { useCallback, useContext, useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
@@ -44,9 +45,12 @@ export const useDeposit = () => {
           userAccountId: accountId,
           client,
           noteType,
-        }),
+        })
       );
-      const txId = await requestTransaction({ type: 'Custom', payload: tx });
+      const txId = await requestTransaction({
+        type: TransactionType.Custom,
+        payload: tx,
+      });
       await syncState();
       if (noteType === NoteType.Private) {
         const serialized = btoa(
