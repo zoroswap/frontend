@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { formalBigIntFormat, truncateId } from '@/lib/format';
 import { type PositionInfoResponse } from '@/lib/positionsApi';
 import { type TokenConfig } from '@/providers/ZoroProvider';
-import { CheckCircle, ExternalLink, Loader2, Trash2 } from 'lucide-react';
+import { CheckCircle, ExternalLink, Loader2, RefreshCw, Trash2 } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 
 interface PositionPanelProps {
@@ -12,6 +12,8 @@ interface PositionPanelProps {
   positionInfo: PositionInfoResponse | null;
   tokens: Record<string, TokenConfig>;
   isLoading: boolean;
+  isRefreshing?: boolean;
+  onRefresh?: () => void;
   onReclaim: () => Promise<void>;
   onRemove: () => void;
   successHighlight?: boolean;
@@ -22,6 +24,8 @@ export function PositionPanel({
   positionInfo,
   tokens,
   isLoading,
+  isRefreshing = false,
+  onRefresh,
   onReclaim,
   onRemove,
   successHighlight = false,
@@ -58,9 +62,26 @@ export function PositionPanel({
     >
       <CardContent className='p-4 sm:p-6'>
         <div className='flex items-center justify-between mb-3'>
-          <span className='text-xs sm:text-sm text-primary font-semibold'>Position</span>
+          <span className='inline-flex items-center gap-1.5 text-xs sm:text-sm text-primary font-semibold'>
+            Position
+            {isRefreshing && (
+              <Loader2 className='h-3 w-3 animate-spin text-muted-foreground' aria-hidden />
+            )}
+          </span>
           {positionId && (
             <div className='flex items-center gap-2'>
+              <Button
+                variant='outline'
+                size='sm'
+                onClick={() => void onRefresh?.()}
+                disabled={isRefreshing}
+                className='h-8 w-8 p-0'
+                aria-label='Refresh position'
+              >
+                {isRefreshing
+                  ? <Loader2 className='h-3 w-3 animate-spin' />
+                  : <RefreshCw className='h-3 w-3' />}
+              </Button>
               <Button
                 variant='outline'
                 size='sm'

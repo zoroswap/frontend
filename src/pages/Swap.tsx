@@ -63,6 +63,7 @@ function Swap() {
     positionInfo,
     refreshPositionInfo,
     isLoading: isLoadingPosition,
+    isRefreshing: isRefreshingPosition,
     openPosition,
     positionSwap,
     reclaimPosition,
@@ -323,7 +324,18 @@ function Swap() {
     );
   }, [onInputChange, activeBalance, selectedAssetSell?.decimals]);
 
+  const activeSwapOrderStatus = txInfo
+    ? orderStatus[txInfo.orderId]?.status
+    : undefined;
+
+  const isSwapOrderInFlight = txInfo != null
+    && (activeSwapOrderStatus == null
+      || (activeSwapOrderStatus !== 'executed'
+        && activeSwapOrderStatus !== 'failed'
+        && activeSwapOrderStatus !== 'expired'));
+
   const buttonText = useMemo(() => {
+    if (isSwapOrderInFlight) return 'Order in progress';
     if (!selectedAssetBuy) return 'Select a token';
     const showInsufficientBalance = Boolean(
       rawSell > (activeBalance || BigInt(0)),
@@ -332,20 +344,23 @@ function Swap() {
       return `Insufficient ${selectedAssetSell?.symbol} balance`;
     }
     return 'Swap';
-  }, [rawSell, activeBalance, selectedAssetSell?.symbol, selectedAssetBuy]);
+  }, [
+    isSwapOrderInFlight,
+    rawSell,
+    activeBalance,
+    selectedAssetSell?.symbol,
+    selectedAssetBuy,
+  ]);
 
   const swapDisabled = connecting || isLoadingPosition || !client
-    || stringSell === '' || !!sellInputError || !selectedAssetBuy;
+    || stringSell === '' || !!sellInputError || !selectedAssetBuy
+    || isSwapOrderInFlight;
 
-  const orderStatusValue = txInfo
-    ? orderStatus[txInfo.orderId]?.status
-    : undefined;
+  const orderStatusValue = activeSwapOrderStatus;
   const txNoteId = txInfo
     ? orderStatus[txInfo.orderId]?.noteId ?? txInfo.noteId
     : undefined;
-  const positionOrderStatus = txInfo
-    ? orderStatus[txInfo.orderId]?.status
-    : undefined;
+  const positionOrderStatus = activeSwapOrderStatus;
 
   const dismissTxInfo = useCallback(() => {
     clearForm();
@@ -360,6 +375,8 @@ function Swap() {
       positionInfo={positionInfo}
       tokens={tokens}
       isLoading={isLoadingPosition}
+      isRefreshing={isRefreshingPosition}
+      onRefresh={() => void refreshPositionInfo()}
       onReclaim={reclaimPosition}
       onRemove={removePosition}
       successHighlight={positionOrderStatus === 'executed'}
