@@ -26,6 +26,15 @@ export interface PositionGetNoteResponse {
   message: string;
 }
 
+/** A single position asset as `[faucetIdBech32, amount]`. */
+export type PositionAsset = [string, number];
+
+export interface PositionInfoResponse {
+  assets: PositionAsset[];
+  note_id: string;
+  serial_num: string;
+}
+
 async function parseJson<T>(response: Response): Promise<T> {
   if (!response.ok) {
     throw new Error(`Server responded with ${response.status}: ${response.statusText}`);
@@ -59,6 +68,13 @@ export async function submitPositionSwap(
     throw new Error(result.message || 'Failed to submit position swap');
   }
   return result;
+}
+
+export async function getPositionInfo(positionId: string): Promise<PositionInfoResponse> {
+  const response = await fetch(
+    `${API.endpoint}/positions/${encodeURIComponent(positionId)}`,
+  );
+  return parseJson<PositionInfoResponse>(response);
 }
 
 export async function getPositionNote(positionId: string): Promise<PositionGetNoteResponse> {

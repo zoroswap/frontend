@@ -2,6 +2,7 @@ import AssetIcon from '@/components/AssetIcon';
 import ExchangeRatio from '@/components/ExchangeRatio';
 import { Footer } from '@/components/Footer';
 import { Header } from '@/components/Header';
+import { PositionCreatePanel } from '@/components/PositionCreatePanel';
 import { PositionPanel } from '@/components/PositionPanel';
 import { poweredByMiden } from '@/components/PoweredByMiden';
 import Price from '@/components/Price';
@@ -74,6 +75,8 @@ function Swap() {
   const [positionMode, setPositionMode] = useState(false);
   const {
     positionId,
+    positionInfo,
+    refreshPositionInfo,
     isLoading: isLoadingPosition,
     openPosition,
     positionSwap,
@@ -88,6 +91,7 @@ function Swap() {
   const lastSellRef = useRef<
     { token: TokenConfig; buy: TokenConfig; sellAmt: bigint; buyAmt: bigint } | null
   >(null);
+  const lastPositionRefreshRef = useRef<string | null>(null);
 
   const allTokens = useMemo(() => {
     return Object.values(tokens);
@@ -109,6 +113,29 @@ function Swap() {
   useBalance({
     token: selectedAssetBuy,
   });
+
+  // In position mode with an open position, the available sell balance is the
+  // position's own asset balance (from /positions/{id}), not the wallet balance.
+  const usePositionBalance = positionMode && hasPosition;
+  const positionSellBalance = useMemo<bigint | null>(() => {
+    if (!usePositionBalance || !selectedAssetSell) return null;
+    if (!positionInfo) return null;
+    const entry = positionInfo.assets.find(
+      ([bech32]) => bech32 === selectedAssetSell.faucetIdBech32,
+    );
+    return entry ? BigInt(entry[1]) : BigInt(0);
+  }, [usePositionBalance, positionInfo, selectedAssetSell]);
+
+  const activeBalance = usePositionBalance ? positionSellBalance : balanceSell;
+  const activeBalanceFmt = useMemo(() => {
+    if (usePositionBalance) {
+      return formalBigIntFormat({
+        val: positionSellBalance ?? undefined,
+        expo: selectedAssetSell?.decimals ?? 6,
+      });
+    }
+    return balanceSellFmt;
+  }, [usePositionBalance, positionSellBalance, selectedAssetSell?.decimals, balanceSellFmt]);
 
   const [rawSell, setRawSell] = useState<bigint>(BigInt(0));
   const [, setRawBuy] = useState<bigint>(BigInt(0));
@@ -193,14 +220,14 @@ function Swap() {
       return;
     }
     const newSell = parseUnits(val, decimalsSell);
-    const validationError = validateValue(newSell, balanceSell ?? BigInt(0));
+    const validationError = validateValue(newSell, activeBalance ?? BigInt(0));
     if (validationError) {
       setSellInputError(validationError);
     } else {
       setSellInputError(undefined);
       setRawSell(newSell);
     }
-  }, [selectedAssetBuy, selectedAssetSell, balanceSell]);
+  }, [selectedAssetBuy, selectedAssetSell, activeBalance]);
 
   const clearForm = useCallback(() => {
     setSellInputError(undefined);
@@ -272,6 +299,20 @@ function Swap() {
     }
   }, [positionTxInfo, orderStatus]);
 
+  // Refresh position info once a position swap reaches a terminal state
+  // (confirmed/denied), so displayed balances stay in sync with the server.
+  useEffect(() => {
+    if (!positionTxInfo) return;
+    const status = orderStatus[positionTxInfo.orderId]?.status;
+    if (status === 'executed' || status === 'failed' || status === 'expired') {
+      const key = `${positionTxInfo.orderId}:${status}`;
+      if (lastPositionRefreshRef.current !== key) {
+        lastPositionRefreshRef.current = key;
+        void refreshPositionInfo();
+      }
+    }
+  }, [positionTxInfo, orderStatus, refreshPositionInfo]);
+
   const computeMinAmountOut = useCallback(() => {
     if (!selectedAssetBuy || !selectedAssetSell) {
       return { computedBuy: 0n, minAmountOut: 0n };
@@ -298,27 +339,23 @@ function Swap() {
       buyAmt: computedBuy,
     };
 
-    if (positionMode) {
-      if (hasPosition) {
-        void positionSwap({
-          amount: rawSell,
-          minAmountOut,
-          buyToken: selectedAssetBuy,
-          sellToken: selectedAssetSell,
-        }).then(({ orderId }) => {
-          const s = lastSellRef.current;
-          if (!s) return;
-          setPositionTxInfo({
-            orderId,
-            sellToken: s.token,
-            buyToken: s.buy,
-            sellAmount: s.sellAmt,
-            buyAmount: s.buyAmt,
-          });
+    if (positionMode && hasPosition) {
+      void positionSwap({
+        amount: rawSell,
+        minAmountOut,
+        buyToken: selectedAssetBuy,
+        sellToken: selectedAssetSell,
+      }).then(({ orderId }) => {
+        const s = lastSellRef.current;
+        if (!s) return;
+        setPositionTxInfo({
+          orderId,
+          sellToken: s.token,
+          buyToken: s.buy,
+          sellAmount: s.sellAmt,
+          buyAmount: s.buyAmt,
         });
-      } else if (selectedAssetSell) {
-        void openPosition({ token: selectedAssetSell, amount: rawSell });
-      }
+      });
       setRawBuy(computedBuy);
       return;
     }
@@ -339,30 +376,33 @@ function Swap() {
     positionMode,
     hasPosition,
     positionSwap,
-    openPosition,
   ]);
+
+  const handleOpenPosition = useCallback((token: TokenConfig, amount: bigint) => {
+    void openPosition({ token, amount });
+  }, [openPosition]);
 
   const handleMaxClick = useCallback(() => {
     onInputChange(
-      formatUnits(balanceSell || BigInt(0), selectedAssetSell?.decimals || 6),
+      formatUnits(activeBalance || BigInt(0), selectedAssetSell?.decimals || 6),
     );
-  }, [onInputChange, balanceSell, selectedAssetSell?.decimals]);
+  }, [onInputChange, activeBalance, selectedAssetSell?.decimals]);
 
   const isActionLoading = isLoadingSwap || isLoadingPosition;
 
   const buttonText = useMemo(() => {
     if (!selectedAssetBuy) return 'Select a token';
     const showInsufficientBalance = Boolean(
-      rawSell > (balanceSell || BigInt(0)),
+      rawSell > (activeBalance || BigInt(0)),
     );
     if (showInsufficientBalance) {
       return `Insufficient ${selectedAssetSell?.symbol} balance`;
     }
-    if (positionMode) {
-      return hasPosition ? 'Swap via Position' : 'Open Position';
+    if (positionMode && hasPosition) {
+      return 'Swap via Position';
     }
     return 'Swap';
-  }, [rawSell, balanceSell, selectedAssetSell?.symbol, selectedAssetBuy, positionMode, hasPosition]);
+  }, [rawSell, activeBalance, selectedAssetSell?.symbol, selectedAssetBuy, positionMode, hasPosition]);
 
   const swapDisabled = connecting || isActionLoading || !client
     || stringSell === '' || !!sellInputError || !selectedAssetBuy;
@@ -389,14 +429,32 @@ function Swap() {
     setPositionTxInfo(null);
   }, [clearForm]);
 
+  // Position creation is a separate flow; the swap inputs below stay pure for swaps.
+  const showCreatePanel = positionMode && !hasPosition;
+
+  const positionInfoPanel = positionMode
+    ? (
+      <PositionPanel
+        positionId={positionId}
+        positionInfo={positionInfo}
+        tokens={tokens}
+        isLoading={isLoadingPosition}
+        onReclaim={reclaimPosition}
+        successHighlight={positionOrderStatus === 'executed'}
+      />
+    )
+    : null;
+
   return (
     <div className='min-h-screen bg-background text-foreground flex flex-col relative dotted-bg'>
       <title>Swap - ZoroSwap | DeFi on Miden</title>
       <meta property='og:title' content='Swap - ZoroSwap | DeFi on Miden' />
       <meta name='twitter:title' content='Swap - ZoroSwap | DeFi on Miden' />
       <Header />
-      <main className='flex-1 flex items-center justify-center px-3 py-4 sm:p-6'>
-        <div className='w-full max-w-[580px]'>
+      <main className='flex-1 flex items-start justify-center px-3 py-4 sm:p-6'>
+        <div className='w-full max-w-[580px] lg:max-w-[980px] flex flex-col lg:flex-row lg:items-start lg:justify-center gap-4 lg:gap-6'>
+          {/* Swap / creation column */}
+          <div className='w-full lg:w-[580px] lg:flex-shrink-0'>
           <h1 className='sr-only'>Swap Tokens</h1>
 
           <div className='relative flex items-center justify-between mb-1 gap-2'>
@@ -427,14 +485,22 @@ function Swap() {
             <Slippage slippage={slippage} onSlippageChange={setSlippage} />
           </div>
 
-          {positionMode && (
-            <PositionPanel
-              positionId={positionId}
-              isLoading={isLoadingPosition}
-              onReclaim={reclaimPosition}
-            />
-          )}
+          {/* On small screens position info sits above the swap; on large it moves to the right column */}
+          {positionMode && <div className='lg:hidden'>{positionInfoPanel}</div>}
 
+          {showCreatePanel
+            ? (
+              <PositionCreatePanel
+                tokens={allTokens}
+                defaultToken={selectedAssetSell}
+                isLoading={isLoadingPosition}
+                hasWallet={!!accountId}
+                onCreate={handleOpenPosition}
+                priorityBech32s={hfAmmBech32s}
+              />
+            )
+            : (
+              <>
           {/* Sell Card */}
           <Card className='border border-border/60 rounded-xl sm:rounded-2xl bg-card shadow-none'>
             <CardContent className='p-4 py-6 sm:p-8'>
@@ -480,7 +546,7 @@ function Swap() {
                       : '$0'}
                   </div>
                   {accountId && selectedAssetSell && (
-                    balanceSell === null
+                    activeBalance === null
                       ? (
                         <span className='text-muted-foreground/60 text-xs inline-flex items-center gap-1.5 animate-pulse'>
                           <span className='inline-block h-3 w-12 rounded bg-muted-foreground/15' />
@@ -490,14 +556,14 @@ function Swap() {
                       : (
                         <button
                           onClick={handleMaxClick}
-                          disabled={balanceSell === BigInt(0)}
+                          disabled={activeBalance === BigInt(0)}
                           className={`hover:text-foreground transition-colors cursor-pointer ${
                             sellInputError
                               ? 'text-orange-600 hover:text-destructive'
                               : 'text-muted-foreground hover:text-foreground'
                           }`}
                         >
-                          {balanceSellFmt} {selectedAssetSell.symbol}
+                          {activeBalanceFmt} {selectedAssetSell.symbol}
                         </button>
                       )
                   )}
@@ -547,7 +613,7 @@ function Swap() {
                   disabled={swapDisabled}
                   variant='outline'
                   className={`w-full h-14 sm:h-16 rounded-2xl font-bold text-base sm:text-xl transition-colors disabled:pointer-events-none disabled:opacity-50 ${
-                    buttonText === 'Swap' || buttonText === 'Swap via Position' || buttonText === 'Open Position'
+                    buttonText === 'Swap' || buttonText === 'Swap via Position'
                       ? 'bg-primary text-primary-foreground hover:bg-primary/90 border-primary'
                       : 'hover:border-orange-200/20 hover:bg-accent hover:text-accent-foreground'
                   }`}
@@ -563,7 +629,7 @@ function Swap() {
                     ? (
                       <>
                         <Loader2 className='w-5 h-5 mr-2 animate-spin' />
-                        {positionMode && !hasPosition ? 'Opening Position...' : 'Processing...'}
+                        Processing...
                       </>
                     )
                     : !client
@@ -605,6 +671,8 @@ function Swap() {
               )
               : null}
           </p>
+              </>
+            )}
 
           {/* Inline transaction status */}
           {showTxStatus && txInfo && (
@@ -629,6 +697,14 @@ function Swap() {
               noteId={positionNoteId}
               onDismiss={dismissPositionTxInfo}
             />
+          )}
+          </div>
+
+          {/* Position info column (right side on wide screens) */}
+          {positionMode && (
+            <div className='hidden lg:block w-full lg:w-[360px] lg:flex-shrink-0'>
+              {positionInfoPanel}
+            </div>
           )}
         </div>
       </main>
@@ -739,7 +815,9 @@ function InlineTxStatus({
   const isDone = label === 'Executed' || label === 'Failed' || label === 'Expired';
 
   return (
-    <div className='mt-4 rounded-xl border border-border bg-card p-4 space-y-3 animate-in fade-in slide-in-from-top-2 duration-300'>
+    <div className={`mt-4 rounded-xl border border-border bg-card p-4 space-y-3 animate-in fade-in slide-in-from-top-2 duration-300${
+      orderStatus === 'executed' ? ' tx-success-flourish' : ''
+    }`}>
       {/* Header */}
       <div className='flex items-center justify-between'>
         <span className='text-sm font-semibold'>Swap Order</span>

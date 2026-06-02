@@ -1,7 +1,9 @@
 import { useUnifiedWallet } from '@/hooks/useUnifiedWallet';
 import { clientMutex } from '@/lib/clientMutex';
 import {
+  getPositionInfo,
   getPositionNote,
+  type PositionInfoResponse,
   registerPosition,
   submitPositionSwap,
 } from '@/lib/positionsApi';
@@ -29,6 +31,7 @@ export interface PositionSwapResult {
 export function usePosition() {
   const [isLoading, setIsLoading] = useState(false);
   const [positionId, setPositionId] = useState<string | null>(null);
+  const [positionInfo, setPositionInfo] = useState<PositionInfoResponse | null>(null);
   const { requestTransaction } = useUnifiedWallet();
   const { client, accountId, poolAccountId, syncState } = useContext(ZoroContext);
 
@@ -39,6 +42,25 @@ export function usePosition() {
     }
     setPositionId(getStoredPositionId(accountId));
   }, [accountId]);
+
+  const refreshPositionInfo = useCallback(
+    async (id?: string): Promise<PositionInfoResponse | null> => {
+      const targetId = id ?? positionId;
+      if (!targetId) {
+        setPositionInfo(null);
+        return null;
+      }
+      try {
+        const info = await getPositionInfo(targetId);
+        setPositionInfo(info);
+        return info;
+      } catch (err) {
+        console.error(err);
+        return null;
+      }
+    },
+    [positionId],
+  );
 
   const verifyPosition = useCallback(async (id: string) => {
     try {
@@ -56,8 +78,11 @@ export function usePosition() {
   useEffect(() => {
     if (positionId) {
       void verifyPosition(positionId);
+      void refreshPositionInfo(positionId);
+    } else {
+      setPositionInfo(null);
     }
-  }, [positionId, verifyPosition]);
+  }, [positionId, verifyPosition, refreshPositionInfo]);
 
   const openPosition = useCallback(async ({
     token,
@@ -170,6 +195,8 @@ export function usePosition() {
 
   return useMemo(() => ({
     positionId,
+    positionInfo,
+    refreshPositionInfo,
     isLoading,
     openPosition,
     positionSwap,
@@ -177,6 +204,8 @@ export function usePosition() {
     hasPosition: positionId != null,
   }), [
     positionId,
+    positionInfo,
+    refreshPositionInfo,
     isLoading,
     openPosition,
     positionSwap,
