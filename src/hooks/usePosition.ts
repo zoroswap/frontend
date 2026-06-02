@@ -31,6 +31,7 @@ export interface PositionSwapResult {
 
 export function usePosition() {
   const [isLoading, setIsLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [positionId, setPositionId] = useState<string | null>(null);
   const [positionInfo, setPositionInfo] = useState<PositionInfoResponse | null>(null);
   const { requestTransaction } = useUnifiedWallet();
@@ -51,6 +52,7 @@ export function usePosition() {
         setPositionInfo(null);
         return null;
       }
+      setIsRefreshing(true);
       try {
         const info = await getPositionInfo(targetId);
         setPositionInfo(info);
@@ -58,10 +60,20 @@ export function usePosition() {
       } catch (err) {
         console.error(err);
         return null;
+      } finally {
+        setIsRefreshing(false);
       }
     },
     [positionId],
   );
+
+  useEffect(() => {
+    if (!positionId) return;
+    const intervalId = setInterval(() => {
+      void refreshPositionInfo(positionId);
+    }, 15_000);
+    return () => clearInterval(intervalId);
+  }, [positionId, refreshPositionInfo]);
 
   const verifyPosition = useCallback(async (id: string) => {
     try {
@@ -209,6 +221,7 @@ export function usePosition() {
     positionInfo,
     refreshPositionInfo,
     isLoading,
+    isRefreshing,
     openPosition,
     positionSwap,
     reclaimPosition,
@@ -219,6 +232,7 @@ export function usePosition() {
     positionInfo,
     refreshPositionInfo,
     isLoading,
+    isRefreshing,
     openPosition,
     positionSwap,
     reclaimPosition,
