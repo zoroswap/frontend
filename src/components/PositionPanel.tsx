@@ -49,7 +49,11 @@ export function PositionPanel({
   }, [positionInfo, tokens]);
 
   return (
-    <Card className={`border border-border/60 rounded-xl sm:rounded-2xl bg-card shadow-none mb-4 lg:mb-0${successHighlight ? ' tx-success-flourish' : ''}`}>
+    <Card
+      className={`border border-border/60 rounded-xl sm:rounded-2xl bg-card shadow-none mb-4 lg:mb-0${
+        successHighlight ? ' tx-success-flourish' : ''
+      }`}
+    >
       <CardContent className='p-4 sm:p-6'>
         <div className='flex items-center justify-between mb-3'>
           <span className='text-xs sm:text-sm text-primary font-semibold'>Position</span>
@@ -58,8 +62,8 @@ export function PositionPanel({
               variant='outline'
               size='sm'
               onClick={() => void onReclaim()}
-              disabled={isLoading}
-              className='h-8 text-xs'
+              disabled={/*isLoading*/ true}
+              className='h-8 text-xs opacity-10'
             >
               {isLoading
                 ? <Loader2 className='h-3 w-3 animate-spin' />
@@ -98,7 +102,11 @@ export function PositionPanel({
                     </div>
                   )
                   : assets.length === 0
-                  ? <p className='text-sm text-muted-foreground'>No assets in position.</p>
+                  ? (
+                    <p className='text-sm text-muted-foreground'>
+                      No assets in position.
+                    </p>
+                  )
                   : (
                     <ul className='space-y-1.5'>
                       {assets.map((asset) => (
@@ -111,7 +119,10 @@ export function PositionPanel({
                             <span>{asset.symbol}</span>
                           </span>
                           <span className='font-mono'>
-                            {formalBigIntFormat({ val: asset.amount, expo: asset.decimals })}
+                            {formalBigIntFormat({
+                              val: asset.amount,
+                              expo: asset.decimals,
+                            })}
                           </span>
                         </li>
                       ))}
@@ -137,7 +148,8 @@ export function PositionPanel({
           )
           : (
             <p className='text-sm text-muted-foreground'>
-              No position open. Enter an amount and click Open Position to deposit into a position note.
+              No position open. Enter an amount and click Open Position to deposit into a
+              position note.
             </p>
           )}
       </CardContent>

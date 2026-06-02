@@ -54,7 +54,7 @@ export async function compileOpenPositionTransaction({
     ({ token, amount }) => new FungibleAsset(token.faucetId, amount),
   );
   const noteAssets = new NoteAssets(offeredAssets);
-  const noteTag = NoteTag.withAccountTarget(poolAccountId);
+  const noteTag = NoteTag.withAccountTarget(userAccountId);
 
   const metadata = new NoteMetadata(
     userAccountId,
@@ -91,6 +91,8 @@ export async function compileOpenPositionTransaction({
     [],
     [],
   );
+
+  console.log('note tag:', note.metadata().tag());
 
   return {
     tx,
