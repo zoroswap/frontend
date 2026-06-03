@@ -107,6 +107,26 @@
   background-size: 15px 15px;
 }
 
+/* Faded halftone accent for cards (top-weighted dot field) */
+.halftone {
+  background-image: radial-gradient(
+    circle,
+    hsl(var(--primary) / 0.16) 0.65px,
+    transparent 0.65px
+  );
+  background-size: 4px 4px;
+  -webkit-mask-image: radial-gradient(
+    ellipse 95% 70% at 50% 0%,
+    #000 0%,
+    transparent 72%
+  );
+  mask-image: radial-gradient(
+    ellipse 95% 70% at 50% 0%,
+    #000 0%,
+    transparent 72%
+  );
+}
+
 h1,
 h2,
 h3,

@@ -2,10 +2,19 @@ import AssetIcon from '@/components/AssetIcon';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { formalBigIntFormat, truncateId } from '@/lib/format';
+import { cn } from '@/lib/utils';
 import { type PositionInfoResponse } from '@/lib/positionsApi';
 import { type TokenConfig } from '@/providers/ZoroProvider';
-import { CheckCircle, ExternalLink, Loader2, RefreshCw, Trash2 } from 'lucide-react';
-import { useCallback, useMemo, useState } from 'react';
+import {
+  CheckCircle,
+  Copy,
+  ExternalLink,
+  Loader2,
+  RefreshCw,
+  Trash2,
+  Wallet,
+} from 'lucide-react';
+import { useCallback, useMemo, useState, type ReactNode } from 'react';
 
 interface PositionPanelProps {
   positionId: string | null;
@@ -19,14 +28,22 @@ interface PositionPanelProps {
   successHighlight?: boolean;
 }
 
+function SectionLabel({ children }: { children: ReactNode }) {
+  return (
+    <p className='text-[11px] font-medium uppercase tracking-wider text-muted-foreground/80'>
+      {children}
+    </p>
+  );
+}
+
 export function PositionPanel({
   positionId,
   positionInfo,
   tokens,
-  isLoading,
+  isLoading: _isLoading,
   isRefreshing = false,
   onRefresh,
-  onReclaim,
+  onReclaim: _onReclaim,
   onRemove,
   successHighlight = false,
 }: PositionPanelProps) {
@@ -56,103 +73,118 @@ export function PositionPanel({
 
   return (
     <Card
-      className={`border border-border/60 rounded-xl sm:rounded-2xl bg-card shadow-none mb-4 lg:mb-0${
-        successHighlight ? ' tx-success-flourish' : ''
-      }`}
+      className={cn(
+        'relative overflow-hidden border border-border/50 rounded-xl sm:rounded-2xl',
+        'bg-card shadow-none mb-4 lg:mb-0',
+        successHighlight && 'tx-success-flourish',
+      )}
     >
-      <CardContent className='p-4 sm:p-6'>
-        <div className='flex items-center justify-between mb-3'>
-          <span className='inline-flex items-center gap-1.5 text-xs sm:text-sm text-primary font-semibold'>
-            Position
-            {isRefreshing && (
-              <Loader2 className='h-3 w-3 animate-spin text-muted-foreground' aria-hidden />
+      <div
+        className='halftone pointer-events-none absolute inset-0'
+        aria-hidden
+      />
+      <CardContent className='relative p-5 sm:p-6'>
+        <div className='flex items-start justify-between gap-3 mb-5'>
+          <div className='space-y-1 min-w-0'>
+            <h2 className='font-cal-sans text-lg sm:text-xl tracking-tight text-foreground'>
+              Position
+            </h2>
+            {positionId && (
+              <span className='inline-flex items-center gap-1.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400'>
+                <span className='h-1.5 w-1.5 rounded-full bg-current animate-pulse' />
+                Active
+              </span>
             )}
-          </span>
-          {positionId && (
-            <div className='flex items-center gap-2'>
-              <Button
-                variant='outline'
-                size='sm'
-                onClick={() => void onRefresh?.()}
-                disabled={isRefreshing}
-                className='h-8 w-8 p-0'
-                aria-label='Refresh position'
-              >
-                {isRefreshing
-                  ? <Loader2 className='h-3 w-3 animate-spin' />
-                  : <RefreshCw className='h-3 w-3' />}
-              </Button>
-              <Button
-                variant='outline'
-                size='sm'
-                onClick={() => void onReclaim()}
-                disabled={/*isLoading*/ true}
-                className='h-8 text-xs opacity-10'
-              >
-                {isLoading
-                  ? <Loader2 className='h-3 w-3 animate-spin' />
-                  : 'Reclaim'}
-              </Button>
-              <Button
-                variant='outline'
-                size='sm'
-                onClick={onRemove}
-                className='h-8 text-xs'
-              >
-                <Trash2 className='h-3 w-3 mr-1' />
-                Remove
-              </Button>
-            </div>
+          </div>
+          {positionId && onRefresh && (
+            <Button
+              variant='ghost'
+              size='icon'
+              onClick={() => void onRefresh()}
+              disabled={isRefreshing}
+              className='h-9 w-9 shrink-0 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/60'
+              aria-label='Refresh position'
+            >
+              {isRefreshing
+                ? <Loader2 className='h-4 w-4 animate-spin' />
+                : <RefreshCw className='h-4 w-4' />}
+            </Button>
           )}
         </div>
 
         {positionId
           ? (
-            <div className='space-y-4'>
+            <div className='space-y-5'>
               <div className='space-y-2'>
-                <p className='text-xs text-muted-foreground'>Active position</p>
+                <SectionLabel>Position ID</SectionLabel>
                 <button
                   type='button'
                   onClick={() => void copyPositionId()}
-                  className='font-mono text-sm hover:bg-muted/50 rounded px-1 py-0.5 transition-colors cursor-pointer text-left break-all'
+                  className={cn(
+                    'group flex w-full items-center justify-between gap-2 rounded-xl',
+                    'border border-border/60 bg-muted/25 px-3.5 py-3 text-left',
+                    'transition-colors hover:border-primary/25 hover:bg-muted/40',
+                  )}
                 >
-                  {copied
-                    ? (
-                      <span className='inline-flex items-center gap-1'>
-                        <CheckCircle className='h-3 w-3 text-green-500' />
-                        Copied
-                      </span>
-                    )
-                    : truncateId(positionId)}
+                  <span className='font-mono text-sm text-foreground/90 truncate'>
+                    {copied
+                      ? (
+                        <span className='inline-flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400'>
+                          <CheckCircle className='h-3.5 w-3.5 shrink-0' />
+                          Copied
+                        </span>
+                      )
+                      : truncateId(positionId)}
+                  </span>
+                  <span
+                    className={cn(
+                      'shrink-0 rounded-md p-1.5 text-muted-foreground',
+                      'transition-colors group-hover:bg-background/60 group-hover:text-foreground',
+                    )}
+                  >
+                    <Copy className='h-3.5 w-3.5' />
+                  </span>
                 </button>
               </div>
 
-              <div className='space-y-2'>
-                <p className='text-xs text-muted-foreground'>Balances</p>
+              <div className='space-y-2.5'>
+                <SectionLabel>Holdings</SectionLabel>
                 {positionInfo === null
                   ? (
                     <div className='space-y-2'>
-                      <span className='inline-block h-4 w-32 rounded bg-muted-foreground/15 animate-pulse' />
+                      {[0, 1].map((i) => (
+                        <div
+                          key={i}
+                          className='h-[52px] rounded-xl bg-muted/30 animate-pulse'
+                        />
+                      ))}
                     </div>
                   )
                   : assets.length === 0
                   ? (
-                    <p className='text-sm text-muted-foreground'>
-                      No assets in position.
+                    <p className='text-sm text-muted-foreground py-2'>
+                      No assets in this position yet.
                     </p>
                   )
                   : (
-                    <ul className='space-y-1.5'>
+                    <ul className='space-y-2'>
                       {assets.map((asset) => (
                         <li
                           key={asset.bech32}
-                          className='flex items-center justify-between gap-2 text-sm rounded-lg bg-muted/50 px-2.5 py-2'
+                          className={cn(
+                            'flex items-center justify-between gap-3 rounded-xl',
+                            'border border-border/50 bg-background/40 px-3.5 py-3',
+                          )}
                         >
-                          <span className='inline-flex items-center gap-1.5'>
-                            <AssetIcon symbol={asset.symbol} size={16} />
-                            <span>{asset.symbol}</span>
+                          <span className='inline-flex items-center gap-2.5 min-w-0'>
+                            <span className='rounded-full ring-2 ring-background shadow-sm'>
+                              <AssetIcon symbol={asset.symbol} size={28} />
+                            </span>
+                            <span className='font-medium text-sm text-foreground'>
+                              {asset.symbol}
+                            </span>
                           </span>
-                          <span className='font-mono'>
+                          <span className='font-mono text-base font-semibold tabular-nums text-foreground'>
                             {formalBigIntFormat({
                               val: asset.amount,
                               expo: asset.decimals,
@@ -165,26 +197,69 @@ export function PositionPanel({
               </div>
 
               {positionInfo?.note_id && (
-                <div className='flex items-center gap-1.5 text-xs'>
-                  <span className='text-muted-foreground'>Note:</span>
-                  <span className='font-mono'>{truncateId(positionInfo.note_id)}</span>
-                  <a
-                    href={`https://testnet.midenscan.com/note/${positionInfo.note_id}`}
-                    target='_blank'
-                    rel='noopener noreferrer'
-                    className='text-muted-foreground hover:text-foreground'
-                  >
-                    <ExternalLink className='h-3 w-3' />
-                  </a>
+                <div className='space-y-2'>
+                  <SectionLabel>On-chain note</SectionLabel>
+                  <div className='flex items-center gap-2 rounded-xl border border-border/50 bg-muted/20 px-3 py-2.5'>
+                    <span className='flex-1 min-w-0 font-mono text-xs text-muted-foreground truncate'>
+                      {truncateId(positionInfo.note_id)}
+                    </span>
+                    <a
+                      href={`https://testnet.midenscan.com/note/${positionInfo.note_id}`}
+                      target='_blank'
+                      rel='noopener noreferrer'
+                      className={cn(
+                        'shrink-0 inline-flex items-center justify-center rounded-lg p-2',
+                        'text-muted-foreground transition-colors',
+                        'hover:bg-background/80 hover:text-foreground',
+                      )}
+                      aria-label='View note on explorer'
+                    >
+                      <ExternalLink className='h-3.5 w-3.5' />
+                    </a>
+                  </div>
                 </div>
               )}
+
+              <div className='pt-1 space-y-2'>
+                {/* <Button
+                  variant='outline'
+                  size='sm'
+                  onClick={() => void _onReclaim()}
+                  disabled={_isLoading}
+                  className='w-full h-10 rounded-xl text-xs font-medium border-border/70 bg-background/50 hover:bg-muted/50'
+                >
+                  {_isLoading
+                    ? <Loader2 className='h-3.5 w-3.5 animate-spin' />
+                    : 'Reclaim'}
+                </Button> */}
+                <Button
+                  variant='outline'
+                  size='sm'
+                  onClick={onRemove}
+                  className={cn(
+                    'w-full h-10 rounded-xl text-xs font-medium',
+                    'border-destructive/25 bg-background/50 text-destructive',
+                    'hover:bg-destructive/10 hover:text-destructive hover:border-destructive/40',
+                  )}
+                >
+                  <Trash2 className='h-3.5 w-3.5' />
+                  Remove position
+                </Button>
+              </div>
             </div>
           )
           : (
-            <p className='text-sm text-muted-foreground'>
-              No position open. Enter an amount and click Open Position to deposit into a
-              position note.
-            </p>
+            <div className='flex flex-col items-center text-center py-6 px-2'>
+              <span className='mb-3 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-muted/50 text-muted-foreground'>
+                <Wallet className='h-6 w-6' />
+              </span>
+              <p className='text-sm font-medium text-foreground mb-1'>
+                No position yet
+              </p>
+              <p className='text-xs text-muted-foreground leading-relaxed max-w-[240px]'>
+                Add tokens below and open a position to start swapping privately.
+              </p>
+            </div>
           )}
       </CardContent>
     </Card>

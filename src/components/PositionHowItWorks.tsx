@@ -1,10 +1,5 @@
 import { cn } from '@/lib/utils';
-import {
-  ArrowLeftRight,
-  Layers,
-  LogOut,
-  type LucideIcon,
-} from 'lucide-react';
+import { ArrowLeftRight, Layers, LogOut, type LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 interface Step {
@@ -17,36 +12,35 @@ interface Step {
 const STEPS: Step[] = [
   {
     number: 1,
-    title: 'Deposit',
+    title: 'Open a position',
     description: (
       <>
-        Deposit tokens into a{' '}
-        <span className='text-foreground/90'>Position</span> note on Miden. Your assets
-        stay yours and can always be reclaimed in the wallet or thru app.
+        Open a{'  '}<span className='text-foreground/90'>Position</span>{' '}
+        note on Miden. Your assets stay yours and can always be reclaimed in the wallet or
+        through the app.
       </>
     ),
     icon: Layers,
   },
   {
     number: 2,
-    title: 'Swap',
+    title: 'Swap assets',
     description: (
       <>
         When you place a swap, ZoroSwap issues a new{' '}
-        <span className='text-foreground/90'>Position</span> note with your updated
-        balances.
+        <span className='text-foreground/90'>Position</span>{' '}
+        note with your updated post-swap balances.
       </>
     ),
     icon: ArrowLeftRight,
   },
   {
     number: 3,
-    title: 'Withdraw',
+    title: 'Reclaim your position',
     description: (
       <>
-        Reclaim your assets from{' '}
-        <span className='text-foreground/90'>Position</span> note thru the wallet or the
-        app.
+        Reclaim your assets from <span className='text-foreground/90'>Position</span>{' '}
+        note through the wallet or the app.
       </>
     ),
     icon: LogOut,
@@ -63,7 +57,10 @@ function StepCard({ step, isLast }: { step: Step; isLast: boolean }) {
     <div className='group relative flex gap-3.5 sm:gap-4 min-w-0'>
       <div className='relative flex flex-col items-center shrink-0'>
         <div className='relative z-10 flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-xl bg-primary/[0.12] ring-1 ring-primary/25 transition-colors group-hover:bg-primary/[0.18]'>
-          <Icon className='h-[18px] w-[18px] sm:h-5 sm:w-5 text-primary' strokeWidth={1.75} />
+          <Icon
+            className='h-[18px] w-[18px] sm:h-5 sm:w-5 text-primary'
+            strokeWidth={1.75}
+          />
         </div>
         {!isLast && (
           <div
