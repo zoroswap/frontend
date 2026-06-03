@@ -71,7 +71,8 @@ export default function PoolModal({
     () => Object.values(tokens).find((t) => t.symbol === 'USDC'),
     [tokens],
   );
-  /** For hfAMM: LP symbol is "z" + underlying (e.g. zETH → ETH). Use underlying token for deposit/withdraw. */
+  /** LP symbol is "z" + underlying (e.g. zETH → ETH). Deposits use the underlying token. */
+  const lpSymbol = pool.symbol.startsWith('z') ? pool.symbol : `z${pool.symbol}`;
   const underlyingSymbol = pool.symbol.startsWith('z')
     ? pool.symbol.slice(1)
     : pool.symbol;
@@ -89,32 +90,25 @@ export default function PoolModal({
     [pool.oracleId, underlyingToken?.oracleId, quoteToken?.oracleId],
   );
   const oraclePrices = useOraclePrices(oracleIds);
-  const { balance: balanceToken, refetch: refetchBalanceToken } = useBalance({
-    token,
-  });
   const { balance: balanceQuote } = useBalance({ token: quoteToken ?? undefined });
-  const { balance: balanceUnderlying } = useBalance({
+  const { balance: balanceUnderlying, refetch: refetchBalanceUnderlying } = useBalance({
     token: underlyingToken ?? undefined,
   });
-  const isHfAmm = pool.poolType === 'hfAMM';
+  const underlyingDecimals = underlyingToken?.decimals ?? quoteToken?.decimals ?? 6;
   const balance = mode === 'Withdraw'
     ? lpBalance ?? BigInt(0)
-    : isHfAmm
-    ? (balanceUnderlying ?? balanceQuote ?? BigInt(0))
-    : (balanceToken ?? BigInt(0));
-  const decimals = mode === 'Deposit' && isHfAmm
-    ? (underlyingToken?.decimals ?? quoteToken?.decimals ?? 6)
-    : pool.decimals;
-  const depositWithdrawToken = isHfAmm ? (underlyingToken ?? quoteToken ?? token) : token;
+    : (balanceUnderlying ?? balanceQuote ?? BigInt(0));
+  const decimals = mode === 'Deposit' ? underlyingDecimals : pool.decimals;
+  const depositWithdrawToken = underlyingToken ?? quoteToken ?? token;
 
   const clearForm = useCallback(() => {
     setInputValue('');
     setRawValue(BigInt(0));
     setDepositPct(100);
     setWithdrawPct(100);
-    refetchBalanceToken().catch(console.error);
+    refetchBalanceUnderlying().catch(console.error);
     refetchPoolInfo?.();
-  }, [refetchBalanceToken, refetchPoolInfo]);
+  }, [refetchBalanceUnderlying, refetchPoolInfo]);
 
   const {
     deposit,
@@ -205,12 +199,7 @@ export default function PoolModal({
 
   const handleClose = useCallback(() => modalContext.closeModal(), [modalContext]);
 
-  const poolLabel = pool.name || (isHfAmm ? `${pool.symbol}` : `${pool.symbol} / USDC`);
-  const withdrawReceiveAmount = rawValue;
-  const withdrawReceiveFormatted = formatTokenAmount({
-    value: withdrawReceiveAmount,
-    expo: decimals,
-  });
+  const poolLabel = pool.name || pool.symbol;
   // Withdraw: (lp_token / lp_total_supply) * total_liabilities = asset amount out (use totalLiabilities)
   const withdrawAssetOut = useMemo(() => {
     if (!poolBalance || poolBalance.totalLiabilities === BigInt(0)) {
@@ -219,23 +208,15 @@ export default function PoolModal({
     const lpTotalSupply = poolBalance.totalLiabilities;
     return (rawValue * lpTotalSupply) / lpTotalSupply;
   }, [poolBalance, rawValue]);
-  const assetDecimals = isHfAmm
-    ? (underlyingToken?.decimals ?? quoteToken?.decimals ?? 6)
-    : decimals;
-  const withdrawAssetOutFormatted =
-    formatTokenAmount({ value: withdrawAssetOut, expo: assetDecimals }) ?? '0';
+  const assetDecimals = underlyingDecimals;
   const totalValueUsd = useMemo(() => {
-    if (!isHfAmm) return null;
     const oracleId = underlyingToken?.oracleId ?? quoteToken?.oracleId ?? pool.oracleId;
     const price = oracleId ? oraclePrices[oracleId]?.value : undefined;
     if (price == null || price === 0) return null;
     const amount = mode === 'Deposit' ? rawValue : withdrawAssetOut;
-    const expo = underlyingToken?.decimals ?? quoteToken?.decimals ?? 6;
-    const value = Number(amount) / 10 ** expo;
-    const usd = value * price;
-    return usd;
+    const value = Number(amount) / 10 ** assetDecimals;
+    return value * price;
   }, [
-    isHfAmm,
     mode,
     underlyingToken,
     quoteToken,
@@ -243,6 +224,7 @@ export default function PoolModal({
     oraclePrices,
     rawValue,
     withdrawAssetOut,
+    assetDecimals,
   ]);
 
   // Deposit: LP amount uses total_liabilities (not reserve)
@@ -344,22 +326,9 @@ export default function PoolModal({
     <div className='flex flex-col gap-5 p-8'>
       <div className='flex items-center justify-between gap-2'>
         <div className='flex items-center gap-2'>
-          {isHfAmm
-            ? (
-              <span className='inline-block rounded-full border-2 border-background overflow-hidden bg-muted'>
-                <AssetIcon symbol={pool.symbol} size={32} />
-              </span>
-            )
-            : (
-              <div className='flex -space-x-2'>
-                <span className='inline-block rounded-full border-2 border-background overflow-hidden bg-muted'>
-                  <AssetIcon symbol={pool.symbol} size={32} />
-                </span>
-                <span className='inline-block rounded-full border-2 border-background overflow-hidden bg-muted'>
-                  <AssetIcon symbol='USDC' size={32} />
-                </span>
-              </div>
-            )}
+          <span className='inline-block rounded-full border-2 border-background overflow-hidden bg-muted'>
+            <AssetIcon symbol={pool.symbol} size={32} />
+          </span>
           <span className='font-cal-sans text-lg tracking-tight'>{poolLabel}</span>
         </div>
         <Button
@@ -410,7 +379,7 @@ export default function PoolModal({
         <>
           <div className='flex items-center justify-between gap-2'>
             <p className='text-sm font-medium text-muted-foreground'>
-              {isHfAmm ? 'Deposit amount' : 'Deposit amounts'}
+              Deposit amount
             </p>
             <Slippage slippage={slippage} onSlippageChange={setSlippage} />
           </div>
@@ -429,7 +398,7 @@ export default function PoolModal({
             <div className='flex items-center justify-end text-sm text-muted-foreground mb-4'>
               <span>
                 Balance: {formatTokenAmount({ value: balance, expo: decimals })}{' '}
-                {isHfAmm ? (underlyingToken?.symbol ?? underlyingSymbol) : pool.symbol}
+                {underlyingToken?.symbol ?? underlyingSymbol}
               </span>
             </div>
             <div className='flex gap-2'>
@@ -465,15 +434,13 @@ export default function PoolModal({
               <span className='text-muted-foreground font-medium'>Balance</span>
               <span className='font-medium'>
                 {formatTokenAmount({ value: balance, expo: decimals })}{' '}
-                {isHfAmm ? (underlyingToken?.symbol ?? underlyingSymbol) : pool.symbol}
+                {underlyingToken?.symbol ?? underlyingSymbol}
               </span>
             </div>
             <div className='flex items-center justify-between'>
               <span className='text-muted-foreground font-medium'>My position</span>
               <span className='font-medium'>
-                {formatTokenAmount({ value: lpBalance, expo: pool.decimals })} {isHfAmm
-                  ? (pool.symbol.startsWith('z') ? pool.symbol : `z${pool.symbol}`)
-                  : pool.symbol}
+                {formatTokenAmount({ value: lpBalance, expo: pool.decimals })} {lpSymbol}
               </span>
             </div>
             <div className='flex items-center justify-between'>
@@ -488,12 +455,7 @@ export default function PoolModal({
               <span className='text-muted-foreground font-medium'>You receive (min)</span>
               <span className='flex items-center gap-2 font-semibold'>
                 {minLpFormatted ?? '0'}{' '}
-                <AssetIcon
-                  symbol={isHfAmm
-                    ? (pool.symbol.startsWith('z') ? pool.symbol : `z${pool.symbol}`)
-                    : pool.symbol}
-                  size={20}
-                />
+                <AssetIcon symbol={lpSymbol} size={20} />
               </span>
             </div>
             {expectedLpFormatted != null
@@ -502,12 +464,10 @@ export default function PoolModal({
                 Expected: {expectedLpFormatted}
               </p>
             )}
-            {isHfAmm && (
-              <div className='flex items-center justify-between'>
-                <span className='text-muted-foreground font-medium'>Total Value</span>
-                <span className='font-medium'>{formatUsd(totalValueUsd)}</span>
-              </div>
-            )}
+            <div className='flex items-center justify-between'>
+              <span className='text-muted-foreground font-medium'>Total Value</span>
+              <span className='font-medium'>{formatUsd(totalValueUsd)}</span>
+            </div>
           </div>
 
           {/* CTA */}
@@ -542,9 +502,7 @@ export default function PoolModal({
             <div className='flex items-center justify-end text-sm text-muted-foreground mb-4'>
               <span>
                 Balance: {formatTokenAmount({ value: lpBalance, expo: decimals })}{' '}
-                {isHfAmm
-                  ? (pool.symbol.startsWith('z') ? pool.symbol : `z${pool.symbol}`)
-                  : 'LP'}
+                {lpSymbol}
               </span>
             </div>
             <div className='flex gap-2'>
@@ -579,9 +537,7 @@ export default function PoolModal({
                     Balance: {formatTokenAmount({
                       value: lpBalance,
                       expo: decimals,
-                    })} {isHfAmm
-                      ? (pool.symbol.startsWith('z') ? pool.symbol : `z${pool.symbol}`)
-                      : 'LP'}
+                    })} {lpSymbol}
                   </span>
                   <span className='rounded-full overflow-hidden'>
                     <AssetIcon symbol={pool.symbol} size={24} />
@@ -605,17 +561,13 @@ export default function PoolModal({
             <div className='flex items-center justify-between'>
               <span className='text-muted-foreground font-medium'>Balance</span>
               <span className='font-medium'>
-                {formatTokenAmount({ value: lpBalance, expo: pool.decimals })} {isHfAmm
-                  ? (pool.symbol.startsWith('z') ? pool.symbol : `z${pool.symbol}`)
-                  : 'LP'}
+                {formatTokenAmount({ value: lpBalance, expo: pool.decimals })} {lpSymbol}
               </span>
             </div>
             <div className='flex items-center justify-between'>
               <span className='text-muted-foreground font-medium'>My position</span>
               <span className='font-medium'>
-                {formatTokenAmount({ value: lpBalance, expo: pool.decimals })} {isHfAmm
-                  ? (pool.symbol.startsWith('z') ? pool.symbol : `z${pool.symbol}`)
-                  : pool.symbol}
+                {formatTokenAmount({ value: lpBalance, expo: pool.decimals })} {lpSymbol}
               </span>
             </div>
             <div className='flex items-center justify-between'>
@@ -627,48 +579,20 @@ export default function PoolModal({
             <p className='text-xs font-medium text-muted-foreground uppercase tracking-wide'>
               You receive (min)
             </p>
-            {isHfAmm
-              ? (
-                <div className='flex items-center justify-between text-sm'>
-                  <div className='flex items-center gap-2'>
-                    <AssetIcon
-                      symbol={underlyingToken?.symbol ?? underlyingSymbol}
-                      size={20}
-                    />
-                    <span>{underlyingToken?.symbol ?? underlyingSymbol}</span>
-                  </div>
-                  <span>{minWithdrawAssetFormatted}</span>
-                </div>
-              )
-              : (
-                <>
-                  <p className='text-xs text-muted-foreground'>
-                    LP: {withdrawReceiveFormatted ?? '0'}
-                  </p>
-                  <div className='flex items-center justify-between text-sm'>
-                    <div className='flex items-center gap-2'>
-                      <AssetIcon symbol={pool.symbol} size={20} />
-                      <span>{pool.symbol}</span>
-                    </div>
-                    <span>
-                      {withdrawAssetOutFormatted} (min: {minWithdrawAssetFormatted})
-                    </span>
-                  </div>
-                  <div className='flex items-center justify-between text-sm'>
-                    <div className='flex items-center gap-2'>
-                      <AssetIcon symbol='USDC' size={20} />
-                      <span>USDC</span>
-                    </div>
-                    <span>—</span>
-                  </div>
-                </>
-              )}
-            {isHfAmm && (
-              <div className='flex items-center justify-between'>
-                <span className='text-muted-foreground font-medium'>Total Value</span>
-                <span className='font-medium'>{formatUsd(totalValueUsd)}</span>
+            <div className='flex items-center justify-between text-sm'>
+              <div className='flex items-center gap-2'>
+                <AssetIcon
+                  symbol={underlyingToken?.symbol ?? underlyingSymbol}
+                  size={20}
+                />
+                <span>{underlyingToken?.symbol ?? underlyingSymbol}</span>
               </div>
-            )}
+              <span>{minWithdrawAssetFormatted}</span>
+            </div>
+            <div className='flex items-center justify-between'>
+              <span className='text-muted-foreground font-medium'>Total Value</span>
+              <span className='font-medium'>{formatUsd(totalValueUsd)}</span>
+            </div>
           </div>
 
           {/* CTA */}

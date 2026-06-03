@@ -75,7 +75,7 @@ export const formalNumberFormat = (
   })).format(val);
 };
 
-/** Format USD for display (e.g. $1,234.56). Use for hfAMM total value. */
+/** Format USD for display (e.g. $1,234.56). */
 export const formatUsd = (val?: number | null): string => {
   if (val == null || Number.isNaN(val)) return '—';
   if (val < 0.01 && val > 0) return '<$0.01';

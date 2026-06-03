@@ -23,7 +23,7 @@ export function PoolCompositionCard({ symbol }: PoolCompositionCardProps) {
           </div>
         </div>
         <p className='text-xs text-muted-foreground'>
-          hfAMM pools are single-sided.
+          Pools are single-sided.
         </p>
       </CardContent>
     </Card>

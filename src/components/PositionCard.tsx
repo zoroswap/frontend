@@ -30,12 +30,11 @@ export function PositionCard({
   disabled = false,
 }: PositionCardProps) {
   const decimals = pool.decimals;
-  const isHfAmm = pool.poolType === 'hfAMM';
   const oraclePrices = useOraclePrices(pool.oracleId ? [pool.oracleId] : []);
   const price = pool.oracleId ? oraclePrices[pool.oracleId]?.value : undefined;
   const positionUsd = useMemo(() => {
     if (
-      !isHfAmm || price == null || price === 0
+      price == null || price === 0
       || poolBalance.totalLiabilities === BigInt(0)
     ) {
       return null;
@@ -44,7 +43,6 @@ export function PositionCard({
     const valueHuman = Number(valueInAsset) / 10 ** decimals;
     return valueHuman * price;
   }, [
-    isHfAmm,
     price,
     lpBalance,
     poolBalance.reserve,
@@ -69,30 +67,12 @@ export function PositionCard({
     >
       <CardContent className={isSlim ? 'p-3' : 'p-5'}>
         <div className={cn('flex items-center gap-2', isSlim ? 'mb-2' : 'mb-4')}>
-          {isHfAmm
-            ? (
-              <span className='inline-block rounded-full border-2 border-card overflow-hidden'>
-                <AssetIcon symbol={pool.symbol} size={isSlim ? 20 : 24} />
-              </span>
-            )
-            : (
-              <div className='flex -space-x-2'>
-                <span className='inline-block rounded-full border-2 border-card overflow-hidden'>
-                  <AssetIcon symbol={pool.symbol} size={isSlim ? 20 : 24} />
-                </span>
-                <span className='inline-block rounded-full border-2 border-card overflow-hidden bg-muted'>
-                  <AssetIcon symbol='USDC' size={isSlim ? 20 : 24} />
-                </span>
-              </div>
-            )}
+          <span className='inline-block rounded-full border-2 border-card overflow-hidden'>
+            <AssetIcon symbol={pool.symbol} size={isSlim ? 20 : 24} />
+          </span>
           <span className={cn('font-semibold text-foreground', isSlim && 'text-sm')}>
             {pool.name}
           </span>
-          {isHfAmm && (
-            <span className='text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium'>
-              hfAMM
-            </span>
-          )}
           <span className='text-xs text-muted-foreground'>{feeTier}</span>
         </div>
         <div className={cn('space-y-2 text-sm', isSlim && 'space-y-1 text-xs')}>
@@ -104,7 +84,7 @@ export function PositionCard({
                 </span>
                 <span className='font-medium'>${tvlFormatted}</span>
               </div>
-              {isHfAmm && positionUsd != null && (
+              {positionUsd != null && (
                 <div className='flex justify-between'>
                   <span className='text-muted-foreground uppercase tracking-wide text-xs'>
                     Value
@@ -122,19 +102,15 @@ export function PositionCard({
                 <span className='text-muted-foreground'>{pool.symbol}</span>
                 <span className='font-medium'>{liquidityFormatted}</span>
               </div>
-              <div className='flex justify-between'>
-                <span className='text-muted-foreground'>USDC</span>
-                <span className='font-medium'>—</span>
-              </div>
             </>
           )}
           {isSlim && (
             <>
               <div className='flex justify-between'>
-                <span className='text-muted-foreground'>Your deposit</span>
+                <span className='text-muted-foreground'>Your position</span>
                 <span className='font-medium'>{liquidityFormatted}</span>
               </div>
-              {isHfAmm && positionUsd != null && (
+              {positionUsd != null && (
                 <div className='flex justify-between'>
                   <span className='text-muted-foreground'>Value</span>
                   <span className='font-medium'>{formatUsd(positionUsd)}</span>

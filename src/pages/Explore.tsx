@@ -105,7 +105,6 @@ function Explore() {
     const liquidityPools = poolsInfo?.liquidityPools;
     if (!liquidityPools || !poolBalances) return [];
     return liquidityPools
-      .filter((pool) => pool.poolType === 'hfAMM')
       .map((pool) => {
         const balance = poolBalances.find((b) =>
           b.faucetIdBech32 === pool.faucetIdBech32

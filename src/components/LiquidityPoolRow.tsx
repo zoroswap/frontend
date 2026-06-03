@@ -44,7 +44,6 @@ const LiquidityPoolRow = ({
     value: poolBalances.totalLiabilities,
     expo: decimals,
   });
-  const isHfAmm = pool.poolType === 'hfAMM';
 
   const isRowClickable = variant === 'addLiquidity' && onRowClick;
 
@@ -73,29 +72,11 @@ const LiquidityPoolRow = ({
       >
         <td className='py-3 px-4'>
           <div className='flex items-center gap-2'>
-            {isHfAmm
-              ? (
-                <span className='inline-block rounded-full border-2 border-card overflow-hidden'>
-                  <AssetIcon symbol={pool.symbol} size={24} />
-                </span>
-              )
-              : (
-                <div className='flex -space-x-2'>
-                  <span className='inline-block rounded-full border-2 border-card overflow-hidden'>
-                    <AssetIcon symbol={pool.symbol} size={24} />
-                  </span>
-                  <span className='inline-block rounded-full border-2 border-card overflow-hidden bg-muted'>
-                    <AssetIcon symbol='USDC' size={24} />
-                  </span>
-                </div>
-              )}
+            <span className='inline-block rounded-full border-2 border-card overflow-hidden'>
+              <AssetIcon symbol={pool.symbol} size={24} />
+            </span>
             <div className='flex items-center gap-1.5 flex-wrap'>
               <span className='font-medium'>{pool.name}</span>
-              {pool.poolType && (
-                <span className='text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground'>
-                  {pool.poolType}
-                </span>
-              )}
               <span className='text-xs text-muted-foreground'>{feeTier}</span>
             </div>
           </div>
